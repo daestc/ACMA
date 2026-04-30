@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const careerController = require('../controllers/careerController');
 
 // 로그인 여부 체크 미들웨어 (임시 — JWT/세션 연동 시 교체)
 function requireLogin(req, res, next) {
@@ -23,5 +24,9 @@ router.get('/', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
+// 진로 검색db에서 대분류, 중분류, 소분류 가져오기
+router.get('/categories', careerController.getCategories);
+// 진로 검색db에서 대분류, 중분류, 소분류에 따른 진로 정보 가져오기
+router.get('/search', careerController.searchCareers);
 
 module.exports = router;

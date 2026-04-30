@@ -158,17 +158,10 @@ const jobSearchSchema = new Schema(
     },
     
     // 2. 계층별 이름 (검색 속도를 위해 각각 인덱스 추가)
-    depth1_name: { type: String, index: true }, // 대분류
-    depth2_name: { type: String, index: true }, // 중분류
-    depth3_name: { type: String, index: true }, // 소분류
-    
-    // 3. 전체 경로 (예: "정보통신 > 소프트웨어 > 웹 개발")
-    // 전문 검색(Full-text search)이나 빵부스러기(Breadcrumb) 노출용
-    categoryName: { type: String, required: true, trim: true },
-    
-    // 4. 검색 편의를 위한 키워드 필드 (선택 사항)
-    // 사용자가 "백엔드"라고 쳤을 때 "웹 개발"이 나오게 하고 싶을 때 유용함
-    searchKeywords: [String], 
+    depth1_name: { type: String, default: "", index: true }, // 대분류
+    depth2_name: { type: String, default: "", index: true }, // 중분류
+    depth3_name: { type: String, default: "", index: true }, // 소분류
+    depth4_name: { type: String, default: "", index: true } // 세분류 (필요 시)
   },
   { timestamps: true }
 );
@@ -176,6 +169,7 @@ const jobSearchSchema = new Schema(
 // "대분류 선택 -> 중분류 조회" 속도를 비약적으로 높여줍니다.
 jobSearchSchema.index({ depth1_name: 1, depth2_name: 1 });
 jobSearchSchema.index({ depth2_name: 1, depth3_name: 1 });
+jobSearchSchema.index({ depth3_name: 1, depth4_name: 1 });
 
 /**
  * [jobs] 컬렉션
