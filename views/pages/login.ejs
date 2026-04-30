@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>로그인</title>
+</head>
+
+<body>
+
+<!-- ══ LOGIN ══════════════════════════════ -->
+<div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo"><div class="logo-icon">A</div><span class="logo-text">AcadMe</span></div>
+      <h2>다시 만나서 반가워요 👋</h2>
+      <p class="auth-sub">학사관리 플랫폼에 로그인하세요</p>
+      <div class="form-group"><label>이메일</label><input type="email" placeholder="example@university.ac.kr"></div>
+      <div class="form-group"><label>비밀번호</label><input type="password" placeholder="비밀번호 입력"></div>
+      <!-- (추가)로그인 기능 -->
+      <button class="btn-primary" href="/home">로그인</button>
+      <div class="auth-divider">또는 간편 로그인</div>
+      <div class="social-btns">
+        <button class="social-btn" onclick="goToApp()">🟡 카카오</button>
+        <button class="social-btn" onclick="goToApp()">🟢 네이버</button>
+        <button class="social-btn" onclick="goToApp()">🔵 구글</button>
+      </div>
+      <div class="auth-footer">계정이 없으신가요? <a href="/auth/register">회원가입</a> &nbsp;·&nbsp; <span>비밀번호 찾기</span></div>
+    </div>
+
+
+</body>
+
+</html>

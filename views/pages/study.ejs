@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>공부</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'study', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '공부', user: user }) %>
+
+		<div class="page-content">
+    <!-- ══ STUDY ══ -->
+    <div class="page-content">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchStudyTab('quiz',this)">퀴즈</button>
+          <button class="tab-btn" onclick="switchStudyTab('summary',this)">요약</button>
+          <button class="tab-btn" onclick="switchStudyTab('timer',this)">타이머</button>
+          <button class="tab-btn" onclick="switchStudyTab('report',this)">학습 리포트</button>
+        </div>
+
+        <!-- ── 요약 탭 ── -->
+        <div id="st-summary" style="display:none;">
+
+          <!-- PDF 업로드 영역 -->
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+              <span class="card-title">📄 AI 학습 자료 요약</span>
+              <span class="badge badge-purple">Claude AI</span>
+            </div>
+
+            <!-- 업로드 존 -->
+            <div id="summary-upload-zone"
+              style="border:2px dashed var(--border2);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px;background:var(--bg3);"
+              onclick="document.getElementById('summary-file-input').click()"
+              ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+              ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--bg3)'"
+              ondrop="handleSummaryDrop(event)">
+              <div style="font-size:32px;margin-bottom:10px;">📁</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">PDF 파일을 드래그하거나 클릭해서 업로드</div>
+              <div style="font-size:12px;color:var(--text2);">요약본, 교과서 등 최대 20MB · PDF 파일만 지원</div>
+              <input type="file" id="summary-file-input" accept=".pdf" style="display:none;" onchange="handleSummaryFile(this)">
+            </div>
+
+            <!-- 파일 선택됨 표시 -->
+            <div id="summary-file-info" style="display:none;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:none;align-items:center;gap:10px;">
+              <span style="font-size:18px;">📄</span>
+              <div style="flex:1;">
+                <div id="summary-file-name" style="font-size:13px;font-weight:700;color:var(--green);"></div>
+                <div style="font-size:11px;color:var(--text2);">업로드 완료 · AI 요약 준비됨</div>
+              </div>
+              <button onclick="clearSummaryFile()" style="font-size:11px;color:var(--text2);padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);">✕ 제거</button>
+            </div>
+
+            <!-- 요약 옵션 -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;" id="summary-options">
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--accent);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--accent);">
+                <input type="checkbox" checked style="accent-color:var(--accent);"> 핵심 요약
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+                <input type="checkbox" style="accent-color:var(--accent);"> 상세 요약
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+                <input type="checkbox" style="accent-color:var(--accent);"> 개념정리
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+                <input type="checkbox" style="accent-color:var(--accent);"> 키워드 추출
+              </label>
+            </div>
+
+            <button class="btn btn-accent" style="width:100%;justify-content:center;" onclick="runSummary()">
+              ✨ AI 요약 시작
+            </button>
+          </div>
+
+          <!-- 요약 결과 (샘플) -->
+          <div id="summary-result" style="display:block;">
+            <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+              📘 자료구조 — 트리와 그래프.pdf
+              <span class="badge badge-purple">AI 요약 완료</span>
+              <button style="margin-left:auto;font-size:12px;color:var(--accent);font-weight:600;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-bg);">💾 저장</button>
+            </div>
+
+            <!-- 핵심 요약 -->
+            <div class="card" style="margin-bottom:12px;border-left:4px solid var(--accent);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="font-size:16px;">⚡</span>
+                <span style="font-size:13px;font-weight:800;">핵심 요약</span>
+                <span style="font-size:11px;color:var(--text2);">3~5줄 핵심만 정리</span>
+              </div>
+              <ul style="display:flex;flex-direction:column;gap:8px;padding-left:4px;">
+                <li style="display:flex;gap:10px;font-size:13px;"><span style="color:var(--accent);font-weight:800;flex-shrink:0;">01.</span><span>트리는 계층 구조를 표현하는 비선형 자료구조로, 하나의 루트 노드와 여러 자식 노드로 구성됩니다.</span></li>
+                <li style="display:flex;gap:10px;font-size:13px;"><span style="color:var(--accent);font-weight:800;flex-shrink:0;">02.</span><span>이진 탐색 트리(BST)는 왼쪽 서브트리의 값이 루트보다 작고, 오른쪽은 크다는 속성을 갖습니다.</span></li>
+                <li style="display:flex;gap:10px;font-size:13px;"><span style="color:var(--accent);font-weight:800;flex-shrink:0;">03.</span><span>그래프는 정점(Vertex)과 간선(Edge)으로 구성되며, 방향/무방향, 가중치 여부로 분류됩니다.</span></li>
+                <li style="display:flex;gap:10px;font-size:13px;"><span style="color:var(--accent);font-weight:800;flex-shrink:0;">04.</span><span>그래프 탐색 알고리즘으로 DFS(깊이 우선)와 BFS(너비 우선) 두 가지가 핵심입니다.</span></li>
+              </ul>
+            </div>
+
+            <!-- 상세 요약 (단원별) -->
+            <div class="card" style="margin-bottom:12px;border-left:4px solid var(--purple);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <span style="font-size:16px;">📑</span>
+                <span style="font-size:13px;font-weight:800;">상세 요약</span>
+                <span style="font-size:11px;color:var(--text2);">단원별 상세 정리</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                  <div style="font-size:12px;font-weight:800;color:var(--purple);margin-bottom:6px;padding:4px 10px;background:var(--purple-bg);border-radius:6px;display:inline-block;">1단원 — 트리(Tree)</div>
+                  <div style="font-size:13px;color:var(--text2);line-height:1.7;">트리는 순환 없이 연결된 그래프입니다. 루트(Root), 부모(Parent), 자식(Child), 리프(Leaf) 노드로 구성되며, 깊이(Depth)와 높이(Height)로 특성을 표현합니다. 이진 트리, AVL 트리, B-트리 등 다양한 변형이 존재합니다.</div>
+                </div>
+                <div>
+                  <div style="font-size:12px;font-weight:800;color:var(--purple);margin-bottom:6px;padding:4px 10px;background:var(--purple-bg);border-radius:6px;display:inline-block;">2단원 — 그래프(Graph)</div>
+                  <div style="font-size:13px;color:var(--text2);line-height:1.7;">그래프는 객체 간의 관계를 표현합니다. 인접 행렬(Adjacency Matrix)과 인접 리스트(Adjacency List) 두 가지 표현 방식이 있으며, 시간/공간 복잡도 측면에서 각각 장단점이 있습니다.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 개념정리 (표) -->
+            <div class="card" style="margin-bottom:12px;border-left:4px solid var(--green);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <span style="font-size:16px;">📊</span>
+                <span style="font-size:13px;font-weight:800;">개념정리</span>
+                <span style="font-size:11px;color:var(--text2);">표 형식 정리</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead>
+                    <tr style="background:var(--bg3);">
+                      <th style="padding:8px 12px;text-align:left;border:1px solid var(--border);font-weight:700;color:var(--text2);">개념</th>
+                      <th style="padding:8px 12px;text-align:left;border:1px solid var(--border);font-weight:700;color:var(--text2);">정의</th>
+                      <th style="padding:8px 12px;text-align:left;border:1px solid var(--border);font-weight:700;color:var(--text2);">시간복잡도</th>
+                      <th style="padding:8px 12px;text-align:left;border:1px solid var(--border);font-weight:700;color:var(--text2);">특징</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td style="padding:8px 12px;border:1px solid var(--border);font-weight:600;">BST 탐색</td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">이진 탐색 트리에서 값 검색</td><td style="padding:8px 12px;border:1px solid var(--border);"><code style="background:var(--bg3);padding:2px 6px;border-radius:4px;">O(log n)</code></td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">균형 유지 필요</td></tr>
+                    <tr style="background:var(--bg3);"><td style="padding:8px 12px;border:1px solid var(--border);font-weight:600;">DFS</td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">깊이 우선 탐색</td><td style="padding:8px 12px;border:1px solid var(--border);"><code style="background:var(--bg2);padding:2px 6px;border-radius:4px;">O(V+E)</code></td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">스택/재귀 활용</td></tr>
+                    <tr><td style="padding:8px 12px;border:1px solid var(--border);font-weight:600;">BFS</td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">너비 우선 탐색</td><td style="padding:8px 12px;border:1px solid var(--border);"><code style="background:var(--bg3);padding:2px 6px;border-radius:4px;">O(V+E)</code></td><td style="padding:8px 12px;border:1px solid var(--border);color:var(--text2);">큐 활용, 최단경로</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 키워드 추출 -->
+            <div class="card" style="border-left:4px solid var(--amber);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <span style="font-size:16px;">🔑</span>
+                <span style="font-size:13px;font-weight:800;">키워드 추출</span>
+                <span style="font-size:11px;color:var(--text2);">핵심 용어 목록</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span style="background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">트리(Tree)</span>
+                <span style="background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">이진 탐색 트리</span>
+                <span style="background:var(--purple-bg);border:1px solid var(--purple);color:var(--purple);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">그래프(Graph)</span>
+                <span style="background:var(--purple-bg);border:1px solid var(--purple);color:var(--purple);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">DFS / BFS</span>
+                <span style="background:var(--green-bg);border:1px solid var(--green);color:var(--green);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">인접 행렬</span>
+                <span style="background:var(--green-bg);border:1px solid var(--green);color:var(--green);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">인접 리스트</span>
+                <span style="background:var(--amber-bg);border:1px solid var(--amber);color:var(--amber);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">루트 노드</span>
+                <span style="background:var(--amber-bg);border:1px solid var(--amber);color:var(--amber);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">순환(Cycle)</span>
+                <span style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">AVL 트리</span>
+                <span style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;">최단 경로</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 퀴즈 탭 -->
+        <div id="st-quiz">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div><div style="font-size:15px;font-weight:700;">퀴즈 보관함</div><div style="font-size:12px;color:var(--text2);margin-top:3px;">PDF 기반 AI 생성 퀴즈</div></div>
+            <button class="btn btn-accent">📄 PDF로 퀴즈 생성</button>
+          </div>
+          <div class="grid-3">
+            <div class="quiz-card"><div style="font-size:13px;font-weight:700;margin-bottom:8px;">자료구조 — 트리 & 그래프</div><div style="display:flex;gap:8px;margin-bottom:12px;"><span class="badge badge-blue">20문제</span><span class="badge badge-green">쉬움</span></div><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:12px;"><div class="quiz-score">85%</div><div style="font-size:12px;color:var(--text2);">정답률</div></div><button class="btn btn-ghost btn-sm" style="width:100%;">다시 풀기</button></div>
+            <div class="quiz-card"><div style="font-size:13px;font-weight:700;margin-bottom:8px;">운영체제 — 프로세스 관리</div><div style="display:flex;gap:8px;margin-bottom:12px;"><span class="badge badge-blue">15문제</span><span class="badge badge-amber">보통</span></div><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:12px;"><div class="quiz-score">72%</div><div style="font-size:12px;color:var(--text2);">정답률</div></div><button class="btn btn-ghost btn-sm" style="width:100%;">다시 풀기</button></div>
+            <div class="quiz-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;border-style:dashed;box-shadow:none;cursor:pointer;"><div style="font-size:26px;color:var(--text3);margin-bottom:8px;">+</div><div style="font-size:13px;color:var(--text2);font-weight:500;">새 퀴즈 만들기</div></div>
+          </div>
+        </div>
+
+        <!-- 타이머 탭 -->
+        <div id="st-timer" style="display:none;">
+          <div style="max-width:460px;margin:0 auto;">
+
+            <!-- 타이머 모드 토글 -->
+            <div style="display:flex;gap:0;margin-bottom:20px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;">
+              <button id="timer-mode-pomo" onclick="switchTimerMode('pomo')"
+                style="flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:700;transition:all .2s;background:var(--accent);color:white;box-shadow:var(--shadow-sm);">
+                🍅 뽀모도로
+              </button>
+              <button id="timer-mode-normal" onclick="switchTimerMode('normal')"
+                style="flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:600;transition:all .2s;background:transparent;color:var(--text2);">
+                ⏱ 일반 타이머
+              </button>
+            </div>
+
+            <!-- ── 뽀모도로 타이머 ── -->
+            <div id="pomo-panel" class="card" style="text-align:center;">
+              <div style="margin-bottom:14px;">
+                <div class="pomo-status">
+                  <div class="pomo-dot done"></div>
+                  <div class="pomo-dot done"></div>
+                  <div class="pomo-dot active"></div>
+                  <div class="pomo-dot"></div>
+                  <span style="font-size:12px;color:var(--text2);margin-left:4px;">3 / 4 세션</span>
+                </div>
+                <span id="pomo-mode-label" class="pomo-label work">🍅 집중 시간</span>
+              </div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">오늘 공부한 시간: <strong style="color:var(--green);">2시간 34분</strong></div>
+              <input class="input-field" placeholder="과목명 (선택)" style="width:100%;margin-bottom:18px;text-align:center;">
+              <div class="timer-display" id="timer-display">25:00</div>
+              <div style="width:100%;height:5px;background:var(--bg3);border-radius:3px;margin:14px 0;overflow:hidden;border:1px solid var(--border);">
+                <div id="timer-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),#7b96ff);border-radius:3px;width:100%;transition:width .1s linear;"></div>
+              </div>
+              <div class="timer-controls">
+                <button class="timer-btn timer-btn-secondary" onclick="resetTimer()">↺</button>
+                <button class="timer-btn timer-btn-main" id="timer-start-btn" onclick="toggleTimer()">▶</button>
+                <button class="timer-btn timer-btn-secondary" onclick="skipPomo()">⏭</button>
+              </div>
+              <!-- 뽀모도로 설정 -->
+              <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);">
+                <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">⚙ 뽀모도로 설정</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                  <div>
+                    <label style="font-size:10px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">🍅 집중 (분)</label>
+                    <input class="input-field" id="pomo-work-min" type="number" value="25" min="1" max="60" style="width:100%;text-align:center;" oninput="applyPomoSettings()">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">☕ 휴식 (분)</label>
+                    <input class="input-field" id="pomo-break-min" type="number" value="5" min="1" max="30" style="width:100%;text-align:center;" oninput="applyPomoSettings()">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">🌿 긴휴식 (분)</label>
+                    <input class="input-field" id="pomo-long-min" type="number" value="15" min="1" max="60" style="width:100%;text-align:center;" oninput="applyPomoSettings()">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── 일반 타이머 ── -->
+            <div id="normal-panel" class="card" style="text-align:center;display:none;">
+              <div style="margin-bottom:6px;">
+                <div class="tabs" style="margin:0 auto 16px;display:inline-flex;">
+                  <button class="tab-btn active" id="nt-tab-timer" onclick="switchNormalMode('countdown',this)">카운트다운</button>
+                  <button class="tab-btn" id="nt-tab-stop" onclick="switchNormalMode('stopwatch',this)">스톱워치</button>
+                </div>
+              </div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">오늘 공부한 시간: <strong style="color:var(--green);">2시간 34분</strong></div>
+              <input class="input-field" placeholder="과목명 (선택)" style="width:100%;margin-bottom:18px;text-align:center;">
+
+              <!-- 카운트다운 시간 설정 -->
+              <div id="nt-countdown-set" style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
+                <button onclick="setNormalTime(10)" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">10분</button>
+                <button onclick="setNormalTime(30)" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--accent-bg);border:1.5px solid var(--accent);color:var(--accent);cursor:pointer;transition:all .2s;">30분</button>
+                <button onclick="setNormalTime(60)" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">60분</button>
+                <button onclick="setNormalTime(90)" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">90분</button>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <input class="input-field" id="nt-custom-min" type="number" placeholder="직접" min="1" max="999" style="width:62px;text-align:center;font-size:12px;">
+                  <button onclick="setNormalTime(parseInt(document.getElementById('nt-custom-min').value)||0)" style="padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;">설정</button>
+                </div>
+              </div>
+
+              <div class="timer-display" id="normal-timer-display">30:00</div>
+              <div style="width:100%;height:5px;background:var(--bg3);border-radius:3px;margin:14px 0;overflow:hidden;border:1px solid var(--border);">
+                <div id="normal-timer-bar" style="height:100%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:3px;width:100%;transition:width .1s linear;"></div>
+              </div>
+              <div class="timer-controls">
+                <button class="timer-btn timer-btn-secondary" onclick="resetNormalTimer()">↺</button>
+                <button class="timer-btn timer-btn-main" id="normal-start-btn" onclick="toggleNormalTimer()">▶</button>
+                <button class="timer-btn timer-btn-secondary" id="nt-lap-btn" onclick="addLap()" style="display:none;">📌</button>
+              </div>
+              <!-- 랩타임 (스톱워치 모드) -->
+              <div id="nt-laps" style="display:none;margin-top:14px;text-align:left;max-height:120px;overflow-y:auto;"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="st-report" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><span class="card-title">주간 학습 시간</span><span style="font-size:12px;color:var(--text2);font-weight:600;">총 14h 22m</span></div>
+              <div class="study-bars">
+                <div class="study-bar-wrap"><div class="study-bar" style="height:35%;"></div><div class="study-bar-label">월</div></div>
+                <div class="study-bar-wrap"><div class="study-bar" style="height:80%;"></div><div class="study-bar-label">화</div></div>
+                <div class="study-bar-wrap"><div class="study-bar" style="height:50%;"></div><div class="study-bar-label">수</div></div>
+                <div class="study-bar-wrap"><div class="study-bar" style="height:95%;"></div><div class="study-bar-label">목</div></div>
+                <div class="study-bar-wrap"><div class="study-bar" style="height:60%;"></div><div class="study-bar-label">금</div></div>
+                <div class="study-bar-wrap"><div class="study-bar" style="height:20%;"></div><div class="study-bar-label">토</div></div>
+                <div class="study-bar-wrap"><div class="study-bar today" style="height:45%;"></div><div class="study-bar-label">일</div></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title" style="margin-bottom:16px;">과목별 학습 시간</div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">자료구조</span><span class="progress-value">4h 20m</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:80%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">운영체제</span><span class="progress-value">3h 12m</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:60%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">알고리즘</span><span class="progress-value">4h 50m</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:90%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">정보처리기사 준비</span><span class="progress-value">2h 00m</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:37%"></div></div></div>
+            </div>
+          </div>
+        </div>
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+	<script src="/js/study.js"></script>
+</body>
+
+</html>

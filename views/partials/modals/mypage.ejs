@@ -1,0 +1,116 @@
+<!-- ══ 마이페이지 모달 ══ -->
+<div id="mypage-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.5);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:860px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+    <!-- 모달 헤더 -->
+    <div style="padding:22px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:10;border-radius:20px 20px 0 0;">
+      <div style="font-size:17px;font-weight:800;">👤 마이페이지</div>
+      <button onclick="closeMyPageModal()" style="width:32px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:var(--text2);transition:all .2s;" onmouseover="this.style.background='var(--red-bg)';this.style.color='var(--red)'" onmouseout="this.style.background='var(--bg3)';this.style.color='var(--text2)'">✕</button>
+    </div>
+    <!-- 모달 바디 -->
+    <div style="padding:24px 28px;">
+      <!-- 프로필 헤더 -->
+      <div class="profile-header" style="margin-bottom:20px;">
+        <div class="profile-avatar-lg">김<div class="avatar-edit">✏</div></div>
+        <div style="flex:1;">
+          <div class="profile-info">
+            <div class="name">김민준</div>
+            <div class="meta">한국대학교 · 컴퓨터공학과 · 3학년 · 2021XXXXX</div>
+          </div>
+          <div class="profile-stats">
+            <div class="p-stat"><div class="p-stat-value">3.80</div><div class="p-stat-label">누적 GPA</div></div>
+            <div class="p-stat"><div class="p-stat-value">92</div><div class="p-stat-label">이수 학점</div></div>
+            <div class="p-stat"><div class="p-stat-value">6</div><div class="p-stat-label">이수 학기</div></div>
+            <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">취득 자격증</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="settings-section">
+            <h3>개인정보</h3>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">이름</label><input class="input-field" value="김민준" style="width:100%;"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">이메일</label><input class="input-field" value="minkim@korea.ac.kr" style="width:100%;"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">비밀번호</label><input class="input-field" type="password" value="••••••••" style="width:100%;"></div>
+            <button class="btn btn-accent btn-sm">저장</button>
+          </div>
+          <div class="settings-section">
+            <h3>학적 정보</h3>
+            <div class="settings-row"><div><div class="settings-label">학번</div><div class="settings-desc">2021XXXXX</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
+            <div class="settings-row"><div><div class="settings-label">대학 · 단과대학</div><div class="settings-desc">한국대학교 · 공과대학</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
+            <div class="settings-row"><div><div class="settings-label">주전공 · 복수전공</div><div class="settings-desc">컴퓨터공학과 · -</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
+            <div class="settings-row"><div><div class="settings-label">재학 상태</div></div><span class="badge badge-green">재학</span></div>
+          </div>
+          <div class="settings-section">
+            <h3>보안</h3>
+            <div class="settings-row"><div><div class="settings-label">비밀번호 변경</div><div class="settings-desc">마지막 변경: 2025.11.20</div></div><button class="btn btn-ghost btn-sm">변경</button></div>
+            <div class="settings-row"><div><div class="settings-label">2단계 인증</div><div class="settings-desc">OTP 앱으로 추가 인증</div></div><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="settings-section">
+            <h3>알림 설정</h3>
+            <div class="settings-row"><div><div class="settings-label">일일 강의 스케줄 알림</div><div class="settings-desc">매일 오전 8시</div></div><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div></div>
+            <div class="settings-row"><div><div class="settings-label">D-Day 알림</div><div class="settings-desc">자격증, 장학금, 시험</div></div><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div></div>
+            <div class="settings-row"><div><div class="settings-label">푸시 알림</div><div class="settings-desc">브라우저 푸시</div></div><div class="toggle" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div></div>
+          </div>
+          <div class="settings-section">
+            <h3>계정</h3>
+            <div class="settings-row"><div><div class="settings-label">로그아웃</div><div class="settings-desc">현재 세션을 종료합니다</div></div><button class="btn btn-ghost btn-sm" onclick="closeMyPageModal();logout();">로그아웃</button></div>
+            <div class="settings-row"><div><div class="settings-label">계정 탈퇴</div><div class="settings-desc">모든 데이터가 삭제됩니다</div></div><button class="btn btn-sm" style="color:var(--red);border:1.5px solid #fecdd3;background:#fff1f2;">탈퇴</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 페이지 타이틀 매핑
+const pageTitles = {
+  home:'홈', calendar:'캘린더', mystatus:'MyStatus',
+  notice:'공지사항', academic:'학사관리', study:'공부', career:'진로정보'
+};
+// 페이지별 헤더 액션 버튼
+const pageActions = {
+  mystatus:`<button class="btn btn-accent btn-sm" onclick="openMyPageModal()">✏️ 정보 수정</button>`,
+  calendar:`<div class="tabs" style="margin-bottom:0;"><button class="tab-btn active" id="cal-tab-month" onclick="switchCalView('month')">월간</button><button class="tab-btn" id="cal-tab-week" onclick="switchCalView('week')">주간</button></div>`,
+};
+
+function showPage(id){
+  document.querySelectorAll('.auth-page,.page,.landing-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('app-layout').style.display='none';
+  const el=document.getElementById('page-'+id);
+  if(el) el.classList.add('active');
+}
+function goToApp(){
+  document.querySelectorAll('.auth-page,.landing-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('app-layout').style.display='flex';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-home').classList.add('active');
+  updateGlobalHeader('home');
+  const mc=document.querySelector('.main-content');if(mc)mc.scrollTop=0;
+}
+function logout(){
+  closeMyPageModal();closeSidebar();
+  document.getElementById('app-layout').style.display='none';
+  document.querySelectorAll('.auth-page,.page,.landing-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-landing').classList.add('active');
+}
+function switchPage(id,navEl){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg=document.getElementById('pg-'+id);
+  if(pg) pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl) navEl.classList.add('active');
+  updateGlobalHeader(id);
+  const mc=document.querySelector('.main-content');if(mc)mc.scrollTop=0;
+  closeSidebar();
+}
+function updateGlobalHeader(pageId){
+  const titleEl=document.getElementById('gh-title');
+  if(titleEl) titleEl.textContent=pageTitles[pageId]||'';
+  const actionsEl=document.getElementById('gh-actions');
+  if(actionsEl) actionsEl.innerHTML=pageActions[pageId]||'';
+}
+</script>
+<!-- // 사이드바 토글 -->

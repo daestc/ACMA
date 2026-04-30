@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>공지사항</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
+
+		<div class="page-content">
+    <!-- ══ NOTICE ══ -->
+    <div class="page-content">
+        <div class="filter-row">
+          <div class="chip active" onclick="filterChip(this)">전체</div>
+          <div class="chip" onclick="filterChip(this)">🏆 자격증</div>
+          <div class="chip" onclick="filterChip(this)">💰 장학금</div>
+          <div class="chip" onclick="filterChip(this)">📅 학사일정</div>
+          <div class="chip" onclick="filterChip(this)">💼 채용/인턴</div>
+          <div class="chip" onclick="filterChip(this)">🏅 공모전</div>
+        </div>
+        <div class="card">
+          <div class="notice-item"><div class="notice-icon" style="background:var(--red-bg);">📌</div><div class="notice-body"><div class="notice-title">2026-1학기 기말고사 일정 공고</div><div class="notice-meta"><span class="badge badge-green">학사일정</span>2026.04.16 · 조회 1,234</div></div><span class="badge badge-red">D-20</span></div>
+          <div class="notice-item"><div class="notice-icon" style="background:var(--amber-bg);">💰</div><div class="notice-body"><div class="notice-title">2026-1학기 성적우수 장학금 신청 안내</div><div class="notice-meta"><span class="badge badge-amber">장학금</span>2026.04.10 · 조회 892</div></div><span class="badge badge-amber">D-5</span></div>
+          <div class="notice-item"><div class="notice-icon" style="background:var(--accent-bg);">💼</div><div class="notice-body"><div class="notice-title">카카오 2026 동계 인턴십 채용 안내</div><div class="notice-meta"><span class="badge badge-blue">채용/인턴</span>2026.04.09 · 조회 2,104</div></div><span class="badge badge-blue">D-12</span></div>
+          <div class="notice-item"><div class="notice-icon" style="background:var(--purple-bg);">🏆</div><div class="notice-body"><div class="notice-title">2026 정보처리기사 1회 시험 원서 접수</div><div class="notice-meta"><span class="badge badge-purple">자격증</span>2026.04.07 · 조회 567</div></div><span class="badge badge-purple">D-15</span></div>
+          <div class="notice-item"><div class="notice-icon" style="background:var(--green-bg);">🏅</div><div class="notice-body"><div class="notice-title">제26회 대학생 소프트웨어 공모전 안내</div><div class="notice-meta"><span class="badge badge-green">공모전</span>2026.04.05 · 조회 430</div></div><span class="badge badge-green">D-30</span></div>
+        </div>
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+</body>
+
+</html>

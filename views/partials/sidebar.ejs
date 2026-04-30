@@ -1,0 +1,47 @@
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="app-sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-header-left">
+      <div class="s-logo">A</div>
+      <span class="s-logo-text">AcadMe</span>
+    </div>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-info">
+      <div class="user-avatar"><%= user ? user.name[0] : '김' %></div>
+      <div>
+        <div class="user-name"><%= user ? user.name : '김민준' %></div>
+        <div class="user-role"><%= user ? user.major + ' ' + user.grade + '학년' : '컴퓨터공학과 3학년' %></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">메인</div>
+      <a href="/home"     class="nav-item <%= currentPage === 'home'     ? 'active' : '' %>"><span class="nav-icon">🏠</span>홈</a>
+      <a href="/calendar" class="nav-item <%= currentPage === 'calendar' ? 'active' : '' %>"><span class="nav-icon">📅</span>캘린더</a>
+      <a href="/mystatus" class="nav-item <%= currentPage === 'mystatus' ? 'active' : '' %>"><span class="nav-icon">⭐</span>MyStatus</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">학업</div>
+      <a href="/notice"   class="nav-item <%= currentPage === 'notice'   ? 'active' : '' %>">
+        <span class="nav-icon">📢</span>공지사항
+        <span class="nav-badge">3</span>
+      </a>
+      <a href="/user/academic" class="nav-item <%= currentPage === 'academic' ? 'active' : '' %>"><span class="nav-icon">🎓</span>학사관리</a>
+      <a href="/study"    class="nav-item <%= currentPage === 'study'    ? 'active' : '' %>"><span class="nav-icon">📖</span>공부</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">진로</div>
+      <a href="/career"   class="nav-item <%= currentPage === 'career'   ? 'active' : '' %>"><span class="nav-icon">💼</span>진로정보</a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
+  </div>
+</aside>

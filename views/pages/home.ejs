@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>홈</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'home', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '홈', user: user }) %>
+
+		<div class="page-content">
+    <!-- ══ HOME ══ -->
+    <div class="page-content">
+        <!-- 날씨 + 명언 -->
+        <div class="grid-2" style="margin-bottom:16px;">
+          <div class="weather-widget">
+            <div class="weather-left">
+              <div class="temp">18°C</div>
+              <div class="desc">맑음 · 한국대학교</div>
+              <div class="location">📍 서울 관악구</div>
+              <div class="weather-detail" style="margin-top:8px;">습도 42% · 바람 2m/s · 자외선 낮음</div>
+            </div>
+            <div class="weather-right">
+              <div class="weather-icon">☀️</div>
+              <div class="weather-detail" style="text-align:center;">오늘 최고 21°</div>
+            </div>
+          </div>
+          <div class="quote-card">
+            <div class="quote-text">교육은 미래를 위한 가장 강력한 무기다</div>
+            <div class="quote-author">— 넬슨 만델라</div>
+          </div>
+        </div>
+
+        <!-- D-Day -->
+        <div class="dday-row">
+          <div class="dday-card blue"><div class="dday-label">자격증 시험</div><div class="dday-title">정보처리기사</div><div class="dday-count">D-12</div></div>
+          <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
+          <div class="dday-card red"><div class="dday-label">기말고사</div><div class="dday-title">2학기 기말</div><div class="dday-count">D-20</div></div>
+          <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:16px;">
+          <!-- 강의 탭 todo-list -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📋 오늘의 강의 & 할 일</span>
+              <span class="card-action">+ 추가</span>
+            </div>
+            <div class="tabs" style="margin-bottom:14px;">
+              <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
+              <button class="tab-btn" onclick="switchHomeTodo('todo',this)">할 일</button>
+            </div>
+            <div id="ht-lecture">
+              <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">자료구조 (09:00 ~ 10:30)</span><span class="check-time">완료</span></div>
+              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">알고리즘 (13:00 ~ 14:30)</span><span class="check-time">진행중</span></div>
+              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
+            </div>
+            <div id="ht-todo" style="display:none;">
+              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">과제 제출 — 자료구조 3주차</span><span class="check-time">23:59</span></div>
+              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">정보처리기사 기출 20문제</span><span class="check-time">오늘</span></div>
+              <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">교재 구매 — 알고리즘</span><span class="check-time">완료</span></div>
+            </div>
+          </div>
+
+          <!-- 최근 공지 -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">📢 최근 공지사항</span><span class="card-action" onclick="switchPage('notice',null)">전체보기</span></div>
+            <div class="notice-item"><div class="notice-icon" style="background:var(--accent-bg);">🏆</div><div class="notice-body"><div class="notice-title">2026 동계 인턴십 채용 공고</div><div class="notice-meta"><span class="badge badge-blue">채용</span>2026.04.15</div></div><span class="badge badge-red">D-5</span></div>
+            <div class="notice-item"><div class="notice-icon" style="background:var(--amber-bg);">💰</div><div class="notice-body"><div class="notice-title">2026-1학기 성적우수 장학금 신청</div><div class="notice-meta"><span class="badge badge-amber">장학금</span>2026.04.10</div></div><span class="badge badge-amber">D-12</span></div>
+            <div class="notice-item"><div class="notice-icon" style="background:var(--green-bg);">📅</div><div class="notice-body"><div class="notice-title">2026-1 수강정정 기간 안내</div><div class="notice-meta"><span class="badge badge-green">학사</span>2026.04.08</div></div></div>
+          </div>
+        </div>
+
+        <!-- 습관 트래커 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🌱 오늘의 습관 트래커</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;">3 / 5 완료</span>
+              <button class="btn btn-ghost btn-sm" onclick="addHabitItem()">+ 추가</button>
+            </div>
+          </div>
+          <!-- 진행률 바 -->
+          <div style="margin-bottom:14px;">
+            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+              <div id="habit-progress-bar" style="height:100%;width:60%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:3px;transition:width .4s ease;"></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;" id="habit-list">
+            <!-- 습관 항목들 — 할 일(todo)과 달리 매일 반복하는 루틴 -->
+            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
+              <div class="habit-check done">✓</div>
+              <div class="habit-body">
+                <div class="habit-name done">💧 물 2L 마시기</div>
+                <div class="habit-sub">건강 · 매일</div>
+              </div>
+            </div>
+            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
+              <div class="habit-check done">✓</div>
+              <div class="habit-body">
+                <div class="habit-name done">📖 오늘 강의 복습</div>
+                <div class="habit-sub">학습 · 매일</div>
+              </div>
+            </div>
+            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
+              <div class="habit-check done">✓</div>
+              <div class="habit-body">
+                <div class="habit-name done">🧘 명상 10분</div>
+                <div class="habit-sub">마음 · 매일</div>
+              </div>
+            </div>
+            <div class="habit-item" data-done="false" onclick="toggleHabit(this)">
+              <div class="habit-check"></div>
+              <div class="habit-body">
+                <div class="habit-name">🏃 30분 운동</div>
+                <div class="habit-sub">건강 · 매일</div>
+              </div>
+            </div>
+            <div class="habit-item" data-done="false" onclick="toggleHabit(this)">
+              <div class="habit-check"></div>
+              <div class="habit-body">
+                <div class="habit-name">📝 오늘의 일기 쓰기</div>
+                <div class="habit-sub">성장 · 매일</div>
+              </div>
+            </div>
+          </div>
+          <!-- 습관 추가 입력창 (숨김) -->
+          <div id="habit-input-row" style="display:none;margin-top:12px;display:none;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:18px;">✏️</span>
+              <input class="input-field" id="habit-new-input" placeholder="새 습관 입력 (예: 독서 20분)" style="flex:1;" onkeydown="if(event.key==='Enter')confirmAddHabit()">
+              <select class="select-field" id="habit-category" style="font-size:12px;padding:6px 10px;">
+                <option>학습</option><option>건강</option><option>마음</option><option>성장</option>
+              </select>
+              <button class="btn btn-accent btn-sm" onclick="confirmAddHabit()">추가</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('habit-input-row').style.display='none'">취소</button>
+            </div>
+          </div>
+        </div>
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"> </script>
+	<script src="/js/home.js"> </script>
+</body>
+
+</html>

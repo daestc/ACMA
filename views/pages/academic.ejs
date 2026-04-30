@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>학사관리</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'academic', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '학사관리', user: user }) %>
+
+		<div class="page-content">
+    <!-- ══ ACADEMIC ══ -->
+    <div class="page-content">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchAcademicTab('gpa',this)">GPA 계산기</button>
+          <button class="tab-btn" onclick="switchAcademicTab('credit',this)">이수 현황</button>
+          <button class="tab-btn" onclick="switchAcademicTab('grad',this)">졸업요건 설정</button>
+          <button class="tab-btn" onclick="switchAcademicTab('sim',this)">목표 시뮬레이터</button>
+        </div>
+
+        <!-- GPA 계산기 -->
+        <div id="ac-gpa">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><span class="card-title">학기 과목 입력</span><select class="select-field" style="font-size:12px;padding:5px 10px;"><option>2026-1학기</option><option>2025-2학기</option><option>2025-1학기</option></select></div>
+              <div id="subject-list">
+                <div class="subject-row"><input class="input-field" placeholder="과목명" style="flex:2;"><select class="select-field"><option>3학점</option><option>2학점</option><option>1학점</option></select><select class="select-field" onchange="calcGPA()"><option>A+</option><option>A</option><option>B+</option><option>B</option><option>C+</option><option>C</option><option>D+</option><option>D</option><option>F</option></select></div>
+                <div class="subject-row"><input class="input-field" placeholder="과목명" style="flex:2;"><select class="select-field"><option>3학점</option><option>2학점</option><option>1학점</option></select><select class="select-field" onchange="calcGPA()"><option>B+</option><option>A+</option><option>A</option><option>B</option></select></div>
+                <div class="subject-row"><input class="input-field" placeholder="과목명" style="flex:2;"><select class="select-field"><option>2학점</option><option>3학점</option><option>1학점</option></select><select class="select-field" onchange="calcGPA()"><option>A</option><option>A+</option><option>B+</option><option>B</option></select></div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;" onclick="addSubjectRow()">+ 과목 추가</button>
+            </div>
+            <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div class="gpa-display">
+                <div class="gpa-label">이번 학기 예상 평점</div>
+                <div><span class="gpa-value" id="gpa-result">3.83</span><span class="gpa-max"> / 4.5</span></div>
+                <div class="gpa-label" style="margin-top:8px;">누적 평점 예상: <strong style="color:var(--accent);font-family:'DM Sans';">3.81</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 이수 현황 ── -->
+        <div id="ac-credit" style="display:none;">
+          <!-- 학기별 GPA 추이 그래프 (PDF 예시 그대로) -->
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+              <span class="card-title">📈 학기별 GPA 추이</span>
+              <div style="display:flex;align-items:center;gap:14px;font-size:11px;">
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>실제 GPA</span>
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;background:var(--border2);display:inline-block;border-radius:1px;border:none;background:repeating-linear-gradient(90deg,var(--accent2) 0,var(--accent2) 4px,transparent 4px,transparent 8px);"></span>목표 GPA (3.9)</span>
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block;"></span>최고 학기</span>
+              </div>
+            </div>
+            <!-- SVG 꺾은선 그래프 — PDF 예시 기반 -->
+            <div style="overflow-x:auto;">
+              <svg width="100%" viewBox="0 0 700 220" style="min-width:520px;" xmlns="http://www.w3.org/2000/svg">
+                <!-- Y축 눈금선 -->
+                <line x1="60" y1="20" x2="60" y2="175" stroke="var(--border)" stroke-width="1"/>
+                <line x1="60" y1="175" x2="670" y2="175" stroke="var(--border)" stroke-width="1"/>
+                <!-- Y축 라벨 -->
+                <text x="50" y="25"  text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">4.5</text>
+                <text x="50" y="73"  text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">4.0</text>
+                <text x="50" y="121" text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">3.5</text>
+                <text x="50" y="169" text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">3.0</text>
+                <!-- Y축 보조선 -->
+                <line x1="60" y1="24"  x2="670" y2="24"  stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
+                <line x1="60" y1="72"  x2="670" y2="72"  stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
+                <line x1="60" y1="120" x2="670" y2="120" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
+                <!-- 목표 GPA 점선 (3.9) -->
+                <line x1="60" y1="55" x2="670" y2="55" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="6,4"/>
+                <text x="675" y="59" fill="#6366f1" font-size="10" font-family="DM Sans" font-weight="700">목표 3.9</text>
+                <text x="650" y="48" fill="#6366f1" font-size="10" font-family="DM Sans">진행중</text>
+                <!-- X축 라벨 (학기): 24-1, 24-2, 25-1, 25-2, 26-1 -->
+                <!-- x좌표: 130, 250, 370, 490, 610 -->
+                <text x="130" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">24-1</text>
+                <text x="250" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">24-2</text>
+                <text x="370" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">25-1</text>
+                <text x="490" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">25-2</text>
+                <text x="610" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">26-1</text>
+                <!--
+                  GPA → y좌표 환산: y = 175 - (GPA-3.0)/(4.5-3.0) * 151
+                  3.92 → 175 - (0.92/1.5)*151 = 175 - 92.6 ≈ 82
+                  3.75 → 175 - (0.75/1.5)*151 = 175 - 75.5 ≈ 100
+                  4.10 → 175 - (1.10/1.5)*151 = 175 - 110.7 ≈ 64
+                  3.55 → 175 - (0.55/1.5)*151 = 175 - 55.4 ≈ 120
+                  진행중(26-1) → 아직 없음, 표시 생략하고 점선으로 연결
+                -->
+                <!-- 영역 채우기 -->
+                <polygon points="130,82 250,100 370,64 490,120 490,175 130,175" fill="var(--accent)" opacity="0.07"/>
+                <!-- 꺾은선 -->
+                <polyline points="130,82 250,100 370,64 490,120" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                <!-- 26-1 진행중 점선 연결 -->
+                <line x1="490" y1="120" x2="610" y2="90" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4"/>
+                <!-- 데이터 포인트 -->
+                <circle cx="130" cy="82"  r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
+                <circle cx="250" cy="100" r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
+                <!-- 최고 학기 (4.10) — 초록 강조 -->
+                <circle cx="370" cy="64"  r="6" fill="var(--green)"  stroke="white" stroke-width="2"/>
+                <circle cx="490" cy="120" r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
+                <!-- 진행중 점 -->
+                <circle cx="610" cy="90"  r="5" fill="white" stroke="var(--accent)" stroke-width="2.5"/>
+                <!-- GPA 라벨 -->
+                <text x="130" y="74"  text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.92</text>
+                <text x="250" y="92"  text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.75</text>
+                <text x="370" y="56"  text-anchor="middle" fill="var(--green)"  font-size="11" font-weight="700" font-family="DM Sans">4.10</text>
+                <text x="490" y="112" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.55</text>
+                <text x="625" y="87"  text-anchor="middle" fill="var(--text3)"  font-size="10" font-family="DM Sans">진행중</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 영역별 이수 현황 + 학기별 성적 이력 -->
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" style="margin-bottom:16px;">📂 영역별 이수 현황</div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span class="progress-value">32/42</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:76%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span class="progress-value">28/40</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:70%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span class="progress-value">18/20</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:90%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span class="progress-value">14/28</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:50%"></div></div></div>
+              <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">총 이수 학점</span><span class="progress-value">92/130</span></div><div class="progress-track" style="height:10px;"><div class="progress-fill fill-blue" style="width:71%"></div></div></div>
+            </div>
+
+            <!-- 학기별 성적 이력 테이블 (PDF 예시 그대로) -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom:14px;">📅 학기별 성적 이력</div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--border);">
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">학기</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">이수학점</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">취득학점</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">GPA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border);">
+                      <td style="padding:10px;font-size:13px;">2024-1</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;"><strong style="color:var(--green);font-family:'DM Sans';">3.92</strong></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--bg3);">
+                      <td style="padding:10px;font-size:13px;">2024-2</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
+                      <td style="padding:10px;"><strong style="color:var(--accent);font-family:'DM Sans';">3.75</strong></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);">
+                      <td style="padding:10px;font-size:13px;">2025-1</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;display:flex;align-items:center;gap:6px;"><strong style="color:var(--green);font-family:'DM Sans';">4.10</strong><span class="badge badge-green" style="font-size:9px;padding:1px 6px;">최고</span></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--bg3);">
+                      <td style="padding:10px;font-size:13px;">2025-2</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;"><strong style="color:var(--amber);font-family:'DM Sans';">3.55</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px;font-size:13px;">2026-1</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
+                      <td style="padding:10px;font-size:13px;color:var(--text2);">-</td>
+                      <td style="padding:10px;"><span class="badge badge-blue">진행중</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:20px;">
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--accent);">3.80</div>
+                  <div style="font-size:11px;color:var(--text2);">누적 평점</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--green);">4.10</div>
+                  <div style="font-size:11px;color:var(--text2);">최고 학기</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--purple);">92</div>
+                  <div style="font-size:11px;color:var(--text2);">총 취득 학점</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 졸업요건 설정 ── -->
+        <div id="ac-grad" style="display:none;">
+          <div class="grid-2">
+
+            <!-- 입력 폼 -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">📝 졸업요건 설정</span>
+                <span class="badge badge-blue">컴퓨터공학과</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- 학점 요건 -->
+                <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);">이수 학점 요건</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">총 졸업 필요 학점</label>
+                    <input class="input-field" id="gr-total" type="number" value="130" min="0" style="width:100%;" oninput="updateGradPreview()">
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">전공필수</label>
+                    <input class="input-field" id="gr-major-req" type="number" value="42" min="0" style="width:100%;" oninput="updateGradPreview()">
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">전공선택</label>
+                    <input class="input-field" id="gr-major-el" type="number" value="40" min="0" style="width:100%;" oninput="updateGradPreview()">
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">교양필수</label>
+                    <input class="input-field" id="gr-gen-req" type="number" value="20" min="0" style="width:100%;" oninput="updateGradPreview()">
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">교양선택</label>
+                    <input class="input-field" id="gr-gen-el" type="number" value="28" min="0" style="width:100%;" oninput="updateGradPreview()">
+                  </div>
+                </div>
+
+                <!-- 추가 요건 -->
+                <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px;">추가 이수 요건</div>
+
+                <!-- 졸업작품 -->
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:13px;font-weight:600;">졸업작품 이수 필요</div>
+                    <div style="font-size:11px;color:var(--text2);">캡스톤디자인 또는 졸업논문</div>
+                  </div>
+                  <div class="toggle on" id="gr-grad-work" onclick="this.classList.toggle('on');updateGradPreview()"><div class="toggle-knob"></div></div>
+                </div>
+
+                <!-- 외국어 성적 -->
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">외국어 성적 요건</label>
+                  <div style="display:flex;gap:8px;">
+                    <select class="select-field" style="flex:1;">
+                      <option>TOEIC</option><option>TOEFL</option><option>IELTS</option><option>JLPT</option><option>없음</option>
+                    </select>
+                    <input class="input-field" placeholder="최소 점수 (예: 700)" style="flex:1;">
+                  </div>
+                </div>
+
+                <!-- 필수 자격증 -->
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">필수 취득 자격증</label>
+                  <div id="gr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
+                      정보처리기사 <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:6px;">
+                    <input class="input-field" id="gr-cert-input" placeholder="자격증명 입력" style="flex:1;" onkeydown="if(event.key==='Enter')addGradCert()">
+                    <button class="btn btn-ghost btn-sm" onclick="addGradCert()">+ 추가</button>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:4px;">
+                  <button class="btn btn-accent" style="flex:1;" onclick="saveGradReq()">💾 저장</button>
+                  <button class="btn btn-ghost btn-sm" onclick="resetGradReq()">초기화</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 미리보기 / 달성 현황 -->
+            <div class="card">
+              <div class="card-header"><span class="card-title">📊 졸업 가능 여부</span><span id="grad-status-badge" class="badge badge-amber">진행중</span></div>
+
+              <div style="text-align:center;padding:16px 0 20px;">
+                <!-- 원형 진행률 -->
+                <div style="position:relative;width:120px;height:120px;margin:0 auto 12px;">
+                  <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg4)" stroke-width="12"/>
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="12"
+                      id="grad-ring"
+                      stroke-dasharray="220 314" stroke-dashoffset="78" stroke-linecap="round"
+                      style="transform:rotate(-90deg);transform-origin:60px 60px;transition:stroke-dasharray .8s ease;"/>
+                  </svg>
+                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div id="grad-pct" style="font-size:22px;font-weight:800;font-family:'DM Sans';color:var(--accent);">70%</div>
+                    <div style="font-size:10px;color:var(--text2);">달성률</div>
+                  </div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:var(--text);" id="grad-msg">졸업까지 39학점 남음</div>
+              </div>
+
+              <!-- 항목별 달성 현황 -->
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">전공필수</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:76%;background:var(--accent);border-radius:3px;"></div></div>
+                    <span style="font-size:11px;color:var(--text2);font-weight:600;">32/42</span>
+                    <span style="font-size:12px;">🟡</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">전공선택</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:70%;background:var(--purple);border-radius:3px;"></div></div>
+                    <span style="font-size:11px;color:var(--text2);font-weight:600;">28/40</span>
+                    <span style="font-size:12px;">🟡</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">교양필수</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:90%;background:var(--green);border-radius:3px;"></div></div>
+                    <span style="font-size:11px;color:var(--text2);font-weight:600;">18/20</span>
+                    <span style="font-size:12px;">🟢</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">교양선택</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:50%;background:var(--amber);border-radius:3px;"></div></div>
+                    <span style="font-size:11px;color:var(--text2);font-weight:600;">14/28</span>
+                    <span style="font-size:12px;">🔴</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">졸업작품</span>
+                  <span class="badge badge-green">✓ 이수 완료</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">외국어 성적</span>
+                  <span class="badge badge-red">✗ 미취득</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
+                  <span style="font-size:12px;font-weight:600;">필수 자격증</span>
+                  <span class="badge badge-amber">~ 준비중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 목표 시뮬레이터 -->
+        <div id="ac-sim" style="display:none;">
+          <div class="card" style="max-width:560px;">
+            <div class="card-title" style="margin-bottom:16px;">🎯 목표 GPA 시뮬레이터</div>
+            <div class="form-group"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">목표 누적 GPA</label><input class="input-field" type="number" step="0.01" max="4.5" value="3.9" id="target-gpa" oninput="calcSim()" style="width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">다음 학기 예정 이수 학점</label><input class="input-field" type="number" min="1" max="24" value="18" id="next-credits" oninput="calcSim()" style="width:100%;"></div>
+            <div style="background:var(--accent-bg);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:20px;margin-top:8px;">
+              <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:8px;">필요한 다음 학기 GPA</div>
+              <div style="font-size:42px;font-weight:800;font-family:'DM Sans';color:var(--accent);" id="sim-result">4.05</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:8px;" id="sim-desc">최소 <strong style="color:var(--amber);">A (4.0)</strong> 이상 받아야 합니다.</div>
+            </div>
+          </div>
+        </div>
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+	<script src="/js/academic.js"></script>
+</body>
+
+</html>

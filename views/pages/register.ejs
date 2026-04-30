@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>회원가입</title>
+</head>
+
+<body>
+
+<!-- ══ REGISTER ════════════════════════════ -->
+<div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo"><div class="logo-icon">A</div><span class="logo-text">AcadMe</span></div>
+      <h2>회원가입</h2>
+      <p class="auth-sub">어떤 유형의 학생인가요?</p>
+      <div class="user-type-select">
+        <div class="user-type-btn active" onclick="selectType(this)"><div class="icon">🎓</div><div class="label">대학생</div></div>
+        <div class="user-type-btn" onclick="selectType(this)"><div class="icon">📚</div><div class="label">초·중·고</div></div>
+      </div>
+      <div class="form-group"><label>이름</label><input type="text" placeholder="홍길동"></div>
+      <div class="form-group"><label>이메일</label><input type="email" placeholder="example@university.ac.kr"></div>
+      <div class="form-group"><label>대학교</label><input type="text" placeholder="한국대학교"></div>
+      <div class="form-group"><label>전공</label><input type="text" placeholder="컴퓨터공학과"></div>
+      <div class="form-group"><label>비밀번호</label><input type="password" placeholder="8자 이상"></div>
+      <!-- (추가) 회원가입 기능 -->
+      <a class="btn-primary" href="/home">가입 완료</a>
+      <div class="auth-footer">이미 계정이 있으신가요? <a href="auth/login">로그인</a></div>
+    </div>
+
+
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+<div class="global-header" id="global-header">
+  <div class="gh-left">
+    <button class="gh-hamburger" onclick="toggleSidebar()" aria-label="메뉴">
+      <div class="gh-hamburger-icon" id="hamburger-icon">
+        <span></span><span></span><span></span>
+      </div>
+    </button>
+    <div class="gh-logo">
+      <div class="gh-logo-icon">A</div>
+      <span class="gh-logo-text">AcadMe</span>
+    </div>
+  </div>
+
+  <div class="gh-center">
+    <span class="gh-title"><%= pageTitle || '홈' %></span>
+  </div>
+
+  <div class="gh-right">
+    <div class="gh-btn" onclick="document.getElementById('notif-panel')?.classList.toggle('open')">
+      🔔
+      <div class="gh-notif-dot"></div>
+    </div>
+    <div class="gh-avatar" onclick="openMyPageModal()">
+      <%= user ? user.name[0] : '김' %>
+    </div>
+  </div>
+</div>
