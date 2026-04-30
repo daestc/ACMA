@@ -13,6 +13,7 @@ function requireLogin(req, res, next) {
   };
   next();
 }
+//안녕하세요
 
 // 공지사항 페이지
 router.get('/', requireLogin, (req, res) => {
