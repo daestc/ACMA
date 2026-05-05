@@ -102,26 +102,32 @@
           <div class="job-search-box">
             <div class="job-search-title">직무 및 카테고리 검색</div>
             <div class="job-search-dropdowns">
-              <select class="select-field" style="width:100%;">
-                <option>대분류 (전체)</option>
-                <option>정보통신</option>
-                <option>경영·회계·사무</option>
-                <option>교육·자연·사회과학</option>
+              <select id="depth1" class="select-field" style="width:100%;">
+                <option value="">대분류 선택</option>
               </select>
-              <select class="select-field" style="width:100%;">
-                <option>중분류 (전체)</option>
-                <option>정보기술</option>
-                <option>통신</option>
+              <select id="depth2" class="select-field" style="width:100%;">
+                <option value="">중분류 선택</option>
               </select>
-              <select class="select-field" style="width:100%;">
-                <option>소분류 (전체)</option>
-                <option>소프트웨어 개발</option>
-                <option>데이터베이스</option>
+              <select id="depth3" class="select-field" style="width:100%;">
+                <option value="">소분류 선택</option>
               </select>
             </div>
+            <div id="career-search-meta" class="career-search-meta"></div>
             <div class="job-search-bottom">
-              <input class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 백엔드, 데이터 분석)" style="flex:1;">
-              <button class="btn btn-accent">검색</button>
+              <input id="career-search-keyword" class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 백엔드, 데이터 분석)" style="flex:1;">
+              <button id="career-search-btn" class="btn btn-accent">검색</button>
+            </div>
+          </div>
+
+          <div id="career-search-results" class="career-search-results" style="display:none;">
+            <div class="career-search-head">
+              <div id="career-search-title" class="career-search-title">검색 결과</div>
+              <div id="career-search-count" class="career-search-count"></div>
+            </div>
+            <div id="career-search-list" class="career-search-list"></div>
+            <div class="career-search-footer">
+              <div id="career-search-page-info" class="career-search-page-info"></div>
+              <div id="career-search-pagination" class="career-search-pagination"></div>
             </div>
           </div>
 

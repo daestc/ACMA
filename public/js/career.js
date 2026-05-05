@@ -61,6 +61,14 @@ const jobCertData = {
 
 const fillMap  = { blue:'fill-blue', green:'fill-green', amber:'fill-amber', red:'fill-red', purple:'fill-purple' };
 const badgeMap = { blue:'badge-blue', green:'badge-green', amber:'badge-amber', red:'badge-red', purple:'badge-purple' };
+const CAREER_PAGE_SIZE = 10;
+
+let careerSearchState = {
+  items: [],
+  page: 1,
+  metaText: '검색 결과',
+  keyword: '',
+};
 
 function updateJobCertRec() {
   const sel  = document.getElementById('job-select-cert').value;
@@ -177,3 +185,227 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateJobCertRec();
 });
+
+function clearSelect(select, placeholder) {
+  select.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = placeholder;
+  select.appendChild(option);
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderCareerPagination(totalItems, currentPage, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const controls = document.getElementById('career-search-pagination');
+  const pageInfo = document.getElementById('career-search-page-info');
+
+  if (!controls || !pageInfo) return;
+
+  pageInfo.textContent = `${currentPage} / ${totalPages}`;
+
+  if (totalItems <= pageSize) {
+    controls.innerHTML = '';
+    return;
+  }
+
+  const pageButtons = [];
+  const startPage = Math.max(1, currentPage - 2);
+  const endPage = Math.min(totalPages, startPage + 4);
+
+  for (let page = startPage; page <= endPage; page += 1) {
+    pageButtons.push(`
+      <button class="career-page-btn ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>
+    `);
+  }
+
+  controls.innerHTML = `
+    <button class="career-page-btn" data-nav="prev" ${currentPage === 1 ? 'disabled' : ''}>이전</button>
+    ${pageButtons.join('')}
+    <button class="career-page-btn" data-nav="next" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>
+  `;
+
+  controls.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nav = btn.dataset.nav;
+      const page = Number(btn.dataset.page);
+
+      if (nav === 'prev' && careerSearchState.page > 1) {
+        careerSearchState.page -= 1;
+      } else if (nav === 'next' && careerSearchState.page < totalPages) {
+        careerSearchState.page += 1;
+      } else if (page) {
+        careerSearchState.page = page;
+      }
+
+      renderCareerSearchResults(careerSearchState.items, careerSearchState.metaText, careerSearchState.page);
+    });
+  });
+}
+
+function renderCareerSearchResults(items, metaText, page = 1) {
+  const wrap = document.getElementById('career-search-results');
+  const title = document.getElementById('career-search-title');
+  const count = document.getElementById('career-search-count');
+  const list = document.getElementById('career-search-list');
+
+  if (!wrap || !title || !count || !list) return;
+
+  wrap.style.display = 'block';
+  title.textContent = metaText || '검색 결과';
+  const totalPages = Math.max(1, Math.ceil(items.length / CAREER_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const startIndex = (currentPage - 1) * CAREER_PAGE_SIZE;
+  const pageItems = items.slice(startIndex, startIndex + CAREER_PAGE_SIZE);
+
+  count.textContent = `${items.length}건 · ${currentPage}/${totalPages}페이지`;
+
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="career-empty-state">
+        선택한 분류에 해당하는 진로 정보가 없습니다.
+      </div>`;
+    const controls = document.getElementById('career-search-pagination');
+    const pageInfo = document.getElementById('career-search-page-info');
+    if (controls) controls.innerHTML = '';
+    if (pageInfo) pageInfo.textContent = '';
+    return;
+  }
+
+  list.innerHTML = pageItems.map(item => `
+    <div class="career-result-card">
+      <div class="career-result-top">
+        <div class="career-result-name">${escapeHtml(item.jobName)}</div>
+        <span class="badge badge-blue">${escapeHtml(item.jobCategory || '')}</span>
+      </div>
+      <div class="career-result-code">직무코드: ${escapeHtml(item.jobCode)}</div>
+      <div class="career-result-desc">${escapeHtml(item.jobDescription || '상세 설명이 없습니다.')}</div>
+    </div>
+  `).join('');
+
+  renderCareerPagination(items.length, currentPage, CAREER_PAGE_SIZE);
+}
+
+async function searchCareerJobs() {
+  const depth1 = document.getElementById('depth1')?.value || '';
+  const depth2 = document.getElementById('depth2')?.value || '';
+  const depth3 = document.getElementById('depth3')?.value || '';
+  const keyword = document.getElementById('career-search-keyword')?.value?.trim() || '';
+
+  const metaEl = document.getElementById('career-search-meta');
+  if (metaEl) {
+    const selected = [depth1, depth2, depth3].filter(Boolean);
+    metaEl.textContent = selected.length
+      ? `선택 분류: ${selected.join(' > ')}`
+      : '분류를 선택해 주세요.';
+  }
+
+  if (!depth1 && !depth2 && !depth3 && !keyword) {
+    renderCareerSearchResults([], '검색 결과');
+    return;
+  }
+
+  const params = new URLSearchParams();
+  if (depth1) params.set('depth1_name', depth1);
+  if (depth2) params.set('depth2_name', depth2);
+  if (depth3) params.set('depth3_name', depth3);
+
+  const res = await fetch(`/career/search?${params.toString()}`);
+  const items = await res.json();
+
+  const filteredItems = keyword
+    ? items.filter(item => `${item.jobName} ${item.jobDescription} ${item.jobCode}`.includes(keyword))
+    : items;
+
+  const metaText = [depth1, depth2, depth3].filter(Boolean).join(' > ') || '전체 결과';
+  careerSearchState = {
+    items: filteredItems,
+    page: 1,
+    metaText,
+    keyword,
+  };
+  renderCareerSearchResults(careerSearchState.items, careerSearchState.metaText, careerSearchState.page);
+}
+//db에서 드롭다운 메뉴에 들어갈 대분류, 중분류, 소분류 정보 가져오기
+fetch('../career/categories')
+  .then(res => res.json())
+  .then(categories => {
+    const categoriesData = categories || [];
+    const depth1Select = document.getElementById('depth1');
+    const depth2Select = document.getElementById('depth2');
+    const depth3Select = document.getElementById('depth3');
+
+    function resetSelect(select, placeholder) {
+      clearSelect(select, placeholder || '선택');
+    }
+
+    // 대분류 목록 채우기
+    const depth1Set = new Set();
+    categoriesData.forEach(cat => { if (cat.depth1_name) depth1Set.add(cat.depth1_name); });
+    resetSelect(depth1Select, '대분류 선택');
+    resetSelect(depth2Select, '중분류 선택');
+    resetSelect(depth3Select, '소분류 선택');
+
+    depth1Set.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      depth1Select.appendChild(option);
+    });
+
+    // 대분류 선택 시 중분류 채우기
+    depth1Select.addEventListener('change', () => {
+      const sel1 = depth1Select.value;
+      resetSelect(depth2Select, '중분류 선택');
+      resetSelect(depth3Select, '소분류 선택');
+      if (!sel1) return;
+      const depth2Set = new Set();
+      categoriesData.forEach(cat => {
+        if (cat.depth1_name === sel1 && cat.depth2_name) depth2Set.add(cat.depth2_name);
+      });
+      depth2Set.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        depth2Select.appendChild(option);
+      });
+    });
+
+    // 중분류 선택 시 소분류 채우기
+    depth2Select.addEventListener('change', () => {
+      const sel1 = depth1Select.value;
+      const sel2 = depth2Select.value;
+      resetSelect(depth3Select, '소분류 선택');
+      if (!sel2) return;
+      const depth3Set = new Set();
+      categoriesData.forEach(cat => {
+        if (cat.depth1_name === sel1 && cat.depth2_name === sel2 && cat.depth3_name) depth3Set.add(cat.depth3_name);
+      });
+      depth3Set.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        depth3Select.appendChild(option);
+      });
+    });
+
+    // (선택사항) 페이지 로드 시 기본값이 있으면 트리거
+    if (depth1Select.value) depth1Select.dispatchEvent(new Event('change'));
+    if (depth2Select.value) depth2Select.dispatchEvent(new Event('change'));
+
+    const searchBtn = document.getElementById('career-search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        searchCareerJobs().catch(err => console.error('Error searching careers:', err));
+      });
+    }
+  })
+  .catch(err => console.error('Error fetching categories:', err));
