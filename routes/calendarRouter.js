@@ -28,4 +28,5 @@ router.get('/', requireLogin, (req, res) => {
 
 router.get('/eventsList',requireLogin, calendarController.getEventsList)//사용자의 일정 정보를 서비스에 요청
 
+router.post('/createEvent', requireLogin, calendarController.createEvent); //사용자가 입력한 일정저장을 서비스에 요청
 module.exports = router;

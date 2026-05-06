@@ -7,4 +7,20 @@ async function getEventsListByUser(userId) {
     }).sort({startDate: 1});
 };
 
-module.exports = {getEventsListByUser};
+async function createNewEvent(userId, eventData) {
+    const newEvent = await CalendarEvent.create({
+        userId : userId,
+        title : eventData.title,
+        description : eventData.description || null,
+        startDate: eventData.startDate,
+        endDate: eventData.endDate || eventData.startDate,
+        isAllDay: eventData.isAllDay ?? true,
+        category: eventData.category || 'personal',
+        isDday: eventData.isDday ?? false,
+        color: eventData.color || '#3B82F6',
+    });
+
+    return newEvent;
+}
+
+module.exports = {getEventsListByUser,createNewEvent};
