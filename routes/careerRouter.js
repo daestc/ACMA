@@ -29,6 +29,8 @@ router.get('/categories', careerController.getCategories);
 // 진로 검색db에서 대분류, 중분류, 소분류에 따른 직무 이름 가져오기
 router.get('/search', careerController.searchCareers);
 // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
-router.get('/details', careerController.getCareerDetails);
+router.get('/detail/:jobCode', careerController.getCareerDetails);
+// 직무 선택하여 db에 저장하기 
+router.post('/save/:jobCode', careerController.saveCareerDetails); 
 
 module.exports = router;

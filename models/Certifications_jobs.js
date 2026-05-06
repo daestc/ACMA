@@ -177,11 +177,11 @@ jobSearchSchema.index({ depth3_name: 1, depth4_name: 1 });
  */
 const jobSchema = new Schema(
   {
+    jobCode: { type: String, required: true, unique: true, index: true }, // 외부 API의 고유 직무 코드
     title: { type: String, required: true, trim: true, index: true }, // 검색을 위해 인덱스 추가
     description: { type: String, default: "" },
 
     // 배열 필드 최적화 (null 대신 빈 배열 [] 추천)
-    responsibilities: [String], // 주요 업무
     waysToAcquire: [String],    // 역량 습득 방법
     
     // 직무 역량 (MyStatus 화면의 그래프 데이터와 연동하기 좋음)

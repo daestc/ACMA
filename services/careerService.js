@@ -1,4 +1,5 @@
 const {JobSearch} = require('../models/Certifications_jobs');
+const {Job} = require('../models/Certifications_jobs');
 const { parseStringPromise } = require('xml2js');
 
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
@@ -70,9 +71,8 @@ async function searchCareers(depth4, categoryId) {
 
       uniqueJobs.set(jobCode, {
         jobCode,
-        jobName: item.jobNm || item.jobNmKor || item.dJobNm || '',
-        jobCategory: searchCode,
-        jobDescription: item.jobCont || item.jobDesc || item.dJobDtl || ''
+        jobName: item.dJobNm || '',
+        jobCategory: searchCode
       });
     });
 
@@ -158,9 +158,19 @@ async function getCareerDetails(jobCode) {
     throw new Error('Failed to fetch career details');
   }
 }
+// DB 저장 (또는 캐시 조회)
+async function saveCareerDetails(jobCode) {
+  const cached = await Job.findOne({ jobCode });
+  if (cached) return cached;
 
+  const data = await getCareerDetails(jobCode);
+  if (!data) return null;
+
+  return await Job.create({ ...data, jobCode });
+}
 module.exports = {
   getCategories,
   searchCareers,
-  getCareerDetails
+  getCareerDetails,
+  saveCareerDetails
 };

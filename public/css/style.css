@@ -441,6 +441,42 @@ input,select,textarea{font-family:inherit;}
 .qnet-link{display:inline-flex;align-items:center;gap:6px;background:var(--accent-bg);border:1.5px solid var(--accent);color:var(--accent);border-radius:var(--radius-sm);padding:8px 14px;font-size:12px;font-weight:700;transition:all .2s;cursor:pointer;}
 .qnet-link:hover{background:var(--accent);color:white;}
 
+/* 직무 상세 모달 */
+.job-detail-modal-shell{width:min(760px,96vw);max-height:88vh;overflow:hidden;background:linear-gradient(180deg,#ffffff 0%,#fcfdff 100%);border:1px solid var(--border);border-radius:24px;box-shadow:0 28px 80px rgba(17,20,45,.25);position:relative;display:flex;flex-direction:column;}
+.job-detail-modal-accent{height:5px;background:linear-gradient(90deg,var(--accent) 0%,var(--sky) 45%,var(--green) 100%);}
+.job-detail-modal-header{padding:20px 24px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);position:sticky;top:0;z-index:10;}
+.job-detail-modal-kicker{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.job-detail-modal-title{font-size:26px;font-weight:800;line-height:1.15;letter-spacing:-.03em;color:var(--text);}
+.job-detail-modal-category{margin-top:7px;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-size:12px;font-weight:700;}
+.job-detail-modal-close{width:34px;height:34px;border:1px solid var(--border);background:var(--bg3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;color:var(--text2);flex-shrink:0;transition:all .2s;}
+.job-detail-modal-close:hover{background:var(--bg4);color:var(--text);border-color:var(--border2);}
+.job-detail-modal-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:14px;overflow:auto;}
+.job-detail-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.9fr);gap:14px;align-items:stretch;}
+.job-detail-panel,.job-detail-hero-left,.job-detail-hero-right{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 4px 18px rgba(17,20,45,.04);}
+.job-detail-hero-left{background:linear-gradient(180deg,#ffffff 0%,#fafbff 100%);}
+.job-detail-hero-right{background:linear-gradient(180deg,#f8faff 0%,#f3f6ff 100%);}
+.job-detail-copy{font-size:13px;color:var(--text2);line-height:1.8;background:transparent;white-space:normal;}
+.job-detail-copy--preline{white-space:pre-line;}
+.job-detail-salary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:4px;}
+.job-salary-card{background:rgba(255,255,255,.72);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;backdrop-filter:blur(4px);}
+.job-salary-card--featured{border-color:var(--accent);background:linear-gradient(180deg,#ffffff 0%,#f3f6ff 100%);box-shadow:0 10px 24px rgba(61,90,241,.12);}
+.job-salary-value{font-size:16px;font-weight:800;font-family:'DM Sans',sans-serif;color:var(--text);letter-spacing:-.02em;}
+.job-salary-value--featured{color:var(--accent);}
+.job-salary-label{font-size:11px;color:var(--text2);margin-top:4px;font-weight:700;}
+.job-detail-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.job-detail-tags{display:flex;flex-wrap:wrap;gap:8px;}
+.tag{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:700;line-height:1.2;transition:all .2s;}
+.tag:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);transform:translateY(-1px);}
+
+@media (max-width: 720px){
+  .job-detail-modal-shell{max-height:92vh;border-radius:20px;}
+  .job-detail-modal-header{padding:18px 18px 14px;}
+  .job-detail-modal-title{font-size:22px;}
+  .job-detail-modal-body{padding:16px 18px 18px;}
+  .job-detail-hero,.job-detail-grid-2{grid-template-columns:1fr;}
+  .job-detail-salary-grid{grid-template-columns:1fr;}
+}
+
 /* 직무 추천 (자격증 기반) */
 .rec-job-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;display:flex;align-items:center;gap:12px;transition:all .2s;cursor:pointer;}
 .rec-job-card:hover{background:var(--accent-bg);border-color:var(--accent);}
