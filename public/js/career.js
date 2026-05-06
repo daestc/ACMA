@@ -298,17 +298,18 @@ async function searchCareerJobs() {
   const depth1 = document.getElementById('depth1')?.value || '';
   const depth2 = document.getElementById('depth2')?.value || '';
   const depth3 = document.getElementById('depth3')?.value || '';
+  const depth4 = document.getElementById('depth4')?.value || '';
   const keyword = document.getElementById('career-search-keyword')?.value?.trim() || '';
 
   const metaEl = document.getElementById('career-search-meta');
   if (metaEl) {
-    const selected = [depth1, depth2, depth3].filter(Boolean);
+    const selected = [depth1, depth2, depth3, depth4].filter(Boolean);
     metaEl.textContent = selected.length
       ? `선택 분류: ${selected.join(' > ')}`
       : '분류를 선택해 주세요.';
   }
 
-  if (!depth1 && !depth2 && !depth3 && !keyword) {
+  if (!depth1 && !depth2 && !depth3 && !depth4 && !keyword) {
     renderCareerSearchResults([], '검색 결과');
     return;
   }
@@ -317,6 +318,7 @@ async function searchCareerJobs() {
   if (depth1) params.set('depth1_name', depth1);
   if (depth2) params.set('depth2_name', depth2);
   if (depth3) params.set('depth3_name', depth3);
+  if (depth4) params.set('depth4_name', depth4);
 
   const res = await fetch(`/career/search?${params.toString()}`);
   const items = await res.json();
@@ -325,7 +327,7 @@ async function searchCareerJobs() {
     ? items.filter(item => `${item.jobName} ${item.jobDescription} ${item.jobCode}`.includes(keyword))
     : items;
 
-  const metaText = [depth1, depth2, depth3].filter(Boolean).join(' > ') || '전체 결과';
+  const metaText = [depth1, depth2, depth3, depth4].filter(Boolean).join(' > ') || '전체 결과';
   careerSearchState = {
     items: filteredItems,
     page: 1,
@@ -334,7 +336,7 @@ async function searchCareerJobs() {
   };
   renderCareerSearchResults(careerSearchState.items, careerSearchState.metaText, careerSearchState.page);
 }
-//db에서 드롭다운 메뉴에 들어갈 대분류, 중분류, 소분류 정보 가져오기
+//db에서 드롭다운 메뉴에 들어갈 대분류, 중분류, 소분류, 세분류 정보 가져오기
 fetch('../career/categories')
   .then(res => res.json())
   .then(categories => {
@@ -342,6 +344,7 @@ fetch('../career/categories')
     const depth1Select = document.getElementById('depth1');
     const depth2Select = document.getElementById('depth2');
     const depth3Select = document.getElementById('depth3');
+    const depth4Select = document.getElementById('depth4');
 
     function resetSelect(select, placeholder) {
       clearSelect(select, placeholder || '선택');
@@ -353,6 +356,7 @@ fetch('../career/categories')
     resetSelect(depth1Select, '대분류 선택');
     resetSelect(depth2Select, '중분류 선택');
     resetSelect(depth3Select, '소분류 선택');
+    resetSelect(depth4Select, '세분류 선택');
 
     depth1Set.forEach(name => {
       const option = document.createElement('option');
@@ -366,6 +370,7 @@ fetch('../career/categories')
       const sel1 = depth1Select.value;
       resetSelect(depth2Select, '중분류 선택');
       resetSelect(depth3Select, '소분류 선택');
+      resetSelect(depth4Select, '세분류 선택');
       if (!sel1) return;
       const depth2Set = new Set();
       categoriesData.forEach(cat => {
@@ -384,6 +389,7 @@ fetch('../career/categories')
       const sel1 = depth1Select.value;
       const sel2 = depth2Select.value;
       resetSelect(depth3Select, '소분류 선택');
+      resetSelect(depth4Select, '세분류 선택');
       if (!sel2) return;
       const depth3Set = new Set();
       categoriesData.forEach(cat => {
@@ -397,9 +403,30 @@ fetch('../career/categories')
       });
     });
 
+    depth3Select.addEventListener('change', () => {
+      const sel1 = depth1Select.value;
+      const sel2 = depth2Select.value;
+      const sel3 = depth3Select.value;
+      resetSelect(depth4Select, '세분류 선택');
+      if (!sel3) return;
+      const depth4Set = new Set();
+      categoriesData.forEach(cat => {
+        if (cat.depth1_name === sel1 && cat.depth2_name === sel2 && cat.depth3_name === sel3 && cat.depth4_name) {
+          depth4Set.add(cat.depth4_name);
+        }
+      });
+      depth4Set.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        depth4Select.appendChild(option);
+      });
+    });
+
     // (선택사항) 페이지 로드 시 기본값이 있으면 트리거
     if (depth1Select.value) depth1Select.dispatchEvent(new Event('change'));
     if (depth2Select.value) depth2Select.dispatchEvent(new Event('change'));
+    if (depth3Select.value) depth3Select.dispatchEvent(new Event('change'));
 
     const searchBtn = document.getElementById('career-search-btn');
     if (searchBtn) {

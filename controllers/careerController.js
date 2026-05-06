@@ -14,8 +14,8 @@ const getCategories = async (req, res) => {
 // 진로 검색db에서 대분류, 중분류, 소분류에 따른 진로 정보 가져오기
 const searchCareers = async (req, res) => {
   try {
-    const { depth1_name, depth2_name, depth3_name } = req.query;
-    const selectedDepths = { depth1_name, depth2_name, depth3_name };
+    const { depth1_name, depth2_name, depth3_name, depth4_name } = req.query;
+    const selectedDepths = { depth1_name, depth2_name, depth3_name, depth4_name };
 
     const hasAnyFilter = Object.values(selectedDepths).some(Boolean);
     if (!hasAnyFilter) {
@@ -26,7 +26,8 @@ const searchCareers = async (req, res) => {
     const matchedCategories = categories.filter(cat => {
       return (!depth1_name || cat.depth1_name === depth1_name)
         && (!depth2_name || cat.depth2_name === depth2_name)
-        && (!depth3_name || cat.depth3_name === depth3_name);
+        && (!depth3_name || cat.depth3_name === depth3_name)
+        && (!depth4_name || cat.depth4_name === depth4_name);
     });
 
     const categoryIds = [...new Set(matchedCategories.map(cat => cat.categoryId).filter(Boolean))];

@@ -23,7 +23,7 @@ async function searchCareers(depth4, categoryId) {
       throw new Error('service_key is not configured');
     }
 
-    const careerAPI = `https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo212L50.do?authKey=${encodeURIComponent(serviceKey)}&returnType=XML&target=dJobCD&startPage=1&display=10&srchType=J&stdJobCl=${encodeURIComponent(searchCode)}`;
+    const careerAPI = `https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo212L50.do?authKey=${encodeURIComponent(serviceKey)}&returnType=XML&target=dJobCD&startPage=1&display=50&srchType=J&stdJobCl=${encodeURIComponent(searchCode)}`;
 
     const headers = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
