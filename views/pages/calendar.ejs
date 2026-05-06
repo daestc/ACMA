@@ -16,10 +16,10 @@
 		<!-- 상단 헤더 -->
 		<%- include('../partials/topbar', { pageTitle: '캘린더', user: user }) %>
 
-		<div class="page-content">
+		<div class="page-content"> <!-- 임시 삽입 -->
     <!-- ══ CALENDAR ══ -->
     <div class="page-content">
-
+        <div id="eventList"></div>
         <!-- 월간 달력 (날씨 아이콘 포함) -->
         <div id="cal-month-view">
           <div class="card">
@@ -124,6 +124,33 @@
 
 	<script src="/js/common.js"></script>
 	<script src="/js/calendar.js"></script>
+
+  <!-- 임시 삽입 -->
+  <script>
+  fetch('/calendar/eventsList')
+    .then(res => res.json())
+    .then(events => {
+      console.log(events);
+
+      const eventList = document.getElementById('eventList');
+
+      if (events.length === 0) {
+        eventList.innerHTML = '<p>등록된 일정이 없습니다.</p>';
+        return;
+      }
+
+      eventList.innerHTML = events.map(event => `
+        <div>
+          <strong>${event.title}</strong>
+          <span>${new Date(event.startDate).toLocaleDateString()}</span>
+        </div>
+      `).join('');
+    })
+    .catch(err => {
+      console.error(err);
+    });
+  </script>
+  
 </body>
 
 </html>
