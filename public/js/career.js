@@ -162,7 +162,7 @@ const jobDetailData = {
     certs:  ['AWS SAA', '리눅스마스터 1급', '정보처리기사']
   }
 };
-
+// 직무 세부 정보 모달에 데이터 채워서 보여주기
 function showJobDetail(name) {
   const d = jobDetailData[name];
   if (!d) return;
@@ -193,7 +193,9 @@ function clearSelect(select, placeholder) {
   option.textContent = placeholder;
   select.appendChild(option);
 }
-
+// ── 진로 검색 ─────────────────────────────────────
+// escapHtml은 XSS 방지용으로, API에서 받은 데이터는 신뢰할 수 없으므로 반드시 escapeHtml 함수를 거쳐야 합니다.
+//xss란 공격자가 악의적인 스크립트를 웹사이트에 삽입하여 다른 사용자의 브라우저에서 실행되도록 하는 보안 취약점입니다. 이를 방지하기 위해 escapeHtml 함수는 특수 문자를 HTML 엔티티로 변환하여 스크립트가 실행되지 않도록 합니다.
 function escapeHtml(value) {
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -202,42 +204,35 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
-
+ // 진로 검색 결과 렌더링 및 페이지네이션
 function renderCareerPagination(totalItems, currentPage, pageSize) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const controls = document.getElementById('career-search-pagination');
   const pageInfo = document.getElementById('career-search-page-info');
 
   if (!controls || !pageInfo) return;
-
   pageInfo.textContent = `${currentPage} / ${totalPages}`;
-
   if (totalItems <= pageSize) {
     controls.innerHTML = '';
     return;
   }
-
   const pageButtons = [];
   const startPage = Math.max(1, currentPage - 2);
   const endPage = Math.min(totalPages, startPage + 4);
-
   for (let page = startPage; page <= endPage; page += 1) {
     pageButtons.push(`
       <button class="career-page-btn ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>
     `);
   }
-
   controls.innerHTML = `
     <button class="career-page-btn" data-nav="prev" ${currentPage === 1 ? 'disabled' : ''}>이전</button>
     ${pageButtons.join('')}
     <button class="career-page-btn" data-nav="next" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>
   `;
-
   controls.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       const nav = btn.dataset.nav;
       const page = Number(btn.dataset.page);
-
       if (nav === 'prev' && careerSearchState.page > 1) {
         careerSearchState.page -= 1;
       } else if (nav === 'next' && careerSearchState.page < totalPages) {
@@ -245,12 +240,11 @@ function renderCareerPagination(totalItems, currentPage, pageSize) {
       } else if (page) {
         careerSearchState.page = page;
       }
-
       renderCareerSearchResults(careerSearchState.items, careerSearchState.metaText, careerSearchState.page);
     });
   });
 }
-
+// 진로 검색 결과 렌더링
 function renderCareerSearchResults(items, metaText, page = 1) {
   const wrap = document.getElementById('career-search-results');
   const title = document.getElementById('career-search-title');
@@ -293,7 +287,7 @@ function renderCareerSearchResults(items, metaText, page = 1) {
 
   renderCareerPagination(items.length, currentPage, CAREER_PAGE_SIZE);
 }
-
+// 진로 검색 실행
 async function searchCareerJobs() {
   const depth1 = document.getElementById('depth1')?.value || '';
   const depth2 = document.getElementById('depth2')?.value || '';
@@ -336,6 +330,15 @@ async function searchCareerJobs() {
   };
   renderCareerSearchResults(careerSearchState.items, careerSearchState.metaText, careerSearchState.page);
 }
+// Set 객체를 순회하며 option 요소를 생성하여 select 요소에 추가하는 함수
+function appendOptions(select, nameSet) {
+  nameSet.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+}
 //db에서 드롭다운 메뉴에 들어갈 대분류, 중분류, 소분류, 세분류 정보 가져오기
 fetch('../career/categories')
   .then(res => res.json())
@@ -358,12 +361,7 @@ fetch('../career/categories')
     resetSelect(depth3Select, '소분류 선택');
     resetSelect(depth4Select, '세분류 선택');
 
-    depth1Set.forEach(name => {
-      const option = document.createElement('option');
-      option.value = name;
-      option.textContent = name;
-      depth1Select.appendChild(option);
-    });
+    appendOptions(depth1Select, depth1Set);
 
     // 대분류 선택 시 중분류 채우기
     depth1Select.addEventListener('change', () => {
@@ -376,12 +374,7 @@ fetch('../career/categories')
       categoriesData.forEach(cat => {
         if (cat.depth1_name === sel1 && cat.depth2_name) depth2Set.add(cat.depth2_name);
       });
-      depth2Set.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        depth2Select.appendChild(option);
-      });
+      appendOptions(depth2Select, depth2Set);
     });
 
     // 중분류 선택 시 소분류 채우기
@@ -395,12 +388,7 @@ fetch('../career/categories')
       categoriesData.forEach(cat => {
         if (cat.depth1_name === sel1 && cat.depth2_name === sel2 && cat.depth3_name) depth3Set.add(cat.depth3_name);
       });
-      depth3Set.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        depth3Select.appendChild(option);
-      });
+      appendOptions(depth3Select, depth3Set);
     });
 
     depth3Select.addEventListener('change', () => {
@@ -415,19 +403,23 @@ fetch('../career/categories')
           depth4Set.add(cat.depth4_name);
         }
       });
-      depth4Set.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        depth4Select.appendChild(option);
-      });
+      appendOptions(depth4Select, depth4Set);
     });
 
     // (선택사항) 페이지 로드 시 기본값이 있으면 트리거
-    if (depth1Select.value) depth1Select.dispatchEvent(new Event('change'));
-    if (depth2Select.value) depth2Select.dispatchEvent(new Event('change'));
-    if (depth3Select.value) depth3Select.dispatchEvent(new Event('change'));
-
+    if (depth1Select.value) {
+      depth1Select.dispatchEvent(new Event('change'));
+      // depth2가 채워진 이후에 실행되어야 함
+      if (depth2Select.value) {
+        depth2Select.dispatchEvent(new Event('change'));
+        if (depth3Select.value) {
+          depth3Select.dispatchEvent(new Event('change'));
+          if (depth4Select.value) {
+            depth4Select.dispatchEvent(new Event('change'));
+          }
+        }
+      }
+    }
     const searchBtn = document.getElementById('career-search-btn');
     if (searchBtn) {
       searchBtn.addEventListener('click', () => {

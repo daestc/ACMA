@@ -192,8 +192,8 @@ const jobSchema = new Schema(
     relatedOccupations: [String],
     relatedDepartments: [String],
 
-    // 자격증 참조
-    relatedCertifications: [{ type: Schema.Types.ObjectId, ref: 'Certification' }],
+    // 관련 자격증
+    relatedCertifications: [String], // 자격증 이름 배열 (예: ["정보처리기사", "네트워크관리사"])
 
     // 연봉 정보 (하위 25%, 중간값, 상위 25%로 구분)
     averageSalary: {

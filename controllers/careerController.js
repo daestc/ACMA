@@ -55,6 +55,23 @@ const searchCareers = async (req, res) => {
   }
 };
 
+const getCareerDetails = async (req, res) => {
+  try {
+    const { jobCode } = req.query;
+    if (!jobCode) {
+      return res.status(400).json({ error: 'Job code is required' });
+    }
 
+    const careerDetails = await careerService.getCareerDetails(jobCode);
+    if (!careerDetails) {
+      return res.status(404).json({ error: 'Career details not found' });
+    }
 
-module.exports={getCategories, searchCareers};
+    res.json(careerDetails);
+  } catch (error) {
+    console.error('Error fetching career details:', error);
+    res.status(500).json({ error: 'Failed to fetch career details' });
+  }
+};
+
+module.exports={getCategories, searchCareers, getCareerDetails};

@@ -26,7 +26,9 @@ router.get('/', requireLogin, (req, res) => {
 });
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 router.get('/categories', careerController.getCategories);
-// 진로 검색db에서 대분류, 중분류, 소분류에 따른 진로 정보 가져오기
+// 진로 검색db에서 대분류, 중분류, 소분류에 따른 직무 이름 가져오기
 router.get('/search', careerController.searchCareers);
+// 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
+router.get('/details', careerController.getCareerDetails);
 
 module.exports = router;
