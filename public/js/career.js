@@ -192,6 +192,7 @@ function showCertDetail(name) { certModalModule.show(name); }
 const jobModalModule = {
   // 모달에 직무 정보 채우고 표시
   open(data, jobCode) {
+    
     document.getElementById('jd-save-btn').dataset.jobcode = jobCode;
     document.getElementById('jd-title').textContent = data.title;
     document.getElementById('jd-category').textContent = data.category || '';
@@ -212,7 +213,24 @@ const jobModalModule = {
     this.fillTags('jd-certs',           data.relatedCertifications);
     this.fillTags('jd-occupations',     data.relatedOccupations);
 
+    this.fillResponsibilities(data.responsibilities);
+
     document.getElementById('job-detail-modal').style.display = 'flex';
+  },
+  // 메서드 추가
+  fillResponsibilities(arr) {
+    const el = document.getElementById('jd-responsibilities');
+    if (!el) return;
+    if (!arr || arr.length === 0) {
+      el.innerHTML = `<span style="font-size:12px;color:var(--text2);">정보 없음</span>`;
+      return;
+    }
+    el.innerHTML = arr.map((task, i) => `
+      <div class="job-detail-resp-item">
+        <span class="job-detail-resp-num">${i + 1}.</span>
+        <span>${escapeHtml(task)}</span>
+      </div>
+    `).join('');
   },
 
   fillTags(id, arr) {
@@ -232,9 +250,9 @@ const jobModalModule = {
   },
 
   // 직무 상세 정보 가져와서 모달 열기
-  async openByCode(jobCode) {
+  async openByCode(jobCode, jobSeq) {
     try {
-      const data = await fetch(`/career/detail/${jobCode}`).then(res => res.json());
+      const data = await fetch(`/career/detail/${jobCode}?seq=${jobSeq}`).then(res => res.json());
       this.open(data, jobCode);
     } catch (err) {
       console.error('직무 상세 정보 로딩 실패:', err);
@@ -269,7 +287,8 @@ const jobModalModule = {
         const card = e.target.closest('.career-result-card');
         if (!card) return;
         const jobCode = card.dataset.jobcode;
-        if (jobCode) this.openByCode(jobCode);
+        const jobSeq  = card.dataset.jobseq;
+        this.openByCode(jobCode, jobSeq);
       });
     }
   },
@@ -350,7 +369,7 @@ const searchModule = {
     }
 
     list.innerHTML = pageItems.map(item => `
-      <div class="career-result-card" data-jobcode="${escapeHtml(item.jobCode)}">
+      <div class="career-result-card" data-jobcode="${escapeHtml(item.jobCode)}" data-jobseq="${escapeHtml(item.jobSeq || '1')}">
         <div class="career-result-top">
           <div class="career-result-name">${escapeHtml(item.jobName)}</div>
           <span class="badge badge-blue">${escapeHtml(item.jobCategory || '')}</span>

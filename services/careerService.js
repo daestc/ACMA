@@ -13,7 +13,7 @@ async function getCategories() {
   }
 }
 
-// api 에서 선택한 대분류, 중분류, 소분류에서 검색한 모든 세분류의 진로 정보 가져오기
+// api 에서 선택한 대분류, 중분류, 소분류에서 검색한 모든 세분류의 직무 이름 가져오기
 async function searchCareers(depth4, categoryId) {
   try {
     if (!categoryId) return [];
@@ -71,6 +71,7 @@ async function searchCareers(depth4, categoryId) {
 
       uniqueJobs.set(jobCode, {
         jobCode,
+        jobSeq:  item.dJobCdSeq || '1',
         jobName: item.dJobNm || '',
         jobCategory: searchCode
       });
@@ -108,49 +109,89 @@ function parseSalary(salStr) {
     upper25:  upper  ? Number(upper)  * 10000 : 0,
   };
 }
-// 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
-async function getCareerDetails(jobCode) {
-  try {
-    const jobcode=encodeURIComponent(jobCode);
-    const serviceKey = process.env.service_key;
 
-    if (!serviceKey) {
-      throw new Error('service_key is not configured');
-    }
-    // API 설정 (직업코드로 상세 정보 조회)
-    const careerDetailAPI = `https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo212D05.do?authKey=${serviceKey}&returnType=XML&target=JOBDTL&jobGb=1&jobCd=${jobcode}&dtlGb=1`;
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-      'Accept': 'application/xml, text/xml, */*;q=0.01',
-      'Referer': 'https://www.work24.go.kr/',
-      'Origin': 'https://www.work24.go.kr'
-    };
-    // API 호출
-    const response = await fetch(careerDetailAPI, { headers });
-    // API 응답 처리
-    const responseText = await response.text();
-    if (!response.ok) {
-      console.warn('External API non-OK:', response.status, responseText.substring(0, 500));
-      return null;
-    }
-    // XML 파싱 및 직무 상세 정보 추출
-    const parsed = await parseStringPromise(responseText, { explicitArray: false, trim: true });
-    const job = parsed?.jobSum;
-    if (!job) {
+const COMMON_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Accept': 'application/xml, text/xml, */*;q=0.01',
+  'Referer': 'https://www.work24.go.kr/',
+  'Origin': 'https://www.work24.go.kr'
+};
+
+// 1차 API: jobSum (능력, 지식, 성격, 연봉, 학과 등)
+async function fetchPrimaryJobAPI(jobCode) {
+  const serviceKey = process.env.service_key;
+  if (!serviceKey) throw new Error('service_key is not configured');
+
+  const url = `https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo212D05.do?authKey=${serviceKey}&returnType=XML&target=JOBDTL&jobGb=1&jobCd=${encodeURIComponent(jobCode)}&dtlGb=1`;
+
+  const response = await fetch(url, { headers: COMMON_HEADERS });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    console.warn('Primary API non-OK:', response.status, responseText.substring(0, 500));
+    return null;
+  }
+
+  const parsed = await parseStringPromise(responseText, { explicitArray: false, trim: true });
+  return parsed?.jobSum || null;
+}
+
+// 2차 API: dJobsSum (직무 개요, 주요 업무, 풍부한 자격증 목록)
+async function fetchSecondaryJobAPI(jobCode, jobSeq = '1') {
+  const serviceKey = process.env.service_key;
+  if (!serviceKey) throw new Error('service_key is not configured');
+
+  const url = `https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo212D50.do?authKey=${serviceKey}&returnType=XML&target=dJobDTL&dJobCd=${encodeURIComponent(jobCode)}&dJobCdSeq=${encodeURIComponent(jobSeq)}`;
+
+  const response = await fetch(url, { headers: COMMON_HEADERS });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    console.warn('Secondary API non-OK:', response.status, responseText.substring(0, 500));
+    return null;
+  }
+
+  const parsed = await parseStringPromise(responseText, { explicitArray: false, trim: true });
+  return parsed?.dJobsSum || null;
+}
+// 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
+async function getCareerDetails(jobCode, jobSeq = '1') {
+  try {
+    // 두 API 병렬 호출
+    const [primary, secondary] = await Promise.all([
+      fetchPrimaryJobAPI(jobCode),
+      fetchSecondaryJobAPI(jobCode, jobSeq),
+    ]);
+
+    if (!primary && !secondary) {
       console.warn('No job detail found for jobCode:', jobCode);
       return null;
     }
+
     return {
-      title:              job.jobSmclNm || '',
-      description:        job.jobSum || '',
-      waysToAcquire:      job.way?.split('. ').map(s => s.trim()).filter(Boolean) || [],
-      abilities:          parseSlashList(job.jobAbil),
-      knowledge:          parseSlashList(job.knowldg),
-      characteristics:    parseSlashList(job.jobChr),
-      relatedOccupations: toArray(job.relJobList).map(j => j.jobNm),
-      relatedDepartments: toArray(job.relMajorList).map(m => m.majorNm),
-      averageSalary:      parseSalary(job.sal),
-      relatedCertifications: toArray(job.relCertList).map(c => c.certNm).filter(Boolean)
+      title:              primary?.jobSmclNm || secondary?.dJobNm || '',
+      description:        primary?.jobSum || secondary?.workSum || '',
+      
+      // 주요 업무 (2차 API의 doWork)
+      responsibilities:   secondary?.doWork
+                            ?.split('. ').map(s => s.trim()).filter(Boolean) || [],
+      
+      waysToAcquire:      primary?.way?.split('. ').map(s => s.trim()).filter(Boolean) || [],
+      abilities:          parseSlashList(primary?.jobAbil),
+      knowledge:          parseSlashList(primary?.knowldg),
+      characteristics:    parseSlashList(primary?.jobChr),
+      relatedOccupations: toArray(primary?.relJobList).map(j => j.jobNm),
+      relatedDepartments: toArray(primary?.relMajorList).map(m => m.majorNm),
+      averageSalary:      parseSalary(primary?.sal),
+      
+      // 자격증: 2차 API가 더 풍부, 없으면 1차 사용
+      relatedCertifications: parseCertLic(secondary?.optionJobInfo?.certLic) 
+                          || toArray(primary?.relCertList).map(c => c.certNm).filter(Boolean),
+      
+      // 2차 API 추가 정보
+      educationLevel:     secondary?.optionJobInfo?.eduLevel || '',
+      requiredExperience: secondary?.optionJobInfo?.skillYear || '',
+      workEnvironment:    secondary?.optionJobInfo?.workPlace || '',
     };
 
   } catch (error) {
@@ -158,6 +199,14 @@ async function getCareerDetails(jobCode) {
     throw new Error('Failed to fetch career details');
   }
 }
+
+// "광산보안기사·산업기사, 광해방지기술사·기사, ..." → ['광산보안기사·산업기사', '광해방지기술사·기사', ...]
+function parseCertLic(str) {
+  if (!str) return null;
+  const arr = str.split(',').map(s => s.trim()).filter(Boolean);
+  return arr.length > 0 ? arr : null;
+}
+
 // DB 저장 (또는 캐시 조회)
 async function saveCareerDetails(jobCode) {
   const cached = await Job.findOne({ jobCode });

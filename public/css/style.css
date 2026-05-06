@@ -530,3 +530,27 @@ input,select,textarea{font-family:inherit;}
 .exp-period{font-size:11px;color:var(--text3);font-weight:500;}
 .exp-ach{font-size:12px;color:var(--text2);padding-left:4px;}
 
+.job-detail-resp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-detail-resp-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text2);
+}
+
+.job-detail-resp-num {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+}

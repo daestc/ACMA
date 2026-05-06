@@ -182,6 +182,7 @@ const jobSchema = new Schema(
     description: { type: String, default: "" },
 
     // 배열 필드 최적화 (null 대신 빈 배열 [] 추천)
+    responsibilities: [String], // 주요 업무
     waysToAcquire: [String],    // 역량 습득 방법
     
     // 직무 역량 (MyStatus 화면의 그래프 데이터와 연동하기 좋음)
