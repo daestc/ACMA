@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 
-const NotificationSettingsSchema = new Schema({
+const NotificationSettingsSchema = new mongoose.Schema({
   dailyScheduleAlert: { type: Boolean, default: true,  description: '일일 강의 알림' },
   dDayAlert:          { type: Boolean, default: true,  description: 'D-Day 알림' },
   pushNotification:   { type: Boolean, default: false, description: '푸시 알림' },
   emailNotification:  { type: Boolean, default: false, description: '이메일 알림' },
 }, { _id: false });
 
-const PomodoroSettingsSchema = new Schema({
+const PomodoroSettingsSchema = new mongoose.Schema({
   workMinutes:              { type: Number, default: 25,  min: 1, max: 60  }, // 집중 시간
   shortBreakMinutes:        { type: Number, default: 5,   min: 1, max: 30  }, // 짧은 휴식
   longBreakMinutes:         { type: Number, default: 15,  min: 1, max: 60  }, // 긴 휴식
