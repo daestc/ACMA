@@ -1,6 +1,7 @@
 const {JobSearch} = require('../models/Certifications_jobs');
 const {Job} = require('../models/Certifications_jobs');
 const { parseStringPromise } = require('xml2js');
+const { Certification } = require('../models/Certifications_jobs');
 
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 async function getCategories() {
@@ -45,24 +46,8 @@ async function searchCareers(depth4, categoryId) {
 
     const parsed = await parseStringPromise(responseText, { explicitArray: false, trim: true });
 
-    const collectJobs = (node, acc = []) => {
-      if (!node || typeof node !== 'object') return acc;
-
-      if (Array.isArray(node)) {
-        node.forEach(item => collectJobs(item, acc));
-        return acc;
-      }
-
-      if (node.jobCd || node.jobNm || node.jobNmKor || node.dJobNm) {
-        acc.push(node);
-        return acc;
-      }
-
-      Object.values(node).forEach(value => collectJobs(value, acc));
-      return acc;
-    };
-
-    const jobItems = collectJobs(parsed);
+    const list = parsed?.dJobsList?.dJobList;
+    const jobItems = !list ? [] : (Array.isArray(list) ? list : [list]);
     const uniqueJobs = new Map();
 
     jobItems.forEach(item => {
@@ -217,6 +202,18 @@ async function saveCareerDetails(jobCode) {
 
   return await Job.create({ ...data, jobCode });
 }
+// 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
+async function getCertCategories() {
+  try {
+    const categories = await Certification.find().select('field1 field2 seriesName').lean();
+    return categories;
+  } catch (error) {
+    
+  }
+}
+
+
+
 module.exports = {
   getCategories,
   searchCareers,

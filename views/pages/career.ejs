@@ -57,13 +57,27 @@
             <div style="flex:1;height:1px;background:var(--border);"></div>
           </div>
 
-          <div style="margin-bottom:16px;"><input class="input-field" placeholder="🔍 자격증 검색" style="width:100%;max-width:400px;"></div>
-          <div class="filter-row">
-            <div class="chip active" onclick="filterChip(this)">전체</div>
-            <div class="chip" onclick="filterChip(this)">IT</div>
-            <div class="chip" onclick="filterChip(this)">경영</div>
-            <div class="chip" onclick="filterChip(this)">외국어</div>
+          <div class="job-search-box">
+            <div class="job-search-title">자격증 카테고리 검색</div>
+            <div class="job-search-dropdowns">
+              <select id="cert_depth1" class="select-field" style="width:100%;">
+                <option value="">대분류 선택</option>
+              </select>
+              <select id="cert_depth2" class="select-field" style="width:100%;">
+                <option value="">중분류 선택</option>
+              </select>
+              <select id="cert_depth3" class="select-field" style="width:100%;">
+                <option value="">등급 선택</option>
+              </select>
+            </div>
+            <div id="career-search-meta" class="career-search-meta"></div>
+            <div class="job-search-bottom">
+              <input id="career-search-keyword" class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 백엔드, 데이터 분석)" style="flex:1;">
+              <button id="career-search-btn" class="btn btn-accent">검색</button>
+            </div>
           </div>
+          <!-- 검색 결과 -->
+          <div id="career-search-results" class="career-search-results" style="display:none;">
           <div class="grid-3">
             <div class="card" style="cursor:pointer;" onclick="showCertDetail('정보처리기사')">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">정보처리기사</div><span class="badge badge-blue">IT</span></div>

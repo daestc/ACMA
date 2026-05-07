@@ -13,7 +13,7 @@ const certificationSchema = new Schema(
     field2: { type: String, default: "" },   // 중분야 (예: 정보기술)
     
     seriesName: { type: String, default: "" }, // 자격증 시리즈명 (기사, 산업기사  등)
-    description: { type: String, default: "" }, // 자격증 설명
+    description: { type: String, default: "" }, // 자격증 설명_수행직무
     careerPath: { type: String, default: "" }, // 진로및 전망
     
     way: { type: String, default: "" },        // 취득 방법 (시험 과목 등)

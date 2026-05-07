@@ -16,12 +16,10 @@ const searchCareers = async (req, res) => {
   try {
     const { depth1_name, depth2_name, depth3_name, depth4_name } = req.query;
     const selectedDepths = { depth1_name, depth2_name, depth3_name, depth4_name };
-
     const hasAnyFilter = Object.values(selectedDepths).some(Boolean);
     if (!hasAnyFilter) {
       return res.json([]);
     }
-
     const categories = await careerService.getCategories();
     const matchedCategories = categories.filter(cat => {
       return (!depth1_name || cat.depth1_name === depth1_name)
@@ -29,25 +27,20 @@ const searchCareers = async (req, res) => {
         && (!depth3_name || cat.depth3_name === depth3_name)
         && (!depth4_name || cat.depth4_name === depth4_name);
     });
-
     const categoryIds = [...new Set(matchedCategories.map(cat => cat.categoryId).filter(Boolean))];
     if (!categoryIds.length) {
       return res.json([]);
     }
-
     const careerLists = await Promise.all(
       categoryIds.map(categoryId => careerService.searchCareers(null, categoryId))
     );
-
     const mergedCareers = [];
     const seenCodes = new Set();
-
     careerLists.flat().forEach(career => {
       if (!career.jobCode || seenCodes.has(career.jobCode)) return;
       seenCodes.add(career.jobCode);
       mergedCareers.push(career);
     });
-
     res.json(mergedCareers);
   } catch (error) {
     console.error('Error searching careers:', error);
@@ -81,5 +74,21 @@ const saveCareerDetails = async (req, res) => {
   if (!data) return res.status(404).json({ error: 'Not found' });
   res.json({ success: true, data });
 };
+// 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
+const getCertCategories = async (req, res) => {
+  try {
+    const categories = await careerService.getCertCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching certification categories:', error);
+    res.status(500).json({ error: 'Failed to fetch certification categories' });
+  }
+};
 
-module.exports={getCategories, searchCareers, getCareerDetails, saveCareerDetails};
+module.exports = {
+  getCategories,
+  searchCareers,
+  getCareerDetails,
+  saveCareerDetails,
+  getCertCategories
+};

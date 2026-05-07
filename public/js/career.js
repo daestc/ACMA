@@ -375,7 +375,6 @@ const searchModule = {
           <span class="badge badge-blue">${escapeHtml(item.jobCategory || '')}</span>
         </div>
         <div class="career-result-code">직무코드: ${escapeHtml(item.jobCode)}</div>
-        <div class="career-result-desc">${escapeHtml(item.jobDescription || '상세 설명이 없습니다.')}</div>
       </div>
     `).join('');
 
