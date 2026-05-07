@@ -79,36 +79,16 @@
           </div>
           <!-- 검색 결과 -->
           <div id="cert-search-results" class="career-search-results" style="display:none;">
-          <div class="grid-3">
-            <div class="card" style="cursor:pointer;" onclick="showCertDetail('정보처리기사')">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">정보처리기사</div><span class="badge badge-blue">IT</span></div>
-              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">한국산업인력공단</div>
-              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">34%</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:34%"></div></div></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <a href="https://www.q-net.or.kr" target="_blank" class="qnet-link" onclick="event.stopPropagation()">🔗 Q-net</a>
-                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
-              </div>
+            <div class="career-search-head">
+              <div id="cert-search-title" class="career-search-title">검색 결과</div>
+              <div id="cert-search-count" class="career-search-count"></div>
             </div>
-            <div class="card" style="cursor:pointer;" onclick="showCertDetail('SQLD')">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">SQLD</div><span class="badge badge-blue">IT</span></div>
-              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">한국데이터산업진흥원</div>
-              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">52%</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:52%"></div></div></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <a href="https://www.q-net.or.kr" target="_blank" class="qnet-link" onclick="event.stopPropagation()">🔗 Q-net</a>
-                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
-              </div>
-            </div>
-            <div class="card" style="cursor:pointer;" onclick="showCertDetail('AWS SAA')">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">AWS SAA</div><span class="badge badge-amber">클라우드</span></div>
-              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Amazon Web Services</div>
-              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">61%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:61%"></div></div></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <button class="qnet-link" onclick="event.stopPropagation()">🌐 공식 사이트</button>
-                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
-              </div>
+            <div id="cert-search-list" class="career-search-list grid-3"></div>
+            <div class="career-search-footer">
+              <div id="cert-search-page-info" class="career-search-page-info"></div>
+              <div id="cert-search-pagination" class="career-search-pagination"></div>
             </div>
           </div>
-        </div>
         </div>
         <!-- 직무 정보 — PNG 예시 그대로 구현 -->
         <div id="ca-job" style="display:none;">

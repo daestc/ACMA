@@ -17,6 +17,13 @@ let careerSearchState = {
   keyword: '',
 };
 
+let certSearchState = {
+  items: [],
+  page: 1,
+  metaText: '검색 결과',
+  keyword: '',
+};
+
 
 // ============ 2. 유틸 ============
 // XSS 방지용. API에서 받은 데이터는 신뢰할 수 없으므로 반드시 거치게 함.
@@ -613,7 +620,134 @@ const modalCloseModule = {
     });
   },
 };
+// 자격증 목록 검색 모듈 (드롭다운과 검색 결과 렌더링 담당)
+const certSearchModule = {
+  async run() {
+    const field1     = document.getElementById('cert_depth1')?.value || '';
+    const field2     = document.getElementById('cert_depth2')?.value || '';
+    const seriesName = document.getElementById('cert_depth3')?.value || '';
+    const keyword    = document.getElementById('cert-search-keyword')?.value?.trim() || '';
 
+    if (!field1 && !field2 && !seriesName && !keyword) {
+      certSearchState = {
+        items: [],
+        page: 1,
+        metaText: '검색 결과',
+        keyword: '',
+      };
+      this.render(certSearchState.items, certSearchState.metaText, certSearchState.page);
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (field1)     params.set('field1', field1);
+    if (field2)     params.set('field2', field2);
+    if (seriesName) params.set('seriesName', seriesName);
+    if (keyword)    params.set('keyword', keyword);
+
+    const res = await fetch(`/career/search-cert?${params.toString()}`);
+    const items = await res.json();
+
+    const metaText = [field1, field2, seriesName].filter(Boolean).join(' > ') || '전체 결과';
+    certSearchState = {
+      items,
+      page: 1,
+      metaText,
+      keyword,
+    };
+    this.render(certSearchState.items, certSearchState.metaText, certSearchState.page);
+  },
+
+  render(items, metaText, page = 1) {
+    const wrap = document.getElementById('cert-search-results');
+    const list = document.getElementById('cert-search-list') || wrap?.querySelector('.grid-3');
+    const title = document.getElementById('cert-search-title');
+    const count = document.getElementById('cert-search-count');
+    if (!wrap || !list || !title || !count) return;
+
+    wrap.style.display = 'block';
+    title.textContent = metaText || '검색 결과';
+
+    const totalPages = Math.max(1, Math.ceil(items.length / CAREER_PAGE_SIZE));
+    const currentPage = Math.min(Math.max(page, 1), totalPages);
+    const startIndex = (currentPage - 1) * CAREER_PAGE_SIZE;
+    const pageItems = items.slice(startIndex, startIndex + CAREER_PAGE_SIZE);
+
+    count.textContent = `${items.length}건 · ${currentPage}/${totalPages}페이지`;
+
+    if (!items.length) {
+      list.innerHTML = `<div class="career-empty-state">조건에 맞는 자격증이 없습니다.</div>`;
+      const controls = document.getElementById('cert-search-pagination');
+      const pageInfo = document.getElementById('cert-search-page-info');
+      if (controls) controls.innerHTML = '';
+      if (pageInfo) pageInfo.textContent = '';
+      return;
+    }
+
+    list.innerHTML = pageItems.map(item => `
+      <div class="career-result-card" data-jmcd="${escapeHtml(item.jmcd)}">
+        <div class="career-result-top">
+          <div class="career-result-name">${escapeHtml(item.name)}</div>
+          <span class="badge badge-blue">${escapeHtml(item.seriesName || '')}</span>
+        </div>
+        <div class="career-result-code">${escapeHtml(item.field1)} ${item.field2 ? `> ${escapeHtml(item.field2)}` : ''}</div>
+        <div class="career-result-desc">${escapeHtml(item.description || '상세 설명이 없습니다.')}</div>
+      </div>
+    `).join('');
+
+    this.renderPagination(items.length, currentPage, CAREER_PAGE_SIZE);
+  },
+
+  renderPagination(totalItems, currentPage, pageSize) {
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const controls = document.getElementById('cert-search-pagination');
+    const pageInfo = document.getElementById('cert-search-page-info');
+    if (!controls || !pageInfo) return;
+
+    pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    if (totalItems <= pageSize) {
+      controls.innerHTML = '';
+      return;
+    }
+
+    const pageButtons = [];
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+    for (let page = startPage; page <= endPage; page += 1) {
+      pageButtons.push(`<button class="career-page-btn ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`);
+    }
+
+    controls.innerHTML = `
+      <button class="career-page-btn" data-nav="prev" ${currentPage === 1 ? 'disabled' : ''}>이전</button>
+      ${pageButtons.join('')}
+      <button class="career-page-btn" data-nav="next" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>
+    `;
+
+    controls.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nav = btn.dataset.nav;
+        const page = Number(btn.dataset.page);
+        if (nav === 'prev' && certSearchState.page > 1) {
+          certSearchState.page -= 1;
+        } else if (nav === 'next' && certSearchState.page < totalPages) {
+          certSearchState.page += 1;
+        } else if (page) {
+          certSearchState.page = page;
+        }
+        this.render(certSearchState.items, certSearchState.metaText, certSearchState.page);
+      });
+    });
+  },
+
+  init() {
+    const searchBtn = document.getElementById('cert-search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        this.run().catch(err => console.error('Error searching certs:', err));
+      });
+    }
+  },
+};
 
 // ============ 11. 진입점 ============
 document.addEventListener('DOMContentLoaded', () => {
@@ -623,4 +757,5 @@ document.addEventListener('DOMContentLoaded', () => {
   searchModule.init();
   dropdownModule.init();
   dropdownModule2.init();
+  certSearchModule.init();
 });

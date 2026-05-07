@@ -35,6 +35,7 @@ router.post('/save/:jobCode', careerController.saveCareerDetails);
 // 자격증 검색 db에서 대분류, 중분류, 시리즈이름 가져오기
 router.get('/cert-categories', careerController.getCertCategories);
 // 분류에 따른 자격증 목록 가져오기
+router.get('/search-cert', careerController.searchCertifications);
 
 
 

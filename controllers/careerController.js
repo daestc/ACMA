@@ -85,6 +85,17 @@ const getCertCategories = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch certification categories' });
   }
 };
+// 분류에 따른 자격증 목록 가져오기
+const searchCertifications = async (req, res) => {
+  try {
+    const { field1, field2, seriesName, keyword } = req.query;
+    const certs = await careerService.searchCertifications(field1, field2, seriesName, keyword);
+    res.json(certs);
+  } catch (error) {
+    console.error('Error searching certifications:', error);
+    res.status(500).json({ error: 'Failed to search certifications' });
+  }
+};
 
 
 module.exports = {
@@ -92,5 +103,6 @@ module.exports = {
   searchCareers,
   getCareerDetails,
   saveCareerDetails,
-  getCertCategories
+  getCertCategories,
+  searchCertifications
 };

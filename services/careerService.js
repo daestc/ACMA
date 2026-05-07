@@ -212,11 +212,33 @@ async function getCertCategories() {
     throw new Error('Failed to fetch certification categories');
   }
 }
+async function searchCertifications(field1, field2, seriesName, keyword){
+  try {
+    const query = {};
+    if (field1) query.field1 = field1;
+    if (field2) query.field2 = field2;
+    if (seriesName) query.seriesName = seriesName;
+
+    if(keyword) {
+      query.name = { $regex: keyword, $options: 'i' }; // 이름에 키워드 포함 (대소문자 무시)
+    }
+    const certs = await Certification.find(query)
+      .select('name jmcd field1 field2 seriesName description careerPath way officialUrl')
+      .sort({name: 1}) // 이름순 정렬
+      .lean();
+    return certs;
+  } catch (error) {
+    console.error('Error searching certifications:', error);
+    throw new Error('Failed to search certifications');
+  }
+} 
 
 
 module.exports = {
   getCategories,
   searchCareers,
   getCareerDetails,
-  saveCareerDetails
+  saveCareerDetails,
+  getCertCategories,
+  searchCertifications
 };
