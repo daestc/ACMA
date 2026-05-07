@@ -54,7 +54,7 @@
           <div class="card">
             <div class="card-header">
               <span class="card-title">📋 오늘의 강의 & 할 일</span>
-              <span class="card-action">+ 추가</span>
+              <!-- <span class="card-action">+ 추가</span> -->
             </div>
             <div class="tabs" style="margin-bottom:14px;">
               <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
@@ -69,6 +69,7 @@
               <% todolist.forEach(todo => { %>
                 <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text"><%= todo.title %></span><span class="check-time"><%= todo.note %></span></div>
               <% }) %>
+              <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">+ 추가</span>
             </div>
           </div>
 
@@ -153,6 +154,7 @@
 
 	<!-- 모달 -->
 	<%- include('../partials/modals/mypage', { user: user }) %>
+	<%- include('../partials/modals/todo_add', { user: user }) %>
 
 	<script src="/js/common.js"> </script>
   <script src="/js/home.js"> </script>
@@ -168,6 +170,7 @@
       btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     }
+
   </script>
 
 </body>
