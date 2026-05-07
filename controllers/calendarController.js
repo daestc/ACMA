@@ -27,7 +27,7 @@ const createEvent = async(req,res) => {//라우터에서 요청한 일정 정보
     }
 };
 
-const updateEvent = async(req,res) => { //일정 정보 수정
+const updatedEvent = async(req,res) => { //일정 정보 수정
     try {
         const userId = req.user.id;
         const eventId = req.params.eventId;
@@ -42,7 +42,7 @@ const updateEvent = async(req,res) => { //일정 정보 수정
     }
 };
 
-const deleteEvent = async (req,res)=>{
+const deletedEvent = async (req,res)=>{//일정 삭제 (isDelete true로 변경)
     try {
         const userId = req.user.id;
         const eventId = req.params.eventId;
@@ -60,4 +60,75 @@ const deleteEvent = async (req,res)=>{
     }
 };
 
-module.exports = {getEventsList,createEvent,updateEvent,deleteEvent};
+//시간표 컨트롤러
+const getTimetableList = async(req,res) => { 
+    try {
+        const userId = req.user.id; //사용자 id
+        const timetableList = await calendarService.getTimetableListByUser(userId)
+        
+        res.json(timetableList); //받은 json 보내기
+    } catch (error) {
+        res.status(500).json({
+      message: '시간표 조회 실패',
+      error: error.message,
+    });
+    }
+};
+
+const createTimetable = async(req,res) => {
+    try {
+        const userId = req.user.id;
+        const newTimetable = await calendarService.createNewTimetable(userId, req.body);
+        res.status(201).json(newTimetable); //요청 성공시 json반환 
+    } catch (error) {
+        res.status(500).json({
+      message: '시간표 생성 실패',
+      error: error.message,
+        });
+    }
+};
+
+const updatedTimetable = async(req,res) => {
+    try {
+        const userId = req.user.id;
+        const timetableId = req.params.timetableId;
+        //서비스에 각 id, 수정 사항 전달
+        const updateTimetable = await calendarService.updateTimetable(userId,timetableId,req.body);
+        res.json(updateTimetable); //json으로 수정사항 반환
+    } catch (error) {
+        res.status(500).json({
+        message: '시간표 수정 실패',
+        error: error.message,
+        });
+    }
+};
+
+const deletedTimetable = async (req,res)=>{
+    try {
+        const userId = req.user.id;
+        const timetableId = req.params.timetableId;
+
+        await calendarService.deleteTimetable(userId, timetableId);
+
+        res.json({
+            message: '시간표 삭제 성공'
+        });
+    } catch (error) {
+        res.status(500).json({
+        message: '시간표 삭제 실패',
+        error: error.message,
+        });
+    }
+};
+
+module.exports = {
+    getEventsList,
+    createEvent,
+    updatedEvent,
+    deletedEvent,
+
+    getTimetableList,
+    createTimetable,
+    updatedTimetable,
+    deletedTimetable
+};

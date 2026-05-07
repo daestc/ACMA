@@ -26,12 +26,16 @@ router.get('/', requireLogin, (req, res) => {
   });
 });
 
-router.get('/eventsList',requireLogin, calendarController.getEventsList)//사용자의 일정 정보를 서비스에 요청
+//일정
+router.get('/events',requireLogin, calendarController.getEventsList)//사용자의 일정 정보를 서비스에 요청
+router.post('/events/', requireLogin, calendarController.createEvent); //사용자가 입력한 일정저장을 서비스에 요청
+router.put('/events/:eventId',requireLogin, calendarController.updatedEvent);//일정 수정
+router.delete('/events/:eventId', requireLogin, calendarController.deletedEvent);
 
-router.post('/createEvent/', requireLogin, calendarController.createEvent); //사용자가 입력한 일정저장을 서비스에 요청
-
-router.put('/modifyEvent/:eventId',requireLogin, calendarController.updateEvent);//일정 수정
-
-router.delete('/deleteEvent/:eventId', requireLogin, calendarController.deleteEvent);
+//시간표
+router.get('/timetables', requireLogin, calendarController.getTimetableList); //시간표 가져오기
+router.post('/timetables',requireLogin, calendarController.createTimetable); //시간표 생성
+router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
+router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
 
 module.exports = router;
