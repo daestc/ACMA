@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const landingController = require('../controllers/landingController');
 
 // 베너 페이지 
 router.get('/', (req, res) => {
@@ -20,13 +21,6 @@ function requireLogin(req, res, next) {
 }
 
 // 메인 페이지
-router.get('/home', requireLogin, (req, res) => {
-  res.render('pages/home', {
-    title:       '홈',
-    currentPage: 'home',
-    pageTitle:   `안녕하세요, ${req.user.name}님 👋`,
-    user:        req.user,
-  });
-});
+router.get('/home', requireLogin, landingController.getHomePage);
 
 module.exports = router;

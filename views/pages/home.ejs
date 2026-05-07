@@ -19,8 +19,9 @@
 		<div class="page-content">
     <!-- ══ HOME ══ -->
     <div class="page-content">
-        <!-- 날씨 + 명언 -->
+        <!-- 날씨 + 명언 #후순위 -->
         <div class="grid-2" style="margin-bottom:16px;">
+          <!-- 날씨 API -->
           <div class="weather-widget">
             <div class="weather-left">
               <div class="temp">18°C</div>
@@ -33,7 +34,7 @@
               <div class="weather-detail" style="text-align:center;">오늘 최고 21°</div>
             </div>
           </div>
-          <!-- 명언 API #후순위 -->
+          <!-- 명언 API -->
           <div class="quote-card">
             <div class="quote-text">교육은 미래를 위한 가장 강력한 무기다</div>
             <div class="quote-author">— 넬슨 만델라</div>
@@ -65,9 +66,9 @@
               <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
             </div>
             <div id="ht-todo" style="display:none;">
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">과제 제출 — 자료구조 3주차</span><span class="check-time">23:59</span></div>
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">정보처리기사 기출 20문제</span><span class="check-time">오늘</span></div>
-              <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">교재 구매 — 알고리즘</span><span class="check-time">완료</span></div>
+              <% todolist.forEach(todo => { %>
+                <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text"><%= todo.title %></span><span class="check-time"><%= todo.note %></span></div>
+              <% }) %>
             </div>
           </div>
 
@@ -154,7 +155,21 @@
 	<%- include('../partials/modals/mypage', { user: user }) %>
 
 	<script src="/js/common.js"> </script>
-	<script src="/js/home.js"> </script>
+  <script src="/js/home.js"> </script>
+	<script>
+
+    // (강의 일정 / 할 일) 탭 전환
+    function switchHomeTodo1(tab, btn) {
+      document.getElementById('ht-lecture').style.display = 'none';
+      document.getElementById('ht-todo').style.display    = 'none';
+      // 선택된 tab display 활성화
+      document.getElementById('ht-' + tab).style.display  = 'block';
+
+      btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+
 </body>
 
 </html>
