@@ -80,22 +80,21 @@ async function fetchQnetList() {
 function buildDocuments(apiList, csvMap) {
   let matched = 0;
   let unmatched = 0;
-  const unmatchedNames = [];
 
   const docs = apiList.map(api => {
     const name = api.jmfldnm?.trim();
     const csvData = csvMap[name];
     if (csvData) matched++;
-    else {
-      unmatched++;
-      unmatchedNames.push(name);
-    };
+    else unmatched++;
+
+    const f1 = api.obligfldnm?.trim() || api.qualgbnm?.trim() || '기타';
+    const f2 = api.mdobligfldnm?.trim() || '';
 
     return {
       name,
       jmcd:        api.jmcd?.trim() || '',
-      field1:      api.obligfldnm?.trim() || '미분류',
-      field2:      api.mdobligfldnm?.trim() || '',
+      field1:      f1,
+      field2:      f2 === f1 ? '' : f2,
       seriesName:  api.seriesnm?.trim() || '',
       description: csvData?.['수행직무'] || '',
       careerPath:  csvData?.['진로 및 전망'] || '',
@@ -107,19 +106,6 @@ function buildDocuments(apiList, csvMap) {
   });
 
   console.log(`매칭 완료: ${matched}건 / 매칭 실패: ${unmatched}건`);
-  console.log('매칭 실패 목록 (처음 20개):', unmatchedNames.slice(0, 20));  // ← 추가
-  // buildDocuments 함수에 추가
-const csvNames = Object.keys(csvMap);
-
-// API에 있지만 CSV에 없는 케이스 분석
-unmatchedNames.slice(0, 5).forEach(apiName => {
-  // CSV에서 비슷한 이름 찾기
-  const similar = csvNames.filter(csvName => 
-    csvName.includes(apiName.slice(0, 4)) || 
-    apiName.includes(csvName.slice(0, 4))
-  );
-  console.log(`API: "${apiName}" → CSV 비슷한 이름:`, similar);
-});
   return docs;
 }
 

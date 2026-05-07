@@ -57,27 +57,28 @@
             <div style="flex:1;height:1px;background:var(--border);"></div>
           </div>
 
-          <div class="job-search-box">
-            <div class="job-search-title">자격증 카테고리 검색</div>
-            <div class="job-search-dropdowns">
-              <select id="cert_depth1" class="select-field" style="width:100%;">
+          <!-- 자격증 검색 -->
+          <div class="cert-search-box">
+            <div class="cert-search-title">📌 자격증 카테고리 검색</div>
+            <div class="cert-search-dropdowns">
+              <select id="cert_depth1" class="select-field">
                 <option value="">대분류 선택</option>
               </select>
-              <select id="cert_depth2" class="select-field" style="width:100%;">
+              <select id="cert_depth2" class="select-field">
                 <option value="">중분류 선택</option>
               </select>
-              <select id="cert_depth3" class="select-field" style="width:100%;">
+              <select id="cert_depth3" class="select-field">
                 <option value="">등급 선택</option>
               </select>
             </div>
-            <div id="career-search-meta" class="career-search-meta"></div>
-            <div class="job-search-bottom">
-              <input id="career-search-keyword" class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 백엔드, 데이터 분석)" style="flex:1;">
-              <button id="career-search-btn" class="btn btn-accent">검색</button>
+            <div id="cert-search-meta" class="cert-search-meta"></div>
+            <div class="cert-search-bottom">
+              <input id="cert-search-keyword" class="input-field" placeholder="자격증명, 키워드를 입력하세요 (예: 정보처리, SQL)" style="flex:1;">
+              <button id="cert-search-btn" class="btn btn-accent" style="padding:11px 18px;font-weight:700;white-space:nowrap;">검색</button>
             </div>
           </div>
           <!-- 검색 결과 -->
-          <div id="career-search-results" class="career-search-results" style="display:none;">
+          <div id="cert-search-results" class="career-search-results" style="display:none;">
           <div class="grid-3">
             <div class="card" style="cursor:pointer;" onclick="showCertDetail('정보처리기사')">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">정보처리기사</div><span class="badge badge-blue">IT</span></div>
@@ -108,7 +109,7 @@
             </div>
           </div>
         </div>
-
+        </div>
         <!-- 직무 정보 — PNG 예시 그대로 구현 -->
         <div id="ca-job" style="display:none;">
 

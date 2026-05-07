@@ -208,10 +208,10 @@ async function getCertCategories() {
     const categories = await Certification.find().select('field1 field2 seriesName').lean();
     return categories;
   } catch (error) {
-    
+    console.error('Error fetching certification categories:', error);
+    throw new Error('Failed to fetch certification categories');
   }
 }
-
 
 
 module.exports = {

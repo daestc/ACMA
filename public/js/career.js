@@ -523,6 +523,84 @@ const dropdownModule = {
   },
 };
 
+// 드롭다운 모듈2(자격증 카테고리 옵션 채우기)
+const dropdownModule2 = {
+  async init() {
+    try {
+      const res = await fetch('../career/cert-categories');
+      const categories = (await res.json()) || [];
+      this.setup(categories);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
+  },
+
+  setup(categoriesData) {
+    const depth1Select = document.getElementById('cert_depth1');
+    const depth2Select = document.getElementById('cert_depth2');
+    const depth3Select = document.getElementById('cert_depth3');
+
+    const reset = (select, placeholder) => clearSelect(select, placeholder || '선택');
+
+    // 대분류 채우기
+    const depth1Set = new Set();
+    categoriesData.forEach(cat => { if (cat.field1) depth1Set.add(cat.field1); });
+    reset(depth1Select, '대분류 선택');
+    reset(depth2Select, '중분류 선택');
+    reset(depth3Select, '등급 선택');
+    appendOptions(depth1Select, depth1Set);
+
+    // 대분류 → 중분류
+    depth1Select.addEventListener('change', () => {
+  const sel1 = depth1Select.value;
+  reset(depth2Select, '중분류 선택');
+  reset(depth3Select, '등급 선택');
+  
+  if (!sel1) return;
+  
+  // ✅ 국가전문자격이면 중분류/등급 비활성화
+  if (sel1 === '국가전문자격') {
+    depth2Select.disabled = true;
+    depth3Select.disabled = true;
+    return;
+  }
+  
+  depth2Select.disabled = false;
+  depth3Select.disabled = false;
+  
+  const set = new Set();
+  categoriesData.forEach(cat => {
+    if (cat.field1 === sel1 && cat.field2) set.add(cat.field2);
+  });
+  appendOptions(depth2Select, set);
+});
+
+    // 중분류 → 등급
+    depth2Select.addEventListener('change', () => {
+      const sel1 = depth1Select.value;
+      const sel2 = depth2Select.value;
+      reset(depth3Select, '등급 선택');
+      if (!sel2) return;
+      const set = new Set();
+      categoriesData.forEach(cat => {
+        if (cat.field1 === sel1 && cat.field2 === sel2 && cat.seriesName) set.add(cat.seriesName);
+      });
+      appendOptions(depth3Select, set);
+    });
+
+    // 페이지 로드 시 기본값이 있으면 트리거
+    if (depth1Select.value) {
+      depth1Select.dispatchEvent(new Event('change'));
+      if (depth2Select.value) {
+        depth2Select.dispatchEvent(new Event('change'));
+        if (depth3Select.value) {
+          depth3Select.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+  },
+};
+
 
 // ============ 10. 모달 외부 클릭 닫기 ============
 const modalCloseModule = {
@@ -544,4 +622,5 @@ document.addEventListener('DOMContentLoaded', () => {
   jobModalModule.init();
   searchModule.init();
   dropdownModule.init();
+  dropdownModule2.init();
 });

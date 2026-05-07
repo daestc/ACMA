@@ -74,6 +74,7 @@ const saveCareerDetails = async (req, res) => {
   if (!data) return res.status(404).json({ error: 'Not found' });
   res.json({ success: true, data });
 };
+
 // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
 const getCertCategories = async (req, res) => {
   try {
@@ -84,6 +85,7 @@ const getCertCategories = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch certification categories' });
   }
 };
+
 
 module.exports = {
   getCategories,
