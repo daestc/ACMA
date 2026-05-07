@@ -19,8 +19,34 @@ async function createNewEvent(userId, eventData) {
         isDday: eventData.isDday ?? false,
         color: eventData.color || '#3B82F6',
     });
-
     return newEvent;
 }
 
-module.exports = {getEventsListByUser,createNewEvent};
+//일정 수정
+async function updateEvent(userId, eventId, updateData) {
+  return await CalendarEvent.findOneAndUpdate(
+    {
+      _id: eventId,
+      userId: userId,
+      isDeleted: false,
+    },
+    updateData,
+    { new: true }
+  );
+}
+
+async function deleteEvent(userId,eventId) {
+    return await CalendarEvent.findOneAndUpdate(//isDeleted를 true로 바꾸는 것이므로 update 사용
+        {
+            _id: eventId,
+            userId: userId,
+            isDeleted: false
+        },
+        {
+            isDeleted: true
+        },
+        {new: true}
+    );
+}
+
+module.exports = {getEventsListByUser,createNewEvent,updateEvent,deleteEvent};
