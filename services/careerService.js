@@ -223,7 +223,7 @@ async function searchCertifications(field1, field2, seriesName, keyword){
       query.name = { $regex: keyword, $options: 'i' }; // 이름에 키워드 포함 (대소문자 무시)
     }
     const certs = await Certification.find(query)
-      .select('name jmcd field1 field2 seriesName description careerPath way officialUrl')
+      .select('name jmcd field1 field2 seriesName description careerPath way officialUrl relatedJobs')
       .sort({name: 1}) // 이름순 정렬
       .lean();
     return certs;
@@ -235,10 +235,10 @@ async function searchCertifications(field1, field2, seriesName, keyword){
 
 
 module.exports = {
-  getCategories,
-  searchCareers,
-  getCareerDetails,
-  saveCareerDetails,
-  getCertCategories,
-  searchCertifications
+  getCategories, // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
+  searchCareers, // api 에서 선택한 대분류, 중분류, 소분류에서 검색한 모든 세분류의 직무 이름 가져오기
+  getCareerDetails, // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
+  saveCareerDetails, // 직무 선택하여 db에 저장하기
+  getCertCategories, // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
+  searchCertifications // 분류에 따른 자격증 목록 가져오기
 };

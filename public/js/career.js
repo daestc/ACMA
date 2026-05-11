@@ -178,18 +178,71 @@ function updateJobCertRec() { certRecommendModule.update(); }
 
 // ============ 6. 자격증 모달 모듈 ============
 const certModalModule = {
-  show(name) {
-    const d = certDetailData[name];
-    if (!d) return;
-    document.getElementById('cd-title').textContent    = name;
-    document.getElementById('cd-overview').textContent = d.overview;
-    document.getElementById('cd-prospect').textContent = d.prospect;
-    document.getElementById('cd-duties').innerHTML = d.duties.map(duty => `
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm);">
-        <span style="color:var(--accent);font-weight:800;flex-shrink:0;">✓</span>
-        <span style="font-size:13px;color:var(--text);">${duty}</span>
-      </div>`).join('');
-    document.getElementById('cert-detail-modal').style.display = 'flex';
+  show(name, fallback = {}) {
+    const d = certDetailData[name] || {
+      overview: fallback.overview || fallback.description || '상세 설명이 준비 중입니다.',
+      prospect: fallback.prospect || '진로 및 전망 정보가 준비 중입니다.',
+      duties: fallback.duties || [],
+    };
+
+    const titleEl = document.getElementById('cd-title');
+    const categoryEl = document.getElementById('cd-category');
+    const overviewEl = document.getElementById('cd-overview');
+    const prospectEl = document.getElementById('cd-prospect');
+    const dutiesEl = document.getElementById('cd-duties');
+    const modalEl = document.getElementById('cert-detail-modal');
+
+    if (!titleEl || !overviewEl || !prospectEl || !dutiesEl || !modalEl) return;
+
+    titleEl.textContent = name;
+    if (categoryEl) {
+      const category = [fallback.field1, fallback.field2 || fallback.seriesName].filter(Boolean).join(' · ');
+      categoryEl.textContent = category || '국가기술자격';
+    }
+    overviewEl.textContent = d.overview || '정보 없음';
+    prospectEl.textContent = d.prospect || '정보 없음';
+    this.fillDuties(dutiesEl, d.duties);
+    this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || fallback.relatedJobs || []);
+    modalEl.style.display = 'flex';
+  },
+
+  fillDuties(target, duties) {
+    if (!duties || duties.length === 0) {
+      target.innerHTML = `<span style="font-size:12px;color:var(--text2);">정보 없음</span>`;
+      return;
+    }
+
+    target.innerHTML = duties.map((duty, idx) => `
+      <div class="job-detail-resp-item">
+        <span class="job-detail-resp-num">${idx + 1}.</span>
+        <span>${escapeHtml(duty)}</span>
+      </div>
+    `).join('');
+  },
+
+  fillRelatedJobs(target, arr) {
+    if (!target) return;
+    if (!arr || arr.length === 0) {
+      target.innerHTML = `<span style="font-size:12px;color:var(--text2);">관련 직무 정보가 없습니다.</span>`;
+      return;
+    }
+    target.innerHTML = '';
+    arr.forEach(name => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = name;
+      span.style.cursor = 'pointer';
+      span.addEventListener('click', () => {
+        // 클릭하면 직무 검색 탭으로 이동 후 키워드로 검색
+        switchCareerTab('job', document.querySelector('.tabs .tab-btn[onclick*="job"]') || document.querySelector('.tabs .tab-btn'));
+        const input = document.getElementById('career-search-keyword');
+        if (input) {
+          input.value = name;
+          searchModule.run().catch(err => console.error('Error searching careers from related job tag:', err));
+        }
+      });
+      target.appendChild(span);
+    });
   },
 };
 function showCertDetail(name) { certModalModule.show(name); }
@@ -685,7 +738,7 @@ const certSearchModule = {
     }
 
     list.innerHTML = pageItems.map(item => `
-      <div class="career-result-card" data-jmcd="${escapeHtml(item.jmcd)}">
+      <div class="career-result-card" data-jmcd="${escapeHtml(item.jmcd)}" data-cert-name="${escapeHtml(item.name)}" data-series-name="${escapeHtml(item.seriesName || '')}" data-field1="${escapeHtml(item.field1 || '')}" data-field2="${escapeHtml(item.field2 || '')}" data-description="${escapeHtml(item.description || '')}" data-related-jobs="${escapeHtml((item.relatedJobs || []).join('|'))}">
         <div class="career-result-top">
           <div class="career-result-name">${escapeHtml(item.name)}</div>
           <span class="badge badge-blue">${escapeHtml(item.seriesName || '')}</span>
@@ -744,6 +797,26 @@ const certSearchModule = {
     if (searchBtn) {
       searchBtn.addEventListener('click', () => {
         this.run().catch(err => console.error('Error searching certs:', err));
+      });
+    }
+
+    const list = document.getElementById('cert-search-list');
+    if (list) {
+      list.addEventListener('click', (e) => {
+        const card = e.target.closest('.career-result-card');
+        if (!card) return;
+
+        const name = card.dataset.certName;
+        if (!name) return;
+
+        const relatedJobs = card.dataset.relatedJobs ? card.dataset.relatedJobs.split('|').filter(Boolean) : [];
+        certModalModule.show(name, {
+          description: card.dataset.description,
+          field1: card.dataset.field1,
+          field2: card.dataset.field2,
+          seriesName: card.dataset.seriesName,
+          relatedJobs,
+        });
       });
     }
   },

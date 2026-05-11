@@ -26,36 +26,6 @@
 
         <!-- 자격증 -->
         <div id="ca-cert">
-          <!-- 선택된 직무 기반 자격증 추천 배너 -->
-          <div style="background:linear-gradient(135deg,#eef1fd,#f0f9ff);border:1px solid #c7d2fe;border-radius:var(--radius);padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:16px;">
-            <div style="font-size:28px;">💼</div>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">선택한 직무 기반 추천</div>
-              <div style="font-size:12px;color:var(--text2);">현재 목표 직무: <strong style="color:var(--accent);">백엔드 개발자</strong> · 아래 자격증 취득을 권장합니다</div>
-            </div>
-            <select class="select-field" id="job-select-cert" onchange="updateJobCertRec()" style="font-size:12px;padding:6px 10px;min-width:140px;">
-              <option value="backend">백엔드 개발자</option>
-              <option value="data">데이터 엔지니어</option>
-              <option value="devops">DevOps 엔지니어</option>
-              <option value="frontend">프론트엔드 개발자</option>
-              <option value="security">정보보안 전문가</option>
-            </select>
-          </div>
-
-          <!-- 직무별 추천 자격증 카드 -->
-          <div id="job-cert-rec" style="margin-bottom:24px;">
-            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📌 백엔드 개발자 추천 자격증</div>
-            <div class="grid-3" id="job-cert-cards">
-              <!-- JS로 렌더링 -->
-            </div>
-          </div>
-
-          <!-- 구분선 -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-            <div style="flex:1;height:1px;background:var(--border);"></div>
-            <span style="font-size:12px;color:var(--text3);font-weight:600;">전체 자격증 검색</span>
-            <div style="flex:1;height:1px;background:var(--border);"></div>
-          </div>
 
           <!-- 자격증 검색 -->
           <div class="cert-search-box">
@@ -89,7 +59,35 @@
               <div id="cert-search-pagination" class="career-search-pagination"></div>
             </div>
           </div>
+          <!-- 추천 자격증 라인 -->
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin:24px 0 12px;display:flex;align-items:center;gap:6px;">
+            <span>🎯</span> 추천 자격증
+          </div>
+          <div style="background:linear-gradient(135deg,#eef1fd,#f0f9ff);border:1px solid #c7d2fe;border-radius:var(--radius);padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:16px;">
+            <div style="font-size:28px;">💼</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">선택한 직무 기반 추천</div>
+              <div style="font-size:12px;color:var(--text2);">현재 목표 직무: <strong style="color:var(--accent);">백엔드 개발자</strong> · 아래 자격증 취득을 권장합니다</div>
+            </div>
+            <select class="select-field" id="job-select-cert" onchange="updateJobCertRec()" style="font-size:12px;padding:6px 10px;min-width:140px;">
+              <option value="backend">백엔드 개발자</option>
+              <option value="data">데이터 엔지니어</option>
+              <option value="devops">DevOps 엔지니어</option>
+              <option value="frontend">프론트엔드 개발자</option>
+              <option value="security">정보보안 전문가</option>
+            </select>
+          </div>
+
+          <!-- 직무별 추천 자격증 카드 -->
+          <div id="job-cert-rec" style="margin-bottom:24px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📌 백엔드 개발자 추천 자격증</div>
+            <div class="grid-3" id="job-cert-cards">
+              <!-- JS로 렌더링 -->
+            </div>
+          </div>
         </div>
+        
+        
         <!-- 직무 정보 — PNG 예시 그대로 구현 -->
         <div id="ca-job" style="display:none;">
 
@@ -128,6 +126,7 @@
               <div id="career-search-pagination" class="career-search-pagination"></div>
             </div>
           </div>
+
 
           <!-- 보유 자격증 기반 직무 추천 -->
           <div style="margin-bottom:20px;">
