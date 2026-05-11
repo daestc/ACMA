@@ -202,7 +202,7 @@ const certModalModule = {
       categoryEl.textContent = category || '국가기술자격';
     }
     overviewEl.textContent = fallback.description || d.overview || '정보 없음';
-    if (prospectEl) prospectEl.textContent = fallback.careerPath || d.prospect || '정보 없음';
+    this.fillProspect(prospectEl, fallback.careerPath || d.prospect || '');
     this.fillDuties(dutiesEl, d.duties);
     this.fillWay(wayEl, fallback.way || d.way || '');
     this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || fallback.relatedJobs || []);
@@ -288,6 +288,38 @@ const certModalModule = {
         <div class="job-detail-resp-item">
           <span class="job-detail-resp-num">${idx + 1}.</span>
           <span>${escapeHtml(step)}</span>
+        </div>
+      `).join('');
+      return;
+    }
+
+    target.innerHTML = `
+      <div class="job-detail-resp-item">
+        <span class="job-detail-resp-num">1.</span>
+        <span>${escapeHtml(text)}</span>
+      </div>
+    `;
+  },
+
+  fillProspect(target, prospectText) {
+    if (!target) return;
+    const text = String(prospectText || '').trim();
+    if (!text) {
+      target.innerHTML = `<span style="font-size:12px;color:var(--text2);">진로 및 전망 정보가 없습니다.</span>`;
+      return;
+    }
+
+    // '-'로 구분된 단락 처리
+    const items = text
+      .split('-')
+      .map(item => item.trim())
+      .filter(Boolean);
+
+    if (items.length > 1) {
+      target.innerHTML = items.map((item, idx) => `
+        <div class="job-detail-resp-item">
+          <span class="job-detail-resp-num">${idx + 1}.</span>
+          <span>${escapeHtml(item)}</span>
         </div>
       `).join('');
       return;
