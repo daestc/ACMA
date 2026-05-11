@@ -16,6 +16,7 @@ function switchCalView(view) {
 let currentDate = new Date();
 let events = [];
 let timetables = [];
+let selectedDateStr = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCalendarData();
@@ -33,21 +34,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCalendar();
   });
 
+  document.getElementById('delete-event-btn').addEventListener('click', deleteEvent);
+
   const openEventFormBtn = document.getElementById('open-event-form-btn');
   const closeEventFormBtn = document.getElementById('close-event-form-btn');
   const eventModal = document.getElementById('event-modal');
   const eventForm = document.getElementById('event-form');
 
   openEventFormBtn.addEventListener('click', () => {
-    eventModal.style.display = 'flex';
+    closeEventModal(); // 기존 값 초기화
+    eventModal.style.display = 'flex'; // 모달 열기
   });
 
-  closeEventFormBtn.addEventListener('click', () => {
-    eventModal.style.display = 'none';
-    eventForm.reset();
-  });
+  closeEventFormBtn.addEventListener('click', closeEventModal);
 
   eventForm.addEventListener('submit', createEvent);
+
+  document.getElementById('delete-event-btn').addEventListener('click', deleteEvent);
 });
 
 function switchCalView(view) {
@@ -109,14 +112,15 @@ function renderCalendar() {
     });
 
     grid.innerHTML += `
-      <div class="cal-day">
+      <div class="cal-day" onclick="selectDate('${dateStr}')">
         <div class="day-num">${date}</div>
         <div class="day-events">
           ${dayEvents.map(event => `
             <span 
               class="event-dot"
-              title="${event.title}"
+              title="${event.title}&#10;${event.description || ''}&#10;${formatEventDate(event)}"
               style="background:${event.color || '#3B82F6'}"
+              onclick="event.stopPropagation(); openEventDetail('${event._id}')"
             ></span>
           `).join('')}
        </div>
@@ -171,9 +175,11 @@ function findTimetableByTime(dayOfWeek, hour) {
 function formatDate(year, month, date) {
   return `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
 }
-
+//일정 생성
 async function createEvent(e) {
   e.preventDefault();
+
+  const eventId = document.getElementById('event-id').value;
 
   const eventData = {
     title: document.getElementById('event-title').value,
@@ -186,8 +192,11 @@ async function createEvent(e) {
     isDday: false
   };
 
-  const res = await fetch('/calendar/events', {
-    method: 'POST',
+  const url = eventId ? `/calendar/events/${eventId}` : '/calendar/events';
+  const method = eventId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
     headers: {
       'Content-Type': 'application/json'
     },
@@ -195,13 +204,128 @@ async function createEvent(e) {
   });
 
   if (!res.ok) {
-    alert('일정 저장 실패');
+    alert(eventId ? '일정 수정 실패' : '일정 저장 실패');
     return;
   }
 
-  document.getElementById('event-modal').style.display = 'none';
-  document.getElementById('event-form').reset();
+  closeEventModal();
 
   await loadCalendarData();
   renderCalendar();
+
+  if (selectedDateStr) {
+    selectDate(selectedDateStr);
+  }
+}
+
+// 일정 선택
+function selectDate(dateStr) {
+  selectedDateStr = dateStr;
+
+  const panel = document.getElementById('selected-day-panel');
+  const title = document.getElementById('selected-day-title');
+  const list = document.getElementById('selected-day-events');
+
+  const dayEvents = getEventsByDate(dateStr);
+
+  panel.style.display = 'block';
+  title.textContent = `${dateStr} 일정`;
+
+  if (dayEvents.length === 0) {
+    list.innerHTML = `<p>등록된 일정이 없습니다.</p>`;
+    return;
+  }
+
+  list.innerHTML = dayEvents.map(event => `
+    <div class="selected-event-item" onclick="openEventDetail('${event._id}')">
+      <span class="selected-event-dot" style="background:${event.color || '#3B82F6'}"></span>
+      <span>${event.title}</span>
+    </div>
+  `).join('');
+}
+
+//일정 확인
+function getEventsByDate(dateStr) {
+  return events.filter(event => {
+    const eventDate = new Date(event.startDate);
+    const eventDateStr = formatDate(
+      eventDate.getFullYear(),
+      eventDate.getMonth() + 1,
+      eventDate.getDate()
+    );
+
+    return eventDateStr === dateStr;
+  });
+}
+
+//기존 모달에 값채우기
+function openEventDetail(eventId) {
+  const event = events.find(item => item._id === eventId);
+  if (!event) return;
+
+  document.getElementById('event-modal-title').textContent = '일정 상세 / 수정';
+
+  document.getElementById('event-id').value = event._id;
+  document.getElementById('event-title').value = event.title;
+  document.getElementById('event-description').value = event.description || '';
+  document.getElementById('event-start-date').value = toInputDate(event.startDate);
+  document.getElementById('event-end-date').value = toInputDate(event.endDate || event.startDate);
+  document.getElementById('event-category').value = event.category || 'personal';
+  document.getElementById('event-color').value = event.color || '#3B82F6';
+
+  document.getElementById('delete-event-btn').style.display = 'inline-block';
+  document.getElementById('event-modal').style.display = 'flex';
+}
+
+function toInputDate(dateValue) {
+  const date = new Date(dateValue);
+  return formatDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+async function deleteEvent() {
+  const eventId = document.getElementById('event-id').value;
+
+  if (!eventId) return;
+
+  if (!confirm('이 일정을 삭제할까요?')) {
+    return;
+  }
+
+  const res = await fetch(`/calendar/events/${eventId}`, {
+    method: 'DELETE'
+  });
+
+  if (!res.ok) {
+    alert('일정 삭제 실패');
+    return;
+  }
+
+  closeEventModal();
+
+  await loadCalendarData();
+  renderCalendar();
+
+  if (selectedDateStr) {
+    selectDate(selectedDateStr);
+  }
+}
+
+function closeEventModal() {
+  document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('event-form').reset();
+
+  document.getElementById('event-id').value = '';
+  document.getElementById('event-modal-title').textContent = '일정 추가';
+  document.getElementById('delete-event-btn').style.display = 'none';
+}
+
+function formatEventDate(event) {
+  const start = toInputDate(event.startDate);
+  const end = toInputDate(event.endDate || event.startDate);
+
+  if (start === end) {
+    return start;
+  }
+
+  return `${start} ~ ${end}`;
 }

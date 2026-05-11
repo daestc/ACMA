@@ -50,6 +50,26 @@
     padding: 8px;
     margin-top: 4px;
   }
+  <!--일정 확인, 수정, 삭제 css-->
+  .selected-day-panel {
+    margin-top: 20px;
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .selected-event-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+
+  .selected-event-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
 </style>
 <body>
 
@@ -80,6 +100,10 @@
           </div>
 
           <div id="calendar-grid" class="cal-grid"></div>
+          <div id="selected-day-panel" class="selected-day-panel" style="display:none;">
+            <h3 id="selected-day-title"></h3>
+            <div id="selected-day-events"></div>
+          </div>
         </div>
       </div>
 
@@ -100,9 +124,10 @@
   <!--일정 추가-->
   <div id="event-modal" class="event-modal" style="display:none;">
     <div class="event-modal-content">
-      <h3>일정 추가</h3>
+      <h3 id="event-modal-title">일정 추가</h3>
 
       <form id="event-form">
+        <input type="hidden" id="event-id">
         <label>
           제목
           <input type="text" id="event-title" required>
@@ -143,6 +168,7 @@
 
         <div style="display:flex; gap:8px; margin-top:16px;">
           <button type="submit" class="btn btn-accent btn-sm">저장</button>
+          <button type="button" id="delete-event-btn" class="btn btn-sm" style="display:none;">삭제</button>
           <button type="button" id="close-event-form-btn" class="btn btn-sm">취소</button>
         </div>
       </form>
