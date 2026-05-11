@@ -32,6 +32,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar();
   });
+
+  const openEventFormBtn = document.getElementById('open-event-form-btn');
+  const closeEventFormBtn = document.getElementById('close-event-form-btn');
+  const eventModal = document.getElementById('event-modal');
+  const eventForm = document.getElementById('event-form');
+
+  openEventFormBtn.addEventListener('click', () => {
+    eventModal.style.display = 'flex';
+  });
+
+  closeEventFormBtn.addEventListener('click', () => {
+    eventModal.style.display = 'none';
+    eventForm.reset();
+  });
+
+  eventForm.addEventListener('submit', createEvent);
 });
 
 function switchCalView(view) {
@@ -154,4 +170,38 @@ function findTimetableByTime(dayOfWeek, hour) {
 
 function formatDate(year, month, date) {
   return `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+}
+
+async function createEvent(e) {
+  e.preventDefault();
+
+  const eventData = {
+    title: document.getElementById('event-title').value,
+    description: document.getElementById('event-description').value,
+    startDate: document.getElementById('event-start-date').value,
+    endDate: document.getElementById('event-end-date').value || document.getElementById('event-start-date').value,
+    category: document.getElementById('event-category').value,
+    color: document.getElementById('event-color').value,
+    isAllDay: true,
+    isDday: false
+  };
+
+  const res = await fetch('/calendar/events', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(eventData)
+  });
+
+  if (!res.ok) {
+    alert('일정 저장 실패');
+    return;
+  }
+
+  document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('event-form').reset();
+
+  await loadCalendarData();
+  renderCalendar();
 }
