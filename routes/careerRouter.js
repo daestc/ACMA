@@ -36,7 +36,8 @@ router.post('/save/:jobCode', careerController.saveCareerDetails);
 router.get('/cert-categories', careerController.getCertCategories);
 // 분류에 따른 자격증 목록 가져오기
 router.get('/search-cert', careerController.searchCertifications);
-
+// 자격증 선택 저장
+router.post('/save-cert', careerController.saveCertification);
 
 
 module.exports = router;

@@ -110,42 +110,6 @@ const passRateSchema = new Schema(
 // 최신 합격률부터 보여주기 위한 복합 인덱스
 passRateSchema.index({ certificationId: 1, year: -1, examType: 1 });
 
-/**
- * [exam_schedules] 컬렉션
- * 외부 API에서 가져온 오피셜 시험 일정
- */
-const examScheduleSchema = new Schema(
-  {
-    certificationId: { type: Schema.Types.ObjectId, ref: 'Certification', required: true },
-    
-    examYear: { type: Number, required: true },    // 시행 년도
-    session: { type: String, required: true },     // 회차 (예: "2025년 정기 기사 1회")
-    
-    // 필기 일정
-    writtenExam: {
-      regStartDate: { type: Date }, // 접수 시작일
-      regEndDate: { type: Date },   // 접수 마감일
-      startExamDate: { type: Date },     // 시험일
-      ednExamDate: { type: Date },       // 시험 종료일 (필요 시)
-      resultDate: { type: Date }    // 합격자 발표일
-    },
-    // 실기 일정
-    practicalExam: {
-      regStartDate: { type: Date },
-      regEndDate: { type: Date },
-      startExamDate: { type: Date },
-      endExamDate: { type: Date },
-      resultDate: { type: Date }
-    },
-
-    lastUpdated: { type: Date, default: Date.now } // API 동기화 시점
-  },
-  { timestamps: true }
-);
-
-// 특정 자격증의 최신 일정을 찾기 위한 인덱스
-examScheduleSchema.index({ certificationId: 1, examYear: -1 });
-
 // 직무 검색용 카테고리 정보 스키마
 const jobSearchSchema = new Schema(
   {
@@ -217,6 +181,5 @@ module.exports = {
   UserCertification: mongoose.model('UserCertification', userCertificationSchema),
   Job: mongoose.model('Job', jobSchema),
   PassRate: mongoose.model('PassRate', passRateSchema),
-  ExamSchedule: mongoose.model('ExamSchedule', examScheduleSchema),
   JobSearch: mongoose.model('JobSearch', jobSearchSchema)
 };

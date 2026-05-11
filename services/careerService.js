@@ -1,7 +1,9 @@
 const {JobSearch} = require('../models/Certifications_jobs');
 const {Job} = require('../models/Certifications_jobs');
 const { parseStringPromise } = require('xml2js');
-const { Certification } = require('../models/Certifications_jobs');
+const { Certification, UserCertification } = require('../models/Certifications_jobs');
+const { User } = require('../models/Certifications_jobs');
+const mongoose = require('mongoose');
 
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 async function getCategories() {
@@ -231,6 +233,66 @@ async function searchCertifications(field1, field2, seriesName, keyword){
     console.error('Error searching certifications:', error);
     throw new Error('Failed to search certifications');
   }
+}
+
+// 자격증 선택하여 DB에 저장하기 (사용자 자격증 목표 추가)
+async function saveCertification(jmcd, userId) {
+  try {
+    // 1. jmcd로 자격증 조회
+    const cert = await Certification.findOne({ jmcd }).lean();
+    if (!cert) {
+      console.error('Certification not found for jmcd:', jmcd);
+      return null;
+    }
+
+    // 2. userId를 MongoDB ObjectId로 변환 (또는 email로 조회)
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      // email로 조회
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    
+    if (!userDoc) {
+      console.error('User not found for userId:', userId);
+      return null;
+    }
+
+    const userId_ObjectId = userDoc._id;
+
+    // 3. 중복 체크: 이미 저장된 자격증인지 확인
+    const existingUserCert = await UserCertification.findOne({
+      userId: userId_ObjectId,
+      certificationId: cert._id,
+      status: 'target'
+    });
+
+    if (existingUserCert) {
+      // 이미 저장되어 있으면 그대로 반환
+      return existingUserCert;
+    }
+
+    // 4. 새로운 UserCertification 생성
+    const userCertification = await UserCertification.create({
+      userId: userId_ObjectId,
+      certificationId: cert._id,
+      status: 'target',
+      progress: 0,
+      memo: '',
+      isVisible: true
+    });
+
+    // 5. 저장된 문서 반환 (populate을 통해 자격증 정보도 포함)
+    const savedUserCert = await UserCertification.findById(userCertification._id)
+      .populate('certificationId', 'name jmcd field1 field2 seriesName')
+      .populate('userId', 'name email');
+
+    return savedUserCert;
+  } catch (error) {
+    console.error('Error saving certification:', error);
+    throw error;
+  }
 } 
 
 
@@ -240,5 +302,6 @@ module.exports = {
   getCareerDetails, // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
   saveCareerDetails, // 직무 선택하여 db에 저장하기
   getCertCategories, // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
-  searchCertifications // 분류에 따른 자격증 목록 가져오기
+  searchCertifications, // 분류에 따른 자격증 목록 가져오기
+  saveCertification // 자격증 선택하여 db에 저장하기
 };

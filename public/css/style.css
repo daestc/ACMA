@@ -543,18 +543,18 @@ input,select,textarea{font-family:inherit;}
 .job-detail-resp-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .job-detail-resp-item {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--bg3);
   border-radius: var(--radius-sm);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.45;
   color: var(--text2);
 }
 

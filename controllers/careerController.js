@@ -96,6 +96,30 @@ const searchCertifications = async (req, res) => {
     res.status(500).json({ error: 'Failed to search certifications' });
   }
 };
+// 자격증 선택 저장
+const saveCertification = async (req, res) => {
+  try {
+    const { jmcd, name } = req.body;
+    if (!jmcd || !name) {
+      return res.status(400).json({ error: 'jmcd and name are required' });
+    }
+    
+    // 사용자 인증 확인
+    if (!req.user || (!req.user._id && !req.user.email)) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const userId = req.user._id || req.user.email;
+    const userCert = await careerService.saveCertification(jmcd, userId);
+    if (!userCert) {
+      return res.status(404).json({ error: 'Certification not found' });
+    }
+    res.json({ success: true, message: '자격증이 저장되었습니다.', data: userCert });
+  } catch (error) {
+    console.error('Error saving certification:', error);
+    res.status(500).json({ error: 'Failed to save certification' });
+  }
+};
 
 
 module.exports = {
@@ -104,5 +128,6 @@ module.exports = {
   getCareerDetails,
   saveCareerDetails,
   getCertCategories,
-  searchCertifications
+  searchCertifications,
+  saveCertification
 };

@@ -180,8 +180,9 @@ function updateJobCertRec() { certRecommendModule.update(); }
 const certModalModule = {
   show(name, fallback = {}) {
     const d = certDetailData[name] || {
-      overview: fallback.overview || fallback.description || '상세 설명이 준비 중입니다.',
-      prospect: fallback.prospect || '진로 및 전망 정보가 준비 중입니다.',
+      overview: fallback.description || '상세 설명이 준비 중입니다.',
+      prospect: fallback.careerPath || '진로 및 전망 정보가 준비 중입니다.',
+      way: fallback.way || '',
       duties: fallback.duties || [],
     };
 
@@ -190,23 +191,70 @@ const certModalModule = {
     const overviewEl = document.getElementById('cd-overview');
     const prospectEl = document.getElementById('cd-prospect');
     const dutiesEl = document.getElementById('cd-duties');
+    const wayEl = document.getElementById('cd-way');
     const modalEl = document.getElementById('cert-detail-modal');
 
-    if (!titleEl || !overviewEl || !prospectEl || !dutiesEl || !modalEl) return;
+    if (!titleEl || !overviewEl || !modalEl) return;
 
     titleEl.textContent = name;
     if (categoryEl) {
       const category = [fallback.field1, fallback.field2 || fallback.seriesName].filter(Boolean).join(' · ');
       categoryEl.textContent = category || '국가기술자격';
     }
-    overviewEl.textContent = d.overview || '정보 없음';
-    prospectEl.textContent = d.prospect || '정보 없음';
+    overviewEl.textContent = fallback.description || d.overview || '정보 없음';
+    if (prospectEl) prospectEl.textContent = fallback.careerPath || d.prospect || '정보 없음';
     this.fillDuties(dutiesEl, d.duties);
+    this.fillWay(wayEl, fallback.way || d.way || '');
     this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || fallback.relatedJobs || []);
+
+    // store identifiers on modal for save action
+    modalEl.dataset.jmcd = fallback.jmcd || '';
+
+    // Q-net link
+    const qnetLink = document.getElementById('cd-qnet-link');
+    if (qnetLink) {
+      const url = fallback.officialUrl || d.officialUrl || '';
+      if (url) {
+        qnetLink.href = url;
+        qnetLink.style.display = 'inline-flex';
+      } else {
+        qnetLink.style.display = 'none';
+      }
+    }
+
     modalEl.style.display = 'flex';
   },
 
+  init() {
+    const saveBtn = document.getElementById('cd-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const modal = document.getElementById('cert-detail-modal');
+        if (!modal) return;
+        const jmcd = modal.dataset.jmcd;
+        const name = document.getElementById('cd-title')?.textContent || '';
+        try {
+          const res = await fetch('/career/save-cert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jmcd, name })
+          });
+          const result = await res.json();
+          if (res.ok && result.success) {
+            alert('자격증이 저장되었습니다.');
+          } else {
+            alert(result.error || '저장에 실패했습니다.');
+          }
+        } catch (err) {
+          console.error('자격증 저장 실패:', err);
+          alert('저장 중 오류가 발생했습니다.');
+        }
+      });
+    }
+  },
+
   fillDuties(target, duties) {
+    if (!target) return;
     if (!duties || duties.length === 0) {
       target.innerHTML = `<span style="font-size:12px;color:var(--text2);">정보 없음</span>`;
       return;
@@ -218,6 +266,39 @@ const certModalModule = {
         <span>${escapeHtml(duty)}</span>
       </div>
     `).join('');
+  },
+
+  fillWay(target, wayText) {
+    if (!target) return;
+    const text = String(wayText || '').trim();
+    if (!text) {
+      target.innerHTML = `<span style="font-size:12px;color:var(--text2);">취득 방법 정보가 없습니다.</span>`;
+      return;
+    }
+
+    const steps = text
+      .replace(/\r\n/g, '\n')
+      .split(/(?=①|②|③|④|⑤|⑥|⑦|⑧|⑨|⑩|\n)/)
+      .map(step => step.trim())
+      .map(step => step.replace(/^\n+|\n+$/g, ''))
+      .filter(Boolean);
+
+    if (steps.length > 1) {
+      target.innerHTML = steps.map((step, idx) => `
+        <div class="job-detail-resp-item">
+          <span class="job-detail-resp-num">${idx + 1}.</span>
+          <span>${escapeHtml(step)}</span>
+        </div>
+      `).join('');
+      return;
+    }
+
+    target.innerHTML = `
+      <div class="job-detail-resp-item">
+        <span class="job-detail-resp-num">1.</span>
+        <span>${escapeHtml(text)}</span>
+      </div>
+    `;
   },
 
   fillRelatedJobs(target, arr) {
@@ -738,13 +819,12 @@ const certSearchModule = {
     }
 
     list.innerHTML = pageItems.map(item => `
-      <div class="career-result-card" data-jmcd="${escapeHtml(item.jmcd)}" data-cert-name="${escapeHtml(item.name)}" data-series-name="${escapeHtml(item.seriesName || '')}" data-field1="${escapeHtml(item.field1 || '')}" data-field2="${escapeHtml(item.field2 || '')}" data-description="${escapeHtml(item.description || '')}" data-related-jobs="${escapeHtml((item.relatedJobs || []).join('|'))}">
+      <div class="career-result-card" data-jmcd="${escapeHtml(item.jmcd)}" data-official-url="${escapeHtml(item.officialUrl || '')}" data-way="${escapeHtml(item.way || '')}" data-career-path="${escapeHtml(item.careerPath || '')}" data-cert-name="${escapeHtml(item.name)}" data-series-name="${escapeHtml(item.seriesName || '')}" data-field1="${escapeHtml(item.field1 || '')}" data-field2="${escapeHtml(item.field2 || '')}" data-description="${escapeHtml(item.description || '')}" data-related-jobs="${escapeHtml((item.relatedJobs || []).join('|'))}">  
         <div class="career-result-top">
           <div class="career-result-name">${escapeHtml(item.name)}</div>
           <span class="badge badge-blue">${escapeHtml(item.seriesName || '')}</span>
         </div>
         <div class="career-result-code">${escapeHtml(item.field1)} ${item.field2 ? `> ${escapeHtml(item.field2)}` : ''}</div>
-        <div class="career-result-desc">${escapeHtml(item.description || '상세 설명이 없습니다.')}</div>
       </div>
     `).join('');
 
@@ -811,7 +891,11 @@ const certSearchModule = {
 
         const relatedJobs = card.dataset.relatedJobs ? card.dataset.relatedJobs.split('|').filter(Boolean) : [];
         certModalModule.show(name, {
+          jmcd: card.dataset.jmcd,
+          officialUrl: card.dataset.officialUrl,
+          way: card.dataset.way,
           description: card.dataset.description,
+          careerPath: card.dataset.careerPath,
           field1: card.dataset.field1,
           field2: card.dataset.field2,
           seriesName: card.dataset.seriesName,
@@ -827,6 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
   modalCloseModule.init();
   certRecommendModule.update();
   jobModalModule.init();
+  certModalModule.init();
   searchModule.init();
   dropdownModule.init();
   dropdownModule2.init();
