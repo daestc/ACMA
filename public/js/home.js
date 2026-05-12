@@ -14,24 +14,25 @@ function switchHomeTodo(tab, btn) {
 }
 
 // ── 모달 열기 / 닫기 ─────────────────────────────
-function openTodoModal(defaultTab = 'lecture') {
+function openTodoModal(defaultTab = 'todo') {
   const overlay = document.getElementById('todo-add-modal-overlay');
   overlay.style.display = 'flex';
-  switchModalTab(defaultTab);
 
-  // 현재 선택된 탭 확인 후 맞는 탭으로 열기
-  const activeTab = document.querySelector('#ht-lecture').style.display !== 'none'
-    ? 'lecture' : 'todo';
-  switchModalTab(activeTab);
+  // todo모달 스타일
+  document.getElementById('modal-form-todo').style.display = 'block';
+
+  const todoBtn = document.getElementById('modal-tab-todo');
+
+  todoBtn.style.cssText = `flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:'700';
+    transition:all .2s;background:var(--accent);
+    color:'white';cursor:pointer;`;
 
   // 입력창 초기화
   clearModalInputs();
 
   // 입력창 포커스
   setTimeout(() => {
-    const input = defaultTab === 'lecture'
-      ? document.getElementById('lecture-name')
-      : document.getElementById('todo-content');
+    const input = document.getElementById('todo-content');
     if (input) input.focus();
   }, 100);
 }
@@ -42,86 +43,16 @@ function closeTodoModal() {
 }
 
 function clearModalInputs() {
-  document.getElementById('lecture-name').value  = '';
-  document.getElementById('lecture-start').value = '09:00';
-  document.getElementById('lecture-end').value   = '10:30';
-  document.getElementById('lecture-room').value  = '';
   document.getElementById('todo-content').value  = '';
   document.getElementById('todo-deadline').value = '';
 }
 
-// ── 모달 탭 전환 ──────────────────────────────────
-function switchModalTab(tab) {
-  const isLecture = tab === 'lecture';
-
-  // 폼 전환
-  document.getElementById('modal-form-lecture').style.display = isLecture ? 'block' : 'none';
-  document.getElementById('modal-form-todo').style.display    = isLecture ? 'none'  : 'block';
-
-  // 탭 버튼 스타일 전환
-  const lectureBtn = document.getElementById('modal-tab-lecture');
-  const todoBtn    = document.getElementById('modal-tab-todo');
-
-  lectureBtn.style.cssText = `flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:700;
-    transition:all .2s;background:${isLecture ? 'var(--accent)' : 'transparent'};
-    color:${isLecture ? 'white' : 'var(--text2)'};cursor:pointer;`;
-
-  todoBtn.style.cssText = `flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:${isLecture ? '600' : '700'};
-    transition:all .2s;background:${isLecture ? 'transparent' : 'var(--accent)'};
-    color:${isLecture ? 'var(--text2)' : 'white'};cursor:pointer;`;
-}
-
-// ── 항목 추가 확인 ────────────────────────────────
-function confirmAddTodo() {
-  const isLecture = document.getElementById('modal-form-lecture').style.display !== 'none';
-
-  if (isLecture) {
-    addLectureItem();
-  } else {
-    addTodoItem();
-  }
-}
-
-// ── 강의 일정 추가 ────────────────────────────────
-function addLectureItem() {
-  const name  = document.getElementById('lecture-name').value.trim();
-  const start = document.getElementById('lecture-start').value;
-  const end   = document.getElementById('lecture-end').value;
-  const room  = document.getElementById('lecture-room').value.trim();
-
-  if (!name) {
-    document.getElementById('lecture-name').focus();
-    document.getElementById('lecture-name').style.borderColor = 'var(--red)';
-    setTimeout(() => {
-      document.getElementById('lecture-name').style.borderColor = '';
-    }, 1500);
-    return;
-  }
-
-  // 화면에 항목 추가
-  const list = document.getElementById('ht-lecture');
-  const item = document.createElement('div');
-  item.className = 'check-item';
-  item.innerHTML = `
-    <div class="check-box" onclick="toggleCheck(this)"></div>
-    <span class="check-text">${name} (${start} ~ ${end})${room ? ' · ' + room : ''}</span>
-    <span class="check-time">예정</span>`;
-  list.appendChild(item);
-
-  // TODO: POST /api/calendar/checklist API 호출
-  // await fetch('/api/calendar/checklist', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ content: name, startTime: start, endTime: end, itemType: 'lecture' })
-  // });
-
-  closeTodoModal();
-}
-
 // ── 할 일 추가 ────────────────────────────────────
-function addTodoItem() {
+async function addTodoItem() {
   const content  = document.getElementById('todo-content').value.trim();
-  const deadline = document.getElementById('todo-deadline').value;
+  const note = document.getElementById('todo-deadline').value;
 
+  // 제목입력이 없으면 경고표시
   if (!content) {
     document.getElementById('todo-content').focus();
     document.getElementById('todo-content').style.borderColor = 'var(--red)';
@@ -131,21 +62,32 @@ function addTodoItem() {
     return;
   }
 
-  // 화면에 항목 추가
-  const list = document.getElementById('ht-todo');
-  const item = document.createElement('div');
-  item.className = 'check-item';
-  item.innerHTML = `
-    <div class="check-box" onclick="toggleCheck(this)"></div>
-    <span class="check-text">${content}</span>
-    <span class="check-time">${deadline || '오늘'}</span>`;
-  list.appendChild(item);
+  // DB에 todo 추가
+  const response = await fetch('/user/addTodo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, note })
+  });
 
-  // TODO: POST /api/calendar/checklist API 호출
-  // await fetch('/api/calendar/checklist', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ content, deadline, itemType: 'todo' })
-  // });
+  const result = await response.json();
+  // DB에 성공적으로 저장하면 화면에 표시
+  if(result.success) {
+    // 화면에 항목 추가
+    const list = document.getElementById('ht-todo');
+
+    // 예시문구 삭제
+    const placeholder = list.querySelector('.todo-exam');
+    if(placeholder) placeholder.remove();
+
+    const item = document.createElement('div');
+    item.className = 'check-item';
+    item.innerHTML = `
+      <div class="check-box" onclick="toggleCheck(this)"></div>
+      <span class="check-text">${content}</span>
+      <span class="check-time">${note || '오늘'}</span>`;
+    // 마지막 자식 앞에 추가
+    list.insertBefore(item, list.lastElementChild);
+  }
 
   closeTodoModal();
 }

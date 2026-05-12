@@ -2,7 +2,7 @@ const userService = require('../services/userService');
 
 const user = {
   name: '가나다',
-  email: 'abc@naver.com',
+  email: 'abc@test.com',
   major: '컴공1',
   todolist: [
     {
@@ -14,5 +14,20 @@ const user = {
 
 };
 
+const addTodo = async (req, res) => {
+  try {
+    const {content, note} = req.body;
+    await userService.addTodo(user.email, content, note);
+    
+    console.log('todo 추가 완료!')
 
-module.exports = {};
+    // success가 없으면 화면에 표시 X
+    res.json({success: true});
+  } catch (error) {
+    console.error(error.message);
+    res.json({success: false});
+  }
+
+} // addTodo()
+
+module.exports = {addTodo};

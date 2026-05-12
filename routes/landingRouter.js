@@ -12,10 +12,11 @@ function requireLogin(req, res, next) {
   // TODO: JWT 검증 후 req.user 세팅
   // 현재는 더미 유저로 통과
   req.user = {
-    name: '김민준',
-    major: '컴퓨터공학과',
-    grade: 3,
-    email: 'minkim@korea.ac.kr',
+    name: '가나다',
+    major: '컴공',
+    grade: 4,
+    email: 'abc@test.com',
+    password: "1234qwer"
   };
   next();
 }

@@ -47,4 +47,22 @@ async function getTodolist(userEmail, dayDate) {
   return todolist;
 } // getTodolist()
 
-module.exports = {getTodayTodolist};
+// todo 항목 추가
+async function addTodo(userEmail, content, note) {
+  // 유저 id가 있으면 findOne 생략 후 바로 findByIdAndUpdate()
+  const user = await User.findOne({email: userEmail});
+  if(!user) throw new Error('유저를 찾을 수 없습니다');
+  
+  await User.findByIdAndUpdate(user._id, 
+    {
+      $push: {
+        todolist: {
+          title: content,
+          note
+        }
+      }
+    }
+  );
+} // addTodo()
+
+module.exports = {getTodayTodolist, getTodolist, addTodo};

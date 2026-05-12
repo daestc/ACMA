@@ -66,9 +66,13 @@
               <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
             </div>
             <div id="ht-todo" style="display:none;">
-              <% todolist.forEach(todo => { %>
-                <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text"><%= todo.title %></span><span class="check-time"><%= todo.note %></span></div>
-              <% }) %>
+              <% if(!todolist || todolist.length === 0) { %>
+                <div class="check-item todo-exam"><span class="check-text">오늘의 할 일을 추가하세요</span></div>
+              <% } else { %>
+                <% todolist.forEach(todo => { %>
+                  <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text"><%= todo.title %></span><span class="check-time"><%= todo.note %></span></div>
+                <% }) %>
+              <% } %>
               <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">+ 추가</span>
             </div>
           </div>
@@ -159,17 +163,6 @@
 	<script src="/js/common.js"> </script>
   <script src="/js/home.js"> </script>
 	<script>
-
-    // (강의 일정 / 할 일) 탭 전환
-    function switchHomeTodo1(tab, btn) {
-      document.getElementById('ht-lecture').style.display = 'none';
-      document.getElementById('ht-todo').style.display    = 'none';
-      // 선택된 tab display 활성화
-      document.getElementById('ht-' + tab).style.display  = 'block';
-
-      btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
 
   </script>
 
