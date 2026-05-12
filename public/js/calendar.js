@@ -35,11 +35,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('delete-event-btn').addEventListener('click', deleteEvent);
-
   const openEventFormBtn = document.getElementById('open-event-form-btn');
   const closeEventFormBtn = document.getElementById('close-event-form-btn');
   const eventModal = document.getElementById('event-modal');
   const eventForm = document.getElementById('event-form');
+  const allDayCheckbox = document.getElementById('event-all-day');
+  const endDateInput = document.getElementById('event-end-date');
+
+  allDayCheckbox.addEventListener('change', toggleTimeFields);
+  toggleTimeFields();
 
   openEventFormBtn.addEventListener('click', () => {
     closeEventModal(); // 기존 값 초기화
@@ -50,18 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   eventForm.addEventListener('submit', createEvent);
 
-  document.getElementById('delete-event-btn').addEventListener('click', deleteEvent);
 });
-
-function switchCalView(view) {
-  const isMonth = view === 'month';
-
-  document.getElementById('cal-month-view').style.display = isMonth ? 'block' : 'none';
-  document.getElementById('cal-week-view').style.display = isMonth ? 'none' : 'block';
-
-  document.getElementById('cal-tab-month').classList.toggle('active', isMonth);
-  document.getElementById('cal-tab-week').classList.toggle('active', !isMonth);
-}
 
 async function loadCalendarData() {
   const [eventRes, timetableRes] = await Promise.all([
@@ -181,15 +174,26 @@ async function createEvent(e) {
 
   const eventId = document.getElementById('event-id').value;
 
+  const isAllDay = document.getElementById('event-all-day').checked;
+
+  const startDate = document.getElementById('event-start-date').value;
+  const endDate = document.getElementById('event-end-date').value || startDate;
+
+  const startTime = document.getElementById('event-start-time').value || '00:00';
+  const endTime = document.getElementById('event-end-time').value || '23:59';
+
+  const startDateTime = isAllDay ? startDate : `${startDate}T${startTime}`;
+  const endDateTime = isAllDay ? endDate : `${endDate}T${endTime}`;
+
   const eventData = {
     title: document.getElementById('event-title').value,
     description: document.getElementById('event-description').value,
-    startDate: document.getElementById('event-start-date').value,
-    endDate: document.getElementById('event-end-date').value || document.getElementById('event-start-date').value,
+    startDate: startDateTime,
+    endDate: endDateTime,
     category: document.getElementById('event-category').value,
     color: document.getElementById('event-color').value,
-    isAllDay: true,
-    isDday: false
+    isAllDay: isAllDay,
+    isDday: document.getElementById('event-dday').checked
   };
 
   const url = eventId ? `/calendar/events/${eventId}` : '/calendar/events';
@@ -272,9 +276,24 @@ function openEventDetail(eventId) {
   document.getElementById('event-end-date').value = toInputDate(event.endDate || event.startDate);
   document.getElementById('event-category').value = event.category || 'personal';
   document.getElementById('event-color').value = event.color || '#3B82F6';
+  document.getElementById('event-all-day').checked = event.isAllDay ?? true;
+  document.getElementById('event-dday').checked = event.isDday ?? false;
 
   document.getElementById('delete-event-btn').style.display = 'inline-block';
   document.getElementById('event-modal').style.display = 'flex';
+
+  document.getElementById('event-all-day').checked = event.isAllDay ?? true;
+  document.getElementById('event-dday').checked = event.isDday ?? false;
+
+  if (!event.isAllDay) {
+    document.getElementById('event-start-time').value = toInputTime(event.startDate);
+   document.getElementById('event-end-time').value = toInputTime(event.endDate || event.startDate);
+  } else {
+    document.getElementById('event-start-time').value = '';
+    document.getElementById('event-end-time').value = '';
+  }
+
+  toggleTimeFields();
 }
 
 function toInputDate(dateValue) {
@@ -317,6 +336,12 @@ function closeEventModal() {
   document.getElementById('event-id').value = '';
   document.getElementById('event-modal-title').textContent = '일정 추가';
   document.getElementById('delete-event-btn').style.display = 'none';
+
+  document.getElementById('event-all-day').checked = true;
+  document.getElementById('event-dday').checked = false;
+  document.getElementById('event-start-time').value = '';
+  document.getElementById('event-end-time').value = '';
+  toggleTimeFields();
 }
 
 function formatEventDate(event) {
@@ -328,4 +353,18 @@ function formatEventDate(event) {
   }
 
   return `${start} ~ ${end}`;
+}
+
+function toggleTimeFields() {
+  const isAllDay = document.getElementById('event-all-day').checked;
+  const timeFields = document.querySelectorAll('.event-time-field');
+
+  timeFields.forEach(field => {
+    field.style.display = isAllDay ? 'none' : 'block';
+  });
+}
+
+function toInputTime(dateValue) {
+  const date = new Date(dateValue);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
