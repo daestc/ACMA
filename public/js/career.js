@@ -53,68 +53,31 @@ function appendOptions(select, nameSet) {
   });
 }
 
+function updateCareerSearchAvailability() {
+  const searchBtn = document.getElementById('career-search-btn');
+  if (!searchBtn) return;
+
+  const depth1 = document.getElementById('depth1')?.value || '';
+  const depth2 = document.getElementById('depth2')?.value || '';
+  const depth3 = document.getElementById('depth3')?.value || '';
+  const depth4 = document.getElementById('depth4')?.value || '';
+  const hasCategory = Boolean(depth1 || depth2 || depth3 || depth4);
+
+  searchBtn.disabled = !hasCategory;
+  searchBtn.title = hasCategory
+    ? '카테고리 선택 후 키워드 검색이 가능합니다.'
+    : '카테고리를 먼저 선택해야 검색할 수 있습니다.';
+}
+
 
 // ============ 3. 샘플 데이터 (자격증 추천 / 자격증 모달) ============
 // TODO: 추후 DB 또는 API로 이전
 const jobCertData = {
-  backend: {
-    name: '백엔드 개발자',
-    certs: [
-      { name:'정보처리기사', field:'IT',    org:'한국산업인력공단',   diff:'★★★★☆', pass:34, next:'2026.05.18', dday:'D-28', color:'blue',   owned:true  },
-      { name:'SQLD',         field:'IT',    org:'한국데이터산업진흥원', diff:'★★★☆☆', pass:52, next:'2026.06.14', dday:'D-57', color:'blue',   owned:true  },
-      { name:'AWS SAA',      field:'클라우드', org:'Amazon',          diff:'★★★★☆', pass:61, next:'상시 시험',  dday:null,   color:'amber',  owned:false },
-    ]
-  },
-  data: {
-    name: '데이터 엔지니어',
-    certs: [
-      { name:'SQLD',          field:'IT', org:'한국데이터산업진흥원', diff:'★★★☆☆', pass:52, next:'2026.06.14', dday:'D-57',  color:'blue',  owned:true  },
-      { name:'ADsP',          field:'IT', org:'한국데이터산업진흥원', diff:'★★★☆☆', pass:58, next:'2026.07.20', dday:'D-83',  color:'blue',  owned:false },
-      { name:'빅데이터분석기사', field:'IT', org:'한국데이터산업진흥원', diff:'★★★★☆', pass:41, next:'2026.06.01', dday:'D-44',  color:'amber', owned:false },
-    ]
-  },
-  devops: {
-    name: 'DevOps 엔지니어',
-    certs: [
-      { name:'AWS SAA',      field:'클라우드', org:'Amazon',              diff:'★★★★☆', pass:61, next:'상시 시험',  dday:null,    color:'amber',  owned:false },
-      { name:'리눅스마스터 1급', field:'IT',    org:'한국정보통신진흥협회', diff:'★★★★★', pass:22, next:'2026.08.08', dday:'D-100', color:'purple', owned:false },
-      { name:'정보처리기사',   field:'IT',    org:'한국산업인력공단',      diff:'★★★★☆', pass:34, next:'2026.05.18', dday:'D-28',  color:'blue',   owned:true  },
-    ]
-  },
-  frontend: {
-    name: '프론트엔드 개발자',
-    certs: [
-      { name:'정보처리기사', field:'IT',    org:'한국산업인력공단', diff:'★★★★☆', pass:34, next:'2026.05.18', dday:'D-28', color:'blue',  owned:true  },
-      { name:'웹디자인기능사', field:'디자인', org:'한국산업인력공단', diff:'★★☆☆☆', pass:71, next:'2026.06.22', dday:'D-65', color:'green', owned:false },
-      { name:'GTQ(포토샵)',  field:'디자인', org:'한국생산성본부',   diff:'★★☆☆☆', pass:68, next:'상시 시험',  dday:null,   color:'green', owned:false },
-    ]
-  },
-  security: {
-    name: '정보보안 전문가',
-    certs: [
-      { name:'정보보안기사',   field:'IT', org:'한국인터넷진흥원',    diff:'★★★★★', pass:18, next:'2026.05.09', dday:'D-19', color:'red',   owned:false },
-      { name:'정보처리기사',   field:'IT', org:'한국산업인력공단',    diff:'★★★★☆', pass:34, next:'2026.05.18', dday:'D-28', color:'blue',  owned:true  },
-      { name:'네트워크관리사', field:'IT', org:'한국정보통신자격협회', diff:'★★★☆☆', pass:47, next:'상시 시험',  dday:null,   color:'amber', owned:false },
-    ]
-  }
+  
 };
 
 const certDetailData = {
-  '정보처리기사': {
-    overview: '컴퓨터 하드웨어 및 소프트웨어, 데이터통신, 데이터베이스, 시스템 분석·설계 등 정보기술 전반에 걸친 전문 지식과 실무 능력을 평가하는 국가기술자격입니다. 한국산업인력공단 주관으로 연 2회 시행됩니다.',
-    prospect: '소프트웨어 개발, IT 기획·관리, 정보보안, 데이터 분석 등 IT 전반 분야에서 취업 시 우대 사항으로 활용됩니다.',
-    duties:   ['응용SW 설계 및 구현', '소프트웨어 품질 검증 및 테스팅', '데이터베이스 설계 및 운영', '네트워크 및 보안 시스템 관리', 'IT 프로젝트 기획 및 관리']
-  },
-  'SQLD': {
-    overview: 'SQL 개발자(SQLD) 자격은 데이터베이스와 데이터 모델링에 대한 이해를 바탕으로 SQL 작성 능력을 평가합니다. 한국데이터산업진흥원에서 연 2회 시행합니다.',
-    prospect: '데이터베이스 관련 업무를 담당하는 개발자, DBA, 데이터 분석가 등을 목표로 하는 취업 준비생에게 기본 필수 자격증입니다.',
-    duties:   ['SQL 쿼리 작성 및 최적화', '데이터 모델링 및 설계', '데이터베이스 성능 분석', 'ETL 업무 지원', '데이터 품질 관리']
-  },
-  'AWS SAA': {
-    overview: 'AWS Certified Solutions Architect – Associate는 AWS 클라우드 기반의 확장 가능하고 가용성 높은 시스템 설계 능력을 인증하는 공식 자격증입니다.',
-    prospect: '클라우드 아키텍트, DevOps 엔지니어, 솔루션 컨설턴트 등으로 진출할 수 있으며 연봉 프리미엄이 높은 자격증입니다.',
-    duties:   ['AWS 인프라 아키텍처 설계', 'EC2·S3·RDS 등 핵심 서비스 운영', '비용 최적화 및 보안 설계', '고가용성 시스템 구축', '마이그레이션 계획 수립']
-  }
+  
 };
 
 
@@ -487,6 +450,11 @@ const searchModule = {
         : '분류를 선택해 주세요.';
     }
 
+    if (!depth1 && !depth2 && !depth3 && !depth4) {
+      alert('카테고리를 먼저 선택해야 검색할 수 있습니다.');
+      return;
+    }
+
     if (!depth1 && !depth2 && !depth3 && !depth4 && !keyword) {
       this.render([], '검색 결과');
       return;
@@ -601,6 +569,8 @@ const searchModule = {
         this.run().catch(err => console.error('Error searching careers:', err));
       });
     }
+
+    updateCareerSearchAvailability();
   },
 };
 // 외부 참조용 별칭 (다른 곳에서 호출하지 않으면 제거 가능)
@@ -642,6 +612,7 @@ const dropdownModule = {
       reset(depth2Select, '중분류 선택');
       reset(depth3Select, '소분류 선택');
       reset(depth4Select, '세분류 선택');
+      updateCareerSearchAvailability();
       if (!sel1) return;
       const set = new Set();
       categoriesData.forEach(cat => {
@@ -656,6 +627,7 @@ const dropdownModule = {
       const sel2 = depth2Select.value;
       reset(depth3Select, '소분류 선택');
       reset(depth4Select, '세분류 선택');
+      updateCareerSearchAvailability();
       if (!sel2) return;
       const set = new Set();
       categoriesData.forEach(cat => {
@@ -670,6 +642,7 @@ const dropdownModule = {
       const sel2 = depth2Select.value;
       const sel3 = depth3Select.value;
       reset(depth4Select, '세분류 선택');
+      updateCareerSearchAvailability();
       if (!sel3) return;
       const set = new Set();
       categoriesData.forEach(cat => {
@@ -693,6 +666,8 @@ const dropdownModule = {
         }
       }
     }
+
+    updateCareerSearchAvailability();
   },
 };
 

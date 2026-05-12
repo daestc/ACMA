@@ -38,6 +38,7 @@ router.get('/cert-categories', careerController.getCertCategories);
 router.get('/search-cert', careerController.searchCertifications);
 // 자격증 선택 저장
 router.post('/save-cert', careerController.saveCertification);
+// 자격증 합격률 가져오기
 
 
 module.exports = router;
