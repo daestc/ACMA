@@ -31,7 +31,7 @@ router.get('/search', careerController.searchCareers);
 // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
 router.get('/detail/:jobCode', careerController.getCareerDetails);
 // 직무 선택하여 db에 저장하기 
-router.post('/save/:jobCode', careerController.saveCareerDetails);
+router.post('/save/:jobCode', requireLogin, careerController.saveCareerDetails);
 // 자격증 검색 db에서 대분류, 중분류, 시리즈이름 가져오기
 router.get('/cert-categories', careerController.getCertCategories);
 // 분류에 따른 자격증 목록 가져오기

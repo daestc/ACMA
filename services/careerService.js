@@ -2,7 +2,7 @@ const {JobSearch} = require('../models/Certifications_jobs');
 const {Job} = require('../models/Certifications_jobs');
 const { parseStringPromise } = require('xml2js');
 const { Certification, UserCertification } = require('../models/Certifications_jobs');
-const { User } = require('../models/Certifications_jobs');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
@@ -195,14 +195,29 @@ function parseCertLic(str) {
 }
 
 // DB 저장 (또는 캐시 조회)
-async function saveCareerDetails(jobCode) {
-  const cached = await Job.findOne({ jobCode });
+async function saveCareerDetails(jobCode, userContext) {
+  let userDoc = null;
+
+  if (userContext?._id) {
+    userDoc = await User.findById(userContext._id).lean();
+  }
+
+  if (!userDoc && userContext?.email) {
+    userDoc = await User.findOne({ email: userContext.email }).lean();
+  }
+
+  if (!userDoc) {
+    throw new Error('User not found');
+  }
+
+  const userId = userDoc._id;
+  const cached = await Job.findOne({ userId, jobCode });
   if (cached) return cached;
 
   const data = await getCareerDetails(jobCode);
   if (!data) return null;
 
-  return await Job.create({ ...data, jobCode });
+  return await Job.create({ ...data, jobCode, userId });
 }
 // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
 async function getCertCategories() {

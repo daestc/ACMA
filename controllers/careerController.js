@@ -70,9 +70,21 @@ const getCareerDetails = async (req, res) => {
 
 // 저장 버튼용 - DB 저장
 const saveCareerDetails = async (req, res) => {
-  const data = await careerService.saveCareerDetails(req.params.jobCode);
-  if (!data) return res.status(404).json({ error: 'Not found' });
-  res.json({ success: true, data });
+  try {
+    if (!req.user || (!req.user._id && !req.user.email)) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const data = await careerService.saveCareerDetails(req.params.jobCode, req.user);
+    if (!data) return res.status(404).json({ error: 'Not found' });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error saving career details:', error);
+    if (error.message === 'User not found') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(500).json({ error: 'Failed to save career details' });
+  }
 };
 
 // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기

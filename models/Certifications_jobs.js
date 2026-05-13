@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 /**
- * [certifications] 컬렉션
+    jobCode: { type: String, required: true, index: true }, // 외부 API의 고유 직무 코드
  * 자격증 정보 DB (관리자가 등록하는 마스터 데이터)
  */
 const certificationSchema = new Schema(
@@ -141,7 +141,8 @@ jobSearchSchema.index({ depth3_name: 1, depth4_name: 1 });
  */
 const jobSchema = new Schema(
   {
-    jobCode: { type: String, required: true, unique: true, index: true }, // 외부 API의 고유 직무 코드
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // 직무 정보가 특정 사용자와 연관될 경우
+    jobCode: { type: String, required: true, index: true }, // 외부 API의 고유 직무 코드
     title: { type: String, required: true, trim: true, index: true }, // 검색을 위해 인덱스 추가
     description: { type: String, default: "" },
 
@@ -173,7 +174,8 @@ const jobSchema = new Schema(
   { timestamps: true }
 );
 
-jobSchema.index({ title: 'text', category: 1 });
+jobSchema.index({ userId: 1, jobCode: 1 }, { unique: true });
+jobSchema.index({ title: 'text' });
 
 
 module.exports = {
