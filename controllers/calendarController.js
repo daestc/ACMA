@@ -20,7 +20,7 @@ const createEvent = async(req,res) => {//라우터에서 요청한 일정 정보
         const newEvent = await calendarService.createNewEvent(userId, req.body);
         res.status(201).json(newEvent); //요청 성공시 json반환 
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
       message: '일정 생성 실패',
       error: error.message,
         });
@@ -35,7 +35,7 @@ const updatedEvent = async(req,res) => { //일정 정보 수정
         const updateEvent = await calendarService.updateEvent(userId,eventId,req.body);
         res.json(updateEvent); //json으로 수정사항 반환
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
         message: '일정 수정 실패',
         error: error.message,
         });

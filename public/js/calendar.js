@@ -179,8 +179,8 @@ async function createEvent(e) {
   const startDate = document.getElementById('event-start-date').value;
   const endDate = document.getElementById('event-end-date').value || startDate;
 
-  const startTime = document.getElementById('event-start-time').value || '00:00';
-  const endTime = document.getElementById('event-end-time').value || '23:59';
+  const startTime = document.getElementById('event-start-time').value;
+  const endTime = document.getElementById('event-end-time').value;
 
   const startDateTime = isAllDay ? startDate : `${startDate}T${startTime}`;
   const endDateTime = isAllDay ? endDate : `${endDate}T${endTime}`;
@@ -199,6 +199,13 @@ async function createEvent(e) {
   const url = eventId ? `/calendar/events/${eventId}` : '/calendar/events';
   const method = eventId ? 'PUT' : 'POST';
 
+  if (!isAllDay) {
+    if (!startTime || !endTime) {
+      alert('시간 일정은 시작 시간과 종료 시간을 모두 입력해야 합니다.');
+      return;
+    }
+  }
+
   const res = await fetch(url, {
     method,
     headers: {
@@ -211,6 +218,8 @@ async function createEvent(e) {
     alert(eventId ? '일정 수정 실패' : '일정 저장 실패');
     return;
   }
+
+  
 
   closeEventModal();
 

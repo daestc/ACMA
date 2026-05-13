@@ -11,15 +11,12 @@ async function getEventsListByUser(userId) {
 
 //일정생성
 async function createNewEvent(userId, eventData) {
-    if (!eventData.title) {
-        throw new Error('일정 제목은 필수입니다.');
-    }
-    if (!eventData.startDate) {
-        throw new Error('시작 날짜는 필수입니다.');
-    }
+
+    validateEventData(eventData);//도메인 검증 함수
+
     const newEvent = await CalendarEvent.create({
         userId : userId,
-        title : eventData.title,
+        title : eventData.title.trim(),
         description : eventData.description || null,
         startDate: eventData.startDate,
         endDate: eventData.endDate || eventData.startDate,
@@ -33,15 +30,22 @@ async function createNewEvent(userId, eventData) {
 
 //일정 수정
 async function updateEvent(userId, eventId, updateData) {
-  return await CalendarEvent.findOneAndUpdate(
-    {
-      _id: eventId,
-      userId: userId,
-      isDeleted: false,
-    },
-    updateData,
-    { new: true }
-  );
+    validateEventData(updateData);//도메인 검증 함수
+    const updatedEvent = await CalendarEvent.findOneAndUpdate(
+        {
+          _id: eventId,
+          userId: userId,
+          isDeleted: false,
+        },
+        updateData,
+        { new: true, runValidators: true }
+    );
+    if (!updatedEvent) {
+        throw new Error('일정을 찾을 수 없습니다.');
+    }
+
+    return updatedEvent;
+    
 };
 
 //일정 삭제
@@ -118,6 +122,54 @@ async function deleteTimetable(userId,timetableId) {
         {new: true}
     );
 };
+
+
+//도메인 규칙
+const EVENT_CATEGORIES = [
+  'personal',
+  'lecture',
+  'exam',
+  'assignment',
+  'certification',
+  'notice',
+  'other'
+];
+
+function validateEventData(eventData) {
+  if (!eventData.title || eventData.title.trim() === '') {
+    throw new Error('일정 제목은 필수입니다.');
+  }
+
+  if (!eventData.startDate) {
+    throw new Error('시작 날짜는 필수입니다.');
+  }
+
+  if (eventData.category && !EVENT_CATEGORIES.includes(eventData.category)) {
+    throw new Error('올바르지 않은 카테고리입니다.');
+  }
+
+  const startDate = new Date(eventData.startDate);
+  const endDate = new Date(eventData.endDate || eventData.startDate);
+
+  if (Number.isNaN(startDate.getTime())) {
+    throw new Error('시작 날짜 형식이 올바르지 않습니다.');
+  }
+
+  if (Number.isNaN(endDate.getTime())) {
+    throw new Error('종료 날짜 형식이 올바르지 않습니다.');
+  }
+
+  if (endDate < startDate) {
+    throw new Error('종료 날짜/시간은 시작 날짜/시간보다 빠를 수 없습니다.');
+  }
+
+  if (eventData.isAllDay === false) {
+    if (!String(eventData.startDate).includes('T') || !String(eventData.endDate).includes('T')) {
+        throw new Error('시간 일정은 시작 시간과 종료 시간이 필요합니다.');
+    }
+  }
+}
+
 module.exports = {getEventsListByUser,
                 createNewEvent,
                 updateEvent,
