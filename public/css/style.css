@@ -477,6 +477,28 @@ input,select,textarea{font-family:inherit;}
 .job-detail-tags{display:flex;flex-wrap:wrap;gap:8px;}
 .tag{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:700;line-height:1.2;transition:all .2s;}
 .tag:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);transform:translateY(-1px);}
+.passrate-group{display:flex;flex-direction:column;gap:10px;}
+.passrate-group + .passrate-group{margin-top:16px;}
+.passrate-group-title{font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.01em;}
+.passrate-year-group{display:flex;flex-direction:column;gap:12px;}
+.passrate-year-group + .passrate-year-group{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.passrate-year-title{font-size:13px;font-weight:800;color:var(--text);padding:2px 0 4px;}
+.passrate-examtype-section{display:flex;flex-direction:column;gap:8px;padding-left:4px;border-left:2px solid var(--accent-bg);}
+.passrate-examtype-label{font-size:12px;font-weight:700;color:var(--accent);padding:2px 0 2px 8px;}
+.passrate-list{display:flex;flex-direction:column;gap:10px;}
+.passrate-card{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 4px 14px rgba(17,20,45,.03);}
+.passrate-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.passrate-card-main{font-size:13px;font-weight:800;color:var(--text);}
+.passrate-card-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-size:12px;font-weight:800;flex-shrink:0;}
+.passrate-meta{margin-top:8px;font-size:12px;color:var(--text2);}
+.passrate-note{margin-top:6px;font-size:12px;color:var(--text2);}
+.passrate-empty{padding:10px 2px;font-size:13px;color:var(--text2);}
+.passrate-skeleton-card{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:hidden;position:relative;}
+.passrate-skeleton-card::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.45) 50%,transparent 100%);animation:passrate-shimmer 1.2s infinite;}
+.passrate-skeleton-line{height:10px;border-radius:999px;background:linear-gradient(90deg,#eef1f8 0%,#e6ebf7 100%);width:100%;}
+.passrate-skeleton-line--title{width:44%;height:14px;}
+.passrate-skeleton-line--short{width:68%;}
+@keyframes passrate-shimmer{100%{transform:translateX(100%);}}
 
 @media (max-width: 720px){
   .job-detail-modal-shell{max-height:92vh;border-radius:20px;}

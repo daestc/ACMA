@@ -141,7 +141,126 @@ function updateJobCertRec() { certRecommendModule.update(); }
 
 // ============ 6. 자격증 모달 모듈 ============
 const certModalModule = {
-  show(name, fallback = {}) {
+  async resolveFallbackByName(name, fallback = {}) {
+    if (fallback.jmcd) return fallback;
+
+    try {
+      const params = new URLSearchParams();
+      if (name) params.set('keyword', name);
+      const res = await fetch(`/career/search-cert?${params.toString()}`);
+      if (!res.ok) return fallback;
+
+      const items = await res.json();
+      if (!Array.isArray(items) || !items.length) return fallback;
+
+      const exact = items.find(item => item.name === name) || items[0];
+      return {
+        ...fallback,
+        jmcd: exact?.jmcd || fallback.jmcd || '',
+        officialUrl: fallback.officialUrl || exact?.officialUrl || '',
+        way: fallback.way || exact?.way || '',
+        careerPath: fallback.careerPath || exact?.careerPath || '',
+        field1: fallback.field1 || exact?.field1 || '',
+        field2: fallback.field2 || exact?.field2 || '',
+        seriesName: fallback.seriesName || exact?.seriesName || '',
+        description: fallback.description || exact?.description || '',
+        relatedJobs: fallback.relatedJobs || exact?.relatedJobs || [],
+      };
+    } catch (error) {
+      console.error('Failed to resolve certification fallback:', error);
+      return fallback;
+    }
+  },
+
+  renderPassRateSkeleton() {
+    return `
+      <div class="passrate-skeleton-card">
+        <div class="passrate-skeleton-line passrate-skeleton-line--title"></div>
+        <div class="passrate-skeleton-line"></div>
+        <div class="passrate-skeleton-line passrate-skeleton-line--short"></div>
+      </div>
+      <div class="passrate-skeleton-card">
+        <div class="passrate-skeleton-line passrate-skeleton-line--title"></div>
+        <div class="passrate-skeleton-line"></div>
+        <div class="passrate-skeleton-line passrate-skeleton-line--short"></div>
+      </div>
+    `;
+  },
+
+  renderPassRateSection(title, records) {
+    if (!records.length) {
+      return `
+        <div class="passrate-group">
+          <div class="passrate-group-title">${title}</div>
+          <div class="passrate-empty">등록된 ${title} 합격률이 없습니다.</div>
+        </div>
+      `;
+    }
+
+    const yearMap = new Map();
+    records.forEach(record => {
+      const yearKey = String(record.year || '미상');
+      if (!yearMap.has(yearKey)) yearMap.set(yearKey, []);
+      yearMap.get(yearKey).push(record);
+    });
+
+    const yearGroups = Array.from(yearMap.entries())
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .map(([year, yearRecords]) => {
+        const written = yearRecords.filter(r => r.examType === 'written');
+        const practical = yearRecords.filter(r => r.examType === 'practical');
+
+        const renderExamTypeSection = (examType, records, typeLabel) => {
+          if (!records.length) return '';
+          
+          const sorted = records.slice().sort((a, b) => {
+            const aSession = parseInt(a.session || '0') || 0;
+            const bSession = parseInt(b.session || '0') || 0;
+            return bSession - aSession;
+          });
+
+          return `
+            <div class="passrate-examtype-section">
+              <div class="passrate-examtype-label">${typeLabel}</div>
+              ${sorted.map(record => {
+                const pass = Number(record.passRate ?? 0);
+                const app = Number(record.applicantCount ?? 0);
+                const passers = Number(record.passerCount ?? 0);
+                return `
+                  <div class="passrate-card">
+                    <div class="passrate-card-head">
+                      <div class="passrate-card-main">${record.session || '-'}</div>
+                      <div class="passrate-card-badge">${Number.isFinite(pass) ? pass.toFixed(1) : '0.0'}%</div>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill fill-blue" style="width:${Math.max(0, Math.min(100, pass))}%"></div>
+                    </div>
+                    <div class="passrate-meta">응시 ${app.toLocaleString()}명 · 합격 ${passers.toLocaleString()}명</div>
+                    ${record.note ? `<div class="passrate-note">${escapeHtml(record.note)}</div>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        };
+
+        return `
+          <div class="passrate-year-group">
+            <div class="passrate-year-title">${year}년</div>
+            ${renderExamTypeSection('written', written, '필기')}
+            ${renderExamTypeSection('practical', practical, '실기')}
+          </div>
+        `;
+      });
+
+    return `
+      <div class="passrate-group">
+        ${yearGroups.join('')}
+      </div>
+    `;
+  },
+
+  async show(name, fallback = {}) {
     const d = certDetailData[name] || {
       overview: fallback.description || '상세 설명이 준비 중입니다.',
       prospect: fallback.careerPath || '진로 및 전망 정보가 준비 중입니다.',
@@ -171,12 +290,52 @@ const certModalModule = {
     this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || fallback.relatedJobs || []);
 
     // store identifiers on modal for save action
-    modalEl.dataset.jmcd = fallback.jmcd || '';
+    const resolvedFallback = await this.resolveFallbackByName(name, fallback);
+    modalEl.dataset.jmcd = resolvedFallback.jmcd || '';
+
+    if (categoryEl) {
+      const category = [resolvedFallback.field1, resolvedFallback.field2 || resolvedFallback.seriesName].filter(Boolean).join(' · ');
+      categoryEl.textContent = category || categoryEl.textContent || '국가기술자격';
+    }
+    overviewEl.textContent = resolvedFallback.description || d.overview || '정보 없음';
+    this.fillProspect(prospectEl, resolvedFallback.careerPath || d.prospect || '');
+    this.fillWay(wayEl, resolvedFallback.way || d.way || '');
+    this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || resolvedFallback.relatedJobs || []);
+
+    // 합격률 정보 로딩
+    const passEl = document.getElementById('cd-passrate');
+    if (passEl) {
+      passEl.innerHTML = this.renderPassRateSkeleton();
+      const jmcd = modalEl.dataset.jmcd;
+      if (!jmcd) {
+        passEl.innerHTML = '<div class="passrate-empty">합격률 정보를 찾을 수 없습니다.</div>';
+      } else {
+        fetch(`/career/pass-rate/${encodeURIComponent(jmcd)}`)
+          .then(res => {
+            if (!res.ok) throw new Error('Not found');
+            return res.json();
+          })
+          .then(passRates => {
+            const list = Array.isArray(passRates) ? passRates : [];
+            if (!list.length) {
+              passEl.innerHTML = '<div class="passrate-empty">합격률 정보가 없습니다.</div>';
+              return;
+            }
+
+            passEl.innerHTML = `
+              ${this.renderPassRateSection('합격률', list)}
+            `;
+          })
+          .catch(() => {
+            passEl.innerHTML = '<div class="passrate-empty">합격률 정보를 불러오지 못했습니다.</div>';
+          });
+      }
+    }
 
     // Q-net link
     const qnetLink = document.getElementById('cd-qnet-link');
     if (qnetLink) {
-      const url = fallback.officialUrl || d.officialUrl || '';
+      const url = resolvedFallback.officialUrl || fallback.officialUrl || d.officialUrl || '';
       if (url) {
         qnetLink.href = url;
         qnetLink.style.display = 'inline-flex';

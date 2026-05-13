@@ -132,6 +132,20 @@ const saveCertification = async (req, res) => {
     res.status(500).json({ error: 'Failed to save certification' });
   }
 };
+// 자격증 별 합격률 DB에서 합격률 정보 가져오기
+const getPassRate = async (req, res) => {
+  try {
+    const { jmcd } = req.params;
+    if (!jmcd) {
+      return res.status(400).json({ error: 'jmcd is required' });
+    }
+    const passRates = await careerService.getPassRate(jmcd);
+    res.json(passRates || []);
+  } catch (error) {
+    console.error('Error fetching pass rate:', error);
+    res.status(500).json({ error: 'Failed to fetch pass rate' });
+  }
+};
 
 
 module.exports = {
@@ -141,5 +155,6 @@ module.exports = {
   saveCareerDetails,
   getCertCategories,
   searchCertifications,
-  saveCertification
+  saveCertification,
+  getPassRate,
 };

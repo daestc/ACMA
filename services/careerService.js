@@ -1,7 +1,7 @@
 const {JobSearch} = require('../models/Certifications_jobs');
 const {Job} = require('../models/Certifications_jobs');
 const { parseStringPromise } = require('xml2js');
-const { Certification, UserCertification } = require('../models/Certifications_jobs');
+const { Certification, UserCertification, PassRate } = require('../models/Certifications_jobs');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
@@ -308,7 +308,25 @@ async function saveCertification(jmcd, userId) {
     console.error('Error saving certification:', error);
     throw error;
   }
-} 
+}
+// 자격증 별 합격률 DB에서 합격률 정보 가져오기
+async function getPassRate(jmcd) {
+  try {
+    const normalizedJmcd = String(jmcd || '').trim();
+    const cert = await Certification.findOne({ jmcd: normalizedJmcd }).lean();
+    if (!cert) {
+      console.error('Certification not found for jmcd:', normalizedJmcd);
+      return null;
+    }
+    const passRates = await PassRate.find({ certificationId: cert._id })
+      .sort({ examType: 1, year: -1, updatedAt: -1, createdAt: -1 })
+      .lean();
+    return passRates;
+  } catch (error) {
+    console.error('Error fetching pass rate:', error);
+    throw new Error('Failed to fetch pass rate');
+  }
+};
 
 
 module.exports = {
@@ -318,5 +336,6 @@ module.exports = {
   saveCareerDetails, // 직무 선택하여 db에 저장하기
   getCertCategories, // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
   searchCertifications, // 분류에 따른 자격증 목록 가져오기
-  saveCertification // 자격증 선택하여 db에 저장하기
+  saveCertification, // 자격증 선택하여 db에 저장하기
+  getPassRate, // 자격증 별 합격률 DB에서 합격률 정보 가져오기
 };
