@@ -187,6 +187,8 @@ async function getCareerDetails(jobCode, jobSeq = '1') {
   }
 }
 
+ //=============지금부터 자격증 관련 ========================
+
 // "광산보안기사·산업기사, 광해방지기술사·기사, ..." → ['광산보안기사·산업기사', '광해방지기술사·기사', ...]
 function parseCertLic(str) {
   if (!str) return null;

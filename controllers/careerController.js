@@ -47,7 +47,7 @@ const searchCareers = async (req, res) => {
     res.status(500).json({ error: 'Failed to search careers' });
   }
 };
-
+// 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
 const getCareerDetails = async (req, res) => {
   try {
     const { jobCode } = req.params;
