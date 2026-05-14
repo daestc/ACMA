@@ -131,7 +131,7 @@ const myCertModule = {
   },
 };
 
-// 현재 선택한 직무 정보 가져오기
+// 3-2. 현재 선택한 직무 정보 가져오기
 const myJobModule = {
   async load() {
     const wrap = document.getElementById('my-job-info');
@@ -694,6 +694,9 @@ const jobModalModule = {
       const res = await fetch(`/career/save/${jobCode}`, { method: 'POST' });
       const result = await res.json();
       if (result.success) alert('직무가 저장되었습니다!');
+      if (res.ok && result.success) {
+        myJobModule.load().catch(err => console.error('Error refreshing my jobs:', err));
+      }
     } catch (err) {
       console.error('직무 저장 실패:', err);
     }
