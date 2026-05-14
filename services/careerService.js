@@ -186,6 +186,26 @@ async function getCareerDetails(jobCode, jobSeq = '1') {
     throw new Error('Failed to fetch career details');
   }
 }
+//현재 선택한 직무정보 가져오기
+async function getMyCareer(userId) {
+  try {
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    if (!userDoc) {
+      console.error('User not found for userId:', userId);
+      return null;
+    }
+    const jobDoc = await Job.findOne({ userId: userDoc._id }).lean();
+    return jobDoc || null;
+  } catch (error) {
+    console.error('Error fetching my career:', error);
+    throw new Error('Failed to fetch my career');
+  }
+};
 
  //=============지금부터 자격증 관련 ========================
 
@@ -418,16 +438,73 @@ async function deleteCertification(userCertId, userId) {
   }
 };
 
+// 현재 선택한 직무 목록 가져오기
+async function getMyJobs(userId) {
+  try {
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    if (!userDoc) {
+      console.error('User not found for userId:', userId);
+      return [];
+    }
+
+    const userJobs = await Job.find({ userId: userDoc._id }).lean();
+    return userJobs;
+  } catch (error) {
+    console.error('Error fetching user jobs:', error);
+    throw new Error('Failed to fetch user jobs');
+  }
+};
+
+// 선택한 직무 삭제하기
+async function deleteJob(jobId, userId) {
+  try {
+    // userId 검증
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    
+    if (!userDoc) {
+      throw new Error('User not found');
+    }
+
+    // Job이 현재 사용자의 것인지 확인하고 삭제
+    const result = await Job.findOneAndDelete({
+      _id: jobId,
+      userId: userDoc._id
+    });
+
+    if (!result) {
+      throw new Error('User job not found');
+    }
+
+    return { success: true, message: '직무가 삭제되었습니다.' };
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    throw error;
+  }
+};
+
 
 module.exports = {
   getCategories, // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
   searchCareers, // api 에서 선택한 대분류, 중분류, 소분류에서 검색한 모든 세분류의 직무 이름 가져오기
   getCareerDetails, // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
   saveCareerDetails, // 직무 선택하여 db에 저장하기
+  getMyCareer, // 현재 선택한 직무정보 가져오기
   getCertCategories, // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
   searchCertifications, // 분류에 따른 자격증 목록 가져오기
   saveCertification, // 자격증 선택하여 db에 저장하기
   getPassRate, // 자격증 별 합격률 DB에서 합격률 정보 가져오기
   getMyCertifications, // 현재 선택한 자격증 목록 가져오기
   deleteCertification, // 선택한 자격증 삭제하기
+  getMyJobs, // 현재 선택한 직무 목록 가져오기
+  deleteJob, // 선택한 직무 삭제하기
 };

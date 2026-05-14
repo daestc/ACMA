@@ -86,6 +86,23 @@ const saveCareerDetails = async (req, res) => {
     res.status(500).json({ error: 'Failed to save career details' });
   }
 };
+// 현재 선택한 직무 정보 가져오기
+const getMyCareer=async(req,res)=>{
+  try {
+    if (!req.user || (!req.user._id && !req.user.email)) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const data = await careerService.getMyCareer(req.user);
+    if (!data) return res.status(404).json({ error: 'Not found' });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching my career:', error);
+    if (error.message === 'User not found') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(500).json({ error: 'Failed to fetch my career' });
+  }
+}
 
 // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
 const getCertCategories = async (req, res) => {
@@ -182,16 +199,55 @@ const removeCertification = async (req, res) => {
   }
 };
 
+// 현재 선택한 직무 목록 가져오기
+const getMyJobs = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.email;
+    const jobs = await careerService.getMyJobs(userId);
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error fetching user jobs:', error);
+    res.status(500).json({ error: 'Failed to fetch user jobs' });
+  }
+};
+
+// 선택한 직무 삭제하기
+const removeJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    if (!jobId) {
+      return res.status(400).json({ error: 'jobId is required' });
+    }
+
+    const userId = req.user._id || req.user.email;
+    const result = await careerService.deleteJob(jobId, userId);
+    
+    res.json({ success: true, message: '직무가 삭제되었습니다.' });
+  } catch (error) {
+    console.error('Error removing job:', error);
+    if (error.message === 'User not found') {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    if (error.message === 'User job not found') {
+      return res.status(404).json({ error: 'User job not found' });
+    }
+    res.status(500).json({ error: 'Failed to remove job' });
+  }
+};
+
 
 module.exports = {
   getCategories,
   searchCareers,
   getCareerDetails,
   saveCareerDetails,
+  getMyCareer,
   getCertCategories,
   searchCertifications,
   saveCertification,
   getPassRate,
   getMyCertifications,
   removeCertification,
+  getMyJobs,
+  removeJob,
 };

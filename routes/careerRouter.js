@@ -32,6 +32,8 @@ router.get('/search', careerController.searchCareers);
 router.get('/detail/:jobCode', careerController.getCareerDetails);
 // 직무 선택하여 db에 저장하기 
 router.post('/save/:jobCode', requireLogin, careerController.saveCareerDetails);
+// 현재 선택한 직무 정보 가져오기
+router.get('/my-career', requireLogin, careerController.getMyCareer);
 // 자격증 검색 db에서 대분류, 중분류, 시리즈이름 가져오기
 router.get('/cert-categories', careerController.getCertCategories);
 // 분류에 따른 자격증 목록 가져오기
@@ -44,5 +46,9 @@ router.get('/pass-rate/:jmcd', careerController.getPassRate);
 router.get('/my-certs', requireLogin, careerController.getMyCertifications);
 // 자격증 삭제하기
 router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeCertification);
+// 현재 선택한 직무 목록 가져오기
+router.get('/my-jobs', requireLogin, careerController.getMyJobs);
+// 직무 삭제하기
+router.delete('/remove-job/:jobId', requireLogin, careerController.removeJob);
 
 module.exports = router;

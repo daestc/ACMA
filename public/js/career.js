@@ -105,7 +105,7 @@ const myCertModule = {
 
     wrap.innerHTML = `
       <div class="my-cert-head">
-        <div class="my-cert-title">현재 선택한 자격증</div>
+        <div class="my-cert-title">목표 자격증</div>
         <div class="my-cert-count">${certs.length}개</div>
       </div>
       <div class="my-cert-grid">
@@ -123,6 +123,60 @@ const myCertModule = {
                 <span class="badge badge-green my-cert-chip-badge">${escapeHtml(statusLabel)}</span>
               </button>
               <button type="button" class="my-cert-delete-btn" title="삭제" onclick="removeCertification('${escapeAttr(cert._id)}', event)">×</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+};
+
+// 현재 선택한 직무 정보 가져오기
+const myJobModule = {
+  async load() {
+    const wrap = document.getElementById('my-job-info');
+    if (!wrap) return;
+
+    wrap.innerHTML = '<div class="career-empty-state">현재 선택한 직무를 불러오는 중입니다.</div>';
+
+    try {
+      const res = await fetch('/career/my-jobs');
+      if (!res.ok) throw new Error('Failed to load my jobs');
+
+      const jobs = await res.json();
+      this.render(Array.isArray(jobs) ? jobs : []);
+    } catch (error) {
+      console.error('Error fetching my jobs:', error);
+      wrap.innerHTML = '<div class="career-empty-state">현재 선택한 직무를 불러오지 못했습니다.</div>';
+    }
+  },
+
+  render(jobs) {
+    const wrap = document.getElementById('my-job-info');
+    if (!wrap) return;
+
+    if (!jobs.length) {
+      wrap.innerHTML = '<div class="career-empty-state">아직 선택한 직무가 없습니다. 아래에서 직무를 저장해 보세요.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="my-job-head">
+        <div class="my-job-title">관심 직무</div>
+        <div class="my-job-count">${jobs.length}개</div>
+      </div>
+      <div class="my-job-grid">
+        ${jobs.map(job => {
+          const title = job.title || '직무';
+          const jobSeq = job.jobSeq || '1';
+
+          return `
+            <div class="my-job-chip-wrapper">
+              <button type="button" class="my-job-chip" onclick="jobModalModule.openByCode('${escapeAttr(job.jobCode)}', '${escapeAttr(jobSeq)}')">
+                <span class="my-job-chip-name">${escapeHtml(title)}</span>
+                <span class="my-job-chip-meta">직무코드: ${escapeHtml(job.jobCode)}</span>
+              </button>
+              <button type="button" class="my-job-delete-btn" title="삭제" onclick="removeJob('${escapeAttr(job._id)}', event)">×</button>
             </div>
           `;
         }).join('')}
@@ -171,6 +225,37 @@ async function removeCertification(userCertId, event) {
   } catch (error) {
     console.error('Error removing certification:', error);
     alert('자격증 삭제에 실패했습니다.');
+  }
+}
+
+// ============ 3-2. 직무 삭제 함수 ============
+async function removeJob(jobId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  if (!confirm('이 직무를 삭제하시겠습니까?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/career/remove-job/${jobId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to remove job');
+    }
+
+    const data = await res.json();
+    myJobModule.load();
+  } catch (error) {
+    console.error('Error removing job:', error);
+    alert('직무 삭제에 실패했습니다.');
   }
 }
 
@@ -1130,4 +1215,5 @@ document.addEventListener('DOMContentLoaded', () => {
   dropdownModule2.init(); // 자격증 카테고리 드롭다운
   certSearchModule.init(); // 자격증 검색
   myCertModule.load().catch(err => console.error('Error loading my certs:', err));
+  myJobModule.load().catch(err => console.error('Error loading my jobs:', err));
 });
