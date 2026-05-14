@@ -126,7 +126,7 @@ async function updateTimetable(userId, timetableId, updateData) {
         schedule: updateData.schedule,
     };
 
-    const updateTimetable =  await Timetable.findOneAndUpdate(
+    const updatedTimetable =  await Timetable.findOneAndUpdate(
         {
             _id: timetableId,
             userId: userId,

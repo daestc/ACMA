@@ -1,0 +1,73 @@
+<div id="timetable-modal" class="event-modal" style="display:none;">
+  <div class="event-modal-content">
+    <h3 id="timetable-modal-title">시간표 추가</h3>
+
+    <form id="timetable-form">
+      <input type="hidden" id="timetable-id">
+
+      <label>
+        학기 구분
+        <input type="text" id="tt-semester" placeholder="예: 2026-1">
+      </label>
+
+      <label>
+        제목
+        <input type="text" id="tt-title" required>
+      </label>
+
+      <label>
+        장소
+        <input type="text" id="tt-location">
+      </label>
+
+      <label>
+        유형
+        <input type="text" id="tt-type" value="lecture" placeholder="lecture, partTime, study 등">
+      </label>
+
+      <label>
+        교수 이름
+        <input type="text" id="tt-professor">
+      </label>
+
+      <label>
+        학점
+        <input type="number" id="tt-credits" min="0" value="0">
+      </label>
+
+      <label>
+        색상
+        <input type="color" id="tt-color" value="#60A5FA">
+      </label>
+
+      <label>
+        요일
+        <select id="tt-day" required>
+          <option value="1">월</option>
+          <option value="2">화</option>
+          <option value="3">수</option>
+          <option value="4">목</option>
+          <option value="5">금</option>
+          <option value="6">토</option>
+          <option value="0">일</option>
+        </select>
+      </label>
+
+      <label>
+        시작 시간
+        <input type="time" id="tt-start-time" required>
+      </label>
+
+      <label>
+        종료 시간
+        <input type="time" id="tt-end-time" required>
+      </label>
+
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button type="submit" class="btn btn-accent btn-sm">저장</button>
+        <button type="button" id="delete-timetable-btn" class="btn btn-sm" style="display:none;">삭제</button>
+        <button type="button" id="close-timetable-form-btn" class="btn btn-sm">취소</button>
+      </div>
+    </form>
+  </div>
+</div>
