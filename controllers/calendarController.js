@@ -47,13 +47,14 @@ const deletedEvent = async (req,res)=>{//일정 삭제 (isDelete true로 변경)
         const userId = req.user.id;
         const eventId = req.params.eventId;
 
-        await calendarService.deleteEvent(userId, eventId);
+        const deletedEvent = await calendarService.deleteEvent(userId, eventId);
 
         res.json({
-            message: '일정 삭제 성공'
+            message: '일정 삭제 성공',
+            deletedEvent
         });
     } catch (error) {
-        res.status(500).json({
+        res.status(404).json({
         message: '일정 삭제 실패',
         error: error.message,
         });

@@ -31,15 +31,28 @@ async function createNewEvent(userId, eventData) {
 //일정 수정
 async function updateEvent(userId, eventId, updateData) {
     validateEventData(updateData);//도메인 검증 함수
+
+    const sanitizedData = {
+        title: updateData.title.trim(),
+        description: updateData.description || null,
+        startDate: updateData.startDate,
+        endDate: updateData.endDate || updateData.startDate,
+        isAllDay: updateData.isAllDay ?? true,
+        category: updateData.category || 'personal',
+        isDday: updateData.isDday ?? false,
+        color: updateData.color || '#3B82F6',
+    };
+
     const updatedEvent = await CalendarEvent.findOneAndUpdate(
         {
           _id: eventId,
           userId: userId,
           isDeleted: false,
         },
-        updateData,
+        sanitizedData,
         { new: true, runValidators: true }
     );
+
     if (!updatedEvent) {
         throw new Error('일정을 찾을 수 없습니다.');
     }
@@ -50,7 +63,7 @@ async function updateEvent(userId, eventId, updateData) {
 
 //일정 삭제
 async function deleteEvent(userId,eventId) {
-    return await CalendarEvent.findOneAndUpdate(//isDeleted를 true로 바꾸는 것이므로 update 사용
+    const deletedEvent =  await CalendarEvent.findOneAndUpdate(//isDeleted를 true로 바꾸는 것이므로 update 사용
         {
             _id: eventId,
             userId: userId,
@@ -61,6 +74,10 @@ async function deleteEvent(userId,eventId) {
         },
         {new: true}
     );
+    if (!deletedEvent) {
+        throw new Error('일정을 찾을 수 없습니다.');
+    }
+    return deletedEvent;
 };
 
 //////////////////////시간표 서비스//////////////////////////

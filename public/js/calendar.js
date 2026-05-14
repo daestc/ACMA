@@ -206,6 +206,16 @@ async function createEvent(e) {
     }
   }
 
+  if (!isAllDay) {
+   const start = new Date(`${startDate}T${startTime}`);
+   const end = new Date(`${endDate}T${endTime}`);
+
+   if (end <= start) {
+      alert('종료 시간은 시작 시간보다 늦어야 합니다.');
+      return;
+   }
+}
+
   const res = await fetch(url, {
     method,
     headers: {
@@ -354,14 +364,25 @@ function closeEventModal() {
 }
 
 function formatEventDate(event) {
-  const start = toInputDate(event.startDate);
-  const end = toInputDate(event.endDate || event.startDate);
+  const startDate = toInputDate(event.startDate);
+  const endDate = toInputDate(event.endDate || event.startDate);
 
-  if (start === end) {
-    return start;
+  if (event.isAllDay) {
+    if (startDate === endDate) {
+      return startDate;
+    }
+    return `${startDate} ~ ${endDate}`;
   }
 
-  return `${start} ~ ${end}`;
+  const startTime = toInputTime(event.startDate);
+  const endTime = toInputTime(event.endDate || event.startDate);
+
+  if (startDate === endDate) {
+    return `${startDate} ${startTime} ~ ${endTime}`;
+  }
+
+  return `${startDate} ${startTime} ~ ${endDate} ${endTime}`;
+
 }
 
 function toggleTimeFields() {
