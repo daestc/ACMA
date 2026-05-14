@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
-// 사용자의 오늘 자 todolist 가져오기. userId로 변경가능
-async function getTodayTodolist(userEmail) {
+// 사용자의 오늘 자 todoList 가져오기. userId로 변경가능
+async function getTodaytodoList(userEmail) {
 
   const user = await User.findOne({email: userEmail});
   if(!user) return [];
@@ -16,16 +16,16 @@ async function getTodayTodolist(userEmail) {
 
 
   // '오늘' 범위에 들어가는 할 일만 필터링
-  const todolist = user.todolist.filter(todo => {
+  const todoList = user.todoList.filter(todo => {
     const todayDate = new Date(todo.doDay);
     return todayDate >= todayStart && todayDate <= todayEnd;
   });
 
-  return todolist;
-} // getTodayTodolist()
+  return todoList;
+} // getTodaytodoList()
 
-// 사용자의 todolist기져오기. userId로 변경가능
-async function getTodolist(userEmail, dayDate) {
+// 사용자의 todoList기져오기. userId로 변경가능
+async function gettodoList(userEmail, dayDate) {
 
   const user = await User.findOne({email: userEmail});
   if(!user) return [];
@@ -39,13 +39,13 @@ async function getTodolist(userEmail, dayDate) {
 
 
   // 당일 범위에 들어가는 할 일만 필터링
-  const todolist = user.todolist.filter(todo => {
+  const todoList = user.todoList.filter(todo => {
     const todayDate = new Date(todo.doDay);
     return todayDate >= todayStart && todayDate <= todayEnd;
   });
 
-  return todolist;
-} // getTodolist()
+  return todoList;
+} // gettodoList()
 
 // todo 항목 추가
 async function addTodo(userEmail, content, note) {
@@ -54,7 +54,7 @@ async function addTodo(userEmail, content, note) {
     {email: userEmail}, 
     {
       $push: {
-        todolist: {
+        todoList: {
           title: content,
           note
         }
@@ -64,25 +64,37 @@ async function addTodo(userEmail, content, note) {
     {returnDocument: 'after'}
   );
 
-  const lastTodo = updatedUser.todolist[updatedUser.todolist.length - 1];
+  const lastTodo = updatedUser.todoList[updatedUser.todoList.length - 1];
 
   return lastTodo._id;
 } // addTodo()
 
 // todo 항목 배열 삭제
-async function deleteTodo(userEmail, deleteTodoList) {
+async function deleteTodo(userEmail, deletetodoList) {
 
-  // deleteTodoList에 있는 모든 todo._Id 삭제
+  // deletetodoList에 있는 모든 todo._Id 삭제
   await User.findOneAndUpdate(
     { email: userEmail },
     {
       $pull: {
-        todolist: {
-          _id: { $in: deleteTodoList } 
+        todoList: {
+          _id: { $in: deletetodoList } 
         }
       }
     }
   );
 } // deleteTodo()
 
-module.exports = {getTodayTodolist, getTodolist, addTodo, deleteTodo};
+// habit 리스트 가져오기
+async function getHabitList(userEmail) {
+  // habitList 가져오기
+  const user = await User.findOne({email: userEmail});
+  if(!user) throw new Error('사용자를 찾지 못했습니다.');
+
+  const habitList = user.habitTracker;
+  const completedCount = habitList.filter(habit => habit.isCompleted).length;
+
+  return {habitList, completedCount};
+}
+
+module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList};

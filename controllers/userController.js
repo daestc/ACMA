@@ -3,15 +3,7 @@ const userService = require('../services/userService');
 const user = {
   name: '가나다',
   email: 'abc@test.com',
-  major: '컴공1',
-  todolist: [
-    {
-      title: '과제-분산객체 프로젝트',
-      note: 'ERD 정의',
-      doDay: Date.now
-    }
-  ]
-
+  major: '컴공1'
 };
 
 // Todo 항목 추가
@@ -38,11 +30,11 @@ const addTodo = async (req, res) => {
 // Todo 삭제
 const deleteTodo = async (req, res) => {
   try {
-    const {deleteTodoList} = req.body;
+    const {deletetodoList} = req.body;
     // 삭제 항목이 없으면 리턴
-    if(deleteTodoList.length === 0) return res.json({success: false});
+    if(deletetodoList.length === 0) return res.json({success: false});
 
-    await userService.deleteTodo(user.email, deleteTodoList);
+    await userService.deleteTodo(user.email, deletetodoList);
 
     console.log('todo 삭제 완료!!');
 

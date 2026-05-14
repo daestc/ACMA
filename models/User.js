@@ -75,8 +75,8 @@ const UserSchema = new mongoose.Schema({
     },
   ],
 
-  // ToDoList
-  todolist: [
+  // todoList
+  todoList: [
     {
       title: String, // 할 일
       note: String, // 확인 사항(완료시 "완료"로 변경)
@@ -97,7 +97,7 @@ const UserSchema = new mongoose.Schema({
       isCompleted: {
         type: Boolean, 
         default: false
-      }
+      },
     }
   ],
 

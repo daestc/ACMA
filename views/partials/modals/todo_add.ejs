@@ -62,12 +62,12 @@
         <div id="todo-D-list"  style="margin-bottom:14px;">
           <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;
                         margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">할 일 목록</label>
-          <% if(!todolist || todolist.length === 0) { %>
+          <% if(!todoList || todoList.length === 0) { %>
             <div class="check-item todo-Dexam">
               <span class="check-text">오늘 진행할 할 일이 없습니다!</span>
             </div>
           <% } else { %>
-            <% todolist.forEach(todo => { %>
+            <% todoList.forEach(todo => { %>
               <div class="check-item" data-id="<%= todo._id %>">
                 <div class="check-box delete-todo" onclick="toggleCheck(this)"></div>
                 <span class="check-text"><%= todo.title %></span>

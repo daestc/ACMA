@@ -152,7 +152,7 @@ async function deleteTodoItem() {
   const response = await fetch('/user/deleteTodo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deleteTodoList: idsToDelete })
+    body: JSON.stringify({ deletetodoList: idsToDelete })
   });
 
   const result = await response.json();
@@ -184,7 +184,7 @@ async function deleteTodoItem() {
 // ── 습관 트래커 ───────────────────────────────────
 function toggleHabit(el) {
   const isDone = el.dataset.done === 'true';
-  el.dataset.done = isDone ? 'false' : 'true';
+  el.dataset.done = isDone ? false : true;
 
   const check = el.querySelector('.habit-check');
   const name  = el.querySelector('.habit-name');
@@ -201,6 +201,7 @@ function toggleHabit(el) {
   updateHabitSummary();
 }
 
+// 진행도 막대 그래프 표시
 function updateHabitSummary() {
   const items = document.querySelectorAll('#habit-list .habit-item');
   const total = items.length;
