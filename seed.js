@@ -1,3 +1,8 @@
+// 직무 검색용 DB에 엑셀 데이터를 넣어주는 스크립트입니다.
+// 실행 전에 .env 파일에 MONGODB_URI를 본인 환경에 맞게 설정해주세요.
+// 실행 방법: node seed.js
+// 필요파일: 한국표준직업분류 (1).xls (같은 폴더에 있어야 함)
+
 const mongoose = require('mongoose');
 require('dotenv').config();
 const xlsx = require('xlsx'); // 엑셀 라이브러리

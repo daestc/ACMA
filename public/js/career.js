@@ -1,7 +1,7 @@
 /* ================================================
    AcadMe — career.js
    진로정보 페이지 전용:
-   자격증/직무 탭, 직무별 자격증 추천, 세부 모달
+   자격증/직무 탭, 세부 모달
    ================================================ */
 
 // ============ 1. 상수 / 상태 ============
@@ -70,8 +70,8 @@ function updateCareerSearchAvailability() {
 }
 
 
-// ============ 3. 샘플 데이터 (자격증 추천 / 자격증 모달) ============
-// TODO: 추후 DB 또는 API로 이전
+// ============ 3. 데이터 (자격증 모달) ============
+// TODO: 비어져 있지만 지우면 안됨...
 const jobCertData = {
   
 };
@@ -96,50 +96,7 @@ const tabsModule = {
 function switchCareerTab(tab, btn) { tabsModule.switch(tab, btn); }
 
 
-// ============ 5. 자격증 추천 모듈 ============
-const certRecommendModule = {
-  update() {
-    const sel  = document.getElementById('job-select-cert')?.value;
-    const data = jobCertData[sel];
-    if (!data) return;
-
-    document.querySelector('#job-cert-rec > div:first-child').textContent = `📌 ${data.name} 추천 자격증`;
-    document.getElementById('job-cert-cards').innerHTML = data.certs.map(c => `
-      <div class="card" style="cursor:pointer;position:relative;">
-        ${c.owned ? `<div style="position:absolute;top:12px;right:12px;"><span class="badge badge-green" style="font-size:10px;">✓ 취득</span></div>` : ''}
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;padding-right:${c.owned ? '52px' : '0'};">
-          <div style="font-size:15px;font-weight:800;font-family:'DM Sans';">${c.name}</div>
-          <span class="badge ${badgeMap[c.color] || 'badge-blue'}">${c.field}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${c.org}</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
-          <span style="font-size:11px;color:var(--text2);">난이도</span>
-          <span style="color:var(--amber);">${c.diff}</span>
-        </div>
-        <div class="progress-wrap" style="margin-bottom:8px;">
-          <div class="progress-header">
-            <span class="progress-label" style="font-size:11px;">합격률</span>
-            <span class="progress-value">${c.pass}%</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill ${fillMap[c.color] || 'fill-blue'}" style="width:${c.pass}%"></div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:10px;">
-          <span>다음 시험: ${c.next}</span>
-          ${c.dday ? `<span class="badge badge-red">${c.dday}</span>` : ''}
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-          <a href="https://www.q-net.or.kr" target="_blank" class="qnet-link" onclick="event.stopPropagation()">🔗 Q-net</a>
-          <span style="font-size:11px;color:var(--accent);font-weight:600;" onclick="showCertDetail('${c.name}')">세부정보 →</span>
-        </div>
-      </div>`).join('');
-  },
-};
-function updateJobCertRec() { certRecommendModule.update(); }
-
-
-// ============ 6. 자격증 모달 모듈 ============
+// ============ 5. 자격증 모달 모듈 ============
 const certModalModule = {
   async resolveFallbackByName(name, fallback = {}) {
     if (fallback.jmcd) return fallback;
@@ -321,7 +278,6 @@ const certModalModule = {
               passEl.innerHTML = '<div class="passrate-empty">합격률 정보가 없습니다.</div>';
               return;
             }
-
             passEl.innerHTML = `
               ${this.renderPassRateSection('합격률', list)}
             `;
@@ -331,7 +287,6 @@ const certModalModule = {
           });
       }
     }
-
     // Q-net link
     const qnetLink = document.getElementById('cd-qnet-link');
     if (qnetLink) {
@@ -728,7 +683,6 @@ const searchModule = {
         this.run().catch(err => console.error('Error searching careers:', err));
       });
     }
-
     updateCareerSearchAvailability();
   },
 };
@@ -1074,12 +1028,11 @@ const certSearchModule = {
 
 // ============ 11. 진입점 ============
 document.addEventListener('DOMContentLoaded', () => {
-  modalCloseModule.init();
-  certRecommendModule.update();
-  jobModalModule.init();
-  certModalModule.init();
-  searchModule.init();
-  dropdownModule.init();
-  dropdownModule2.init();
-  certSearchModule.init();
+  modalCloseModule.init(); // 모달 외부 클릭 닫기
+  jobModalModule.init(); // 직무 모달
+  certModalModule.init(); // 자격증 모달
+  searchModule.init(); // 직무 검색
+  dropdownModule.init(); // 카테고리 드롭다운
+  dropdownModule2.init(); // 자격증 카테고리 드롭다운
+  certSearchModule.init(); // 자격증 검색
 });
