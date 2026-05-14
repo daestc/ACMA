@@ -1,6 +1,6 @@
 const careerService = require('../services/careerService');
 
-// 진로 검색db에서 대분류, 중분류, 소분류 가져오기
+// 진로 검색db에서 대분류, 중분류, 소분류, 세분류 가져오기
 const getCategories = async (req, res) => {
   try {
     const categories = await careerService.getCategories();
@@ -11,7 +11,7 @@ const getCategories = async (req, res) => {
   }
 };
 
-// 진로 검색db에서 대분류, 중분류, 소분류에 따른 진로 정보 가져오기
+// 진로 검색db에서 대분류, 중분류, 소분류, 세분류에 따른 진로 정보 가져오기
 const searchCareers = async (req, res) => {
   try {
     const { depth1_name, depth2_name, depth3_name, depth4_name } = req.query;
@@ -146,6 +146,41 @@ const getPassRate = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch pass rate' });
   }
 };
+// 현재 선택한 자격증 목록 가져오기
+const getMyCertifications = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.email;
+    const certs = await careerService.getMyCertifications(userId);
+    res.json(certs);
+  } catch (error) {
+    console.error('Error fetching user certifications:', error);
+    res.status(500).json({ error: 'Failed to fetch user certifications' });
+  }
+};
+
+// 선택한 자격증 삭제하기
+const removeCertification = async (req, res) => {
+  try {
+    const { userCertId } = req.params;
+    if (!userCertId) {
+      return res.status(400).json({ error: 'userCertId is required' });
+    }
+
+    const userId = req.user._id || req.user.email;
+    const result = await careerService.deleteCertification(userCertId, userId);
+    
+    res.json({ success: true, message: '자격증이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('Error removing certification:', error);
+    if (error.message === 'User not found') {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    if (error.message === 'User certification not found') {
+      return res.status(404).json({ error: 'User certification not found' });
+    }
+    res.status(500).json({ error: 'Failed to remove certification' });
+  }
+};
 
 
 module.exports = {
@@ -157,4 +192,6 @@ module.exports = {
   searchCertifications,
   saveCertification,
   getPassRate,
+  getMyCertifications,
+  removeCertification,
 };

@@ -262,6 +262,19 @@ input,select,textarea{font-family:inherit;}
 .career-result-code{font-size:11px;color:var(--text3);margin-bottom:8px;}
 .career-result-desc{font-size:12px;color:var(--text2);line-height:1.6;min-height:38px;}
 .career-empty-state{padding:24px;text-align:center;font-size:13px;color:var(--text2);background:var(--bg3);border-radius:12px;border:1px dashed var(--border2);}
+.my-cert-list{margin-bottom:18px;padding:18px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);box-shadow:var(--shadow);}
+.my-cert-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.my-cert-title{font-size:13px;font-weight:800;color:var(--text);}
+.my-cert-count{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-bg);padding:4px 9px;border-radius:999px;flex-shrink:0;}
+.my-cert-grid{display:flex;flex-wrap:wrap;gap:10px;}
+.my-cert-chip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:180px;max-width:100%;padding:12px 14px;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;}
+.my-cert-chip:hover{transform:translateY(-1px);border-color:var(--accent);box-shadow:0 8px 20px rgba(61,90,241,.08);}
+.my-cert-chip-name{font-size:14px;font-weight:800;color:var(--text);line-height:1.3;}
+.my-cert-chip-meta{font-size:11px;color:var(--text2);line-height:1.4;}
+.my-cert-chip-badge{margin-top:2px;}
+.my-cert-chip-wrapper{position:relative;display:inline-block;}
+.my-cert-delete-btn{position:absolute;top:-8px;right:-8px;width:28px;height:28px;padding:0;border:none;border-radius:50%;background:var(--accent);color:#fff;font-size:20px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;box-shadow:0 2px 6px rgba(61,90,241,.2);}
+.my-cert-delete-btn:hover{background:#d63031;box-shadow:0 4px 12px rgba(212,48,49,.3);transform:scale(1.1);}
 .career-search-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap;}
 .career-search-page-info{font-size:12px;color:var(--text2);font-weight:700;}
 .career-search-pagination{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}

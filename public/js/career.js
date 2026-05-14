@@ -69,8 +69,70 @@ function updateCareerSearchAvailability() {
     : '카테고리를 먼저 선택해야 검색할 수 있습니다.';
 }
 
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll('`', '&#96;');
+}
 
-// ============ 3. 데이터 (자격증 모달) ============
+
+// ============ 3. 현재 선택한 자격증 목록 ============
+const myCertModule = {
+  async load() {
+    const wrap = document.getElementById('my-cert-list');
+    if (!wrap) return;
+
+    wrap.innerHTML = '<div class="career-empty-state">현재 선택한 자격증을 불러오는 중입니다.</div>';
+
+    try {
+      const res = await fetch('/career/my-certs');
+      if (!res.ok) throw new Error('Failed to load my certifications');
+
+      const certs = await res.json();
+      this.render(Array.isArray(certs) ? certs : []);
+    } catch (error) {
+      console.error('Error fetching my certifications:', error);
+      wrap.innerHTML = '<div class="career-empty-state">현재 선택한 자격증을 불러오지 못했습니다.</div>';
+    }
+  },
+
+  render(certs) {
+    const wrap = document.getElementById('my-cert-list');
+    if (!wrap) return;
+
+    if (!certs.length) {
+      wrap.innerHTML = '<div class="career-empty-state">아직 선택한 자격증이 없습니다. 아래에서 자격증을 저장해 보세요.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="my-cert-head">
+        <div class="my-cert-title">현재 선택한 자격증</div>
+        <div class="my-cert-count">${certs.length}개</div>
+      </div>
+      <div class="my-cert-grid">
+        ${certs.map(cert => {
+          const info = cert.certificationId || {};
+          const name = info.name || '자격증';
+          const fieldParts = [info.field1, info.field2, info.seriesName].filter(Boolean);
+          const statusLabel = cert.status === 'target' ? '목표' : cert.status || '저장됨';
+
+          return `
+            <div class="my-cert-chip-wrapper">
+              <button type="button" class="my-cert-chip" onclick="showCertDetail('${escapeAttr(name)}')">
+                <span class="my-cert-chip-name">${escapeHtml(name)}</span>
+                <span class="my-cert-chip-meta">${escapeHtml(fieldParts.join(' · ') || '분류 정보 없음')}</span>
+                <span class="badge badge-green my-cert-chip-badge">${escapeHtml(statusLabel)}</span>
+              </button>
+              <button type="button" class="my-cert-delete-btn" title="삭제" onclick="removeCertification('${escapeAttr(cert._id)}', event)">×</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+};
+
+
+// ============ 4. 데이터 (자격증 모달) ============
 // TODO: 비어져 있지만 지우면 안됨...
 const jobCertData = {
   
@@ -80,6 +142,37 @@ const certDetailData = {
   
 };
 
+
+// ============ 3-1. 자격증 삭제 함수 ============
+async function removeCertification(userCertId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  if (!confirm('이 자격증을 삭제하시겠습니까?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/career/remove-cert/${userCertId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to remove certification');
+    }
+
+    const data = await res.json();
+    myCertModule.load();
+  } catch (error) {
+    console.error('Error removing certification:', error);
+    alert('자격증 삭제에 실패했습니다.');
+  }
+}
 
 // ============ 4. 탭 전환 모듈 ============
 const tabsModule = {
@@ -319,6 +412,7 @@ const certModalModule = {
           const result = await res.json();
           if (res.ok && result.success) {
             alert('자격증이 저장되었습니다.');
+            myCertModule.load().catch(err => console.error('Error refreshing my certs:', err));
           } else {
             alert(result.error || '저장에 실패했습니다.');
           }
@@ -1035,4 +1129,5 @@ document.addEventListener('DOMContentLoaded', () => {
   dropdownModule.init(); // 카테고리 드롭다운
   dropdownModule2.init(); // 자격증 카테고리 드롭다운
   certSearchModule.init(); // 자격증 검색
+  myCertModule.load().catch(err => console.error('Error loading my certs:', err));
 });

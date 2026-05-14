@@ -213,13 +213,24 @@ async function saveCareerDetails(jobCode, userContext) {
   }
 
   const userId = userDoc._id;
-  const cached = await Job.findOne({ userId, jobCode });
-  if (cached) return cached;
-
   const data = await getCareerDetails(jobCode);
   if (!data) return null;
 
-  return await Job.create({ ...data, jobCode, userId });
+  return await Job.findOneAndUpdate(
+    { userId, jobCode },
+    {
+      $setOnInsert: {
+        ...data,
+        jobCode,
+        userId,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
 }
 // 자격증 검색 db에서 대분류, 중분류, 자격증 정보 가져오기
 async function getCertCategories() {
@@ -329,6 +340,83 @@ async function getPassRate(jmcd) {
     throw new Error('Failed to fetch pass rate');
   }
 };
+// 현재 선택한 자격증 목록 가져오기
+async function getMyCertifications(userId) {
+  try {
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    if (!userDoc) {
+      console.error('User not found for userId:', userId);
+      return [];
+    }
+
+    const userCerts = await UserCertification.find({ userId: userDoc._id })
+      .populate('certificationId', 'name jmcd field1 field2 seriesName description careerPath way officialUrl')
+      .lean();
+
+    return userCerts.map(userCert => ({
+      _id: userCert._id,
+      status: userCert.status,
+      date: userCert.date,
+      progress: userCert.progress,
+      memo: userCert.memo,
+      isVisible: userCert.isVisible,
+      certificationId: userCert.certificationId
+        ? {
+            _id: userCert.certificationId._id,
+            name: userCert.certificationId.name || '',
+            jmcd: userCert.certificationId.jmcd || '',
+            field1: userCert.certificationId.field1 || '',
+            field2: userCert.certificationId.field2 || '',
+            seriesName: userCert.certificationId.seriesName || '',
+            description: userCert.certificationId.description || '',
+            careerPath: userCert.certificationId.careerPath || '',
+            way: userCert.certificationId.way || '',
+            officialUrl: userCert.certificationId.officialUrl || '',
+          }
+        : null,
+    }));
+  } catch (error) {
+    console.error('Error fetching user certifications:', error);
+    throw new Error('Failed to fetch user certifications');
+  }
+};
+
+// 선택한 자격증 삭제하기
+async function deleteCertification(userCertId, userId) {
+  try {
+    // userId 검증
+    let userDoc;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userDoc = await User.findById(userId).lean();
+    } else {
+      userDoc = await User.findOne({ email: userId }).lean();
+    }
+    
+    if (!userDoc) {
+      throw new Error('User not found');
+    }
+
+    // UserCertification이 현재 사용자의 것인지 확인하고 삭제
+    const result = await UserCertification.findOneAndDelete({
+      _id: userCertId,
+      userId: userDoc._id
+    });
+
+    if (!result) {
+      throw new Error('User certification not found');
+    }
+
+    return { success: true, message: '자격증이 삭제되었습니다.' };
+  } catch (error) {
+    console.error('Error deleting certification:', error);
+    throw error;
+  }
+};
 
 
 module.exports = {
@@ -340,4 +428,6 @@ module.exports = {
   searchCertifications, // 분류에 따른 자격증 목록 가져오기
   saveCertification, // 자격증 선택하여 db에 저장하기
   getPassRate, // 자격증 별 합격률 DB에서 합격률 정보 가져오기
+  getMyCertifications, // 현재 선택한 자격증 목록 가져오기
+  deleteCertification, // 선택한 자격증 삭제하기
 };

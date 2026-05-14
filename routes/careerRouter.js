@@ -37,8 +37,12 @@ router.get('/cert-categories', careerController.getCertCategories);
 // 분류에 따른 자격증 목록 가져오기
 router.get('/search-cert', careerController.searchCertifications);
 // 자격증 선택 저장
-router.post('/save-cert', careerController.saveCertification);
+router.post('/save-cert',requireLogin ,careerController.saveCertification);
 // 자격증 합격률 가져오기
 router.get('/pass-rate/:jmcd', careerController.getPassRate);
+// 현재 선택한 자격증 목록 가져오기
+router.get('/my-certs', requireLogin, careerController.getMyCertifications);
+// 자격증 삭제하기
+router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeCertification);
 
 module.exports = router;
