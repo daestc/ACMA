@@ -17,6 +17,9 @@ function requireLogin(req, res, next) {
 // todo 추가 요청
 router.post('/addTodo', userController.addTodo);
 
+// todo 삭제 요청
+router.post('/deleteTodo', userController.deleteTodo);
+
 // 학사관리 페이지 
 router.get('/academic', requireLogin, (req, res) => {
   res.render('pages/academic', {

@@ -11,7 +11,7 @@
     <!-- 모달 헤더 -->
     <div style="padding:20px 24px 18px;border-bottom:1px solid var(--border);
                 display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:16px;font-weight:800;">📋 항목 추가</div>
+      <div style="font-size:16px;font-weight:800;">📋 할 일 수정</div>
       <button onclick="closeTodoModal()"
         style="width:30px;height:30px;background:var(--bg3);border:1px solid var(--border);
                border-radius:8px;display:flex;align-items:center;justify-content:center;
@@ -23,24 +23,31 @@
     <!-- 모달 바디 -->
     <div style="padding:24px;">
 
-      <!-- 탭 선택 (강의 일정 / 할 일) -->
+      <!-- 탭 선택 (할 일 추가 / 할 일 삭제) -->
       <div style="display:flex;gap:0;background:var(--bg3);border:1px solid var(--border);
                   border-radius:var(--radius-sm);padding:3px;margin-bottom:20px;">
-        <button id="modal-tab-todo"
+        <button id="modal-tab-addTodo"
+          onclick="switchModalTab('add')"
           style="flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:600;
                  transition:all .2s;background:transparent;color:var(--text2);cursor:pointer;">
-          ✅ 할 일
+          ✅ 할 일 추가
+        </button>
+        <button id="modal-tab-refactorTodo"
+          onclick="switchModalTab('refactor')"
+          style="flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:600;
+                 transition:all .2s;background:transparent;color:var(--text2);cursor:pointer;">
+          ✅ 할 일 삭제
         </button>
       </div>
 
-      <!-- 할 일 입력 폼 -->
-      <div id="modal-form-todo">
+      <!-- 할 일 추가 입력 폼 -->
+      <div id="modal-form-addTodo">
         <div style="margin-bottom:14px;">
           <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;
                         margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">할 일 내용</label>
           <input id="todo-content" class="input-field" type="text"
             placeholder="예: 자료구조 과제 제출" style="width:100%;"
-            onkeydown="if(event.key==='Enter') addTodoItem()">
+            onkeydown="if(event.key==='Enter') confirmAddTodo()">
         </div>
         <div style="margin-bottom:20px;">
           <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;
@@ -50,13 +57,34 @@
         </div>
       </div>
 
+      <!-- 할 일 삭제 입력 폼 -->
+       <div id="modal-form-refactorTodo" style="display:none;">
+        <div id="todo-D-list"  style="margin-bottom:14px;">
+          <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;
+                        margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">할 일 목록</label>
+          <% if(!todolist || todolist.length === 0) { %>
+            <div class="check-item todo-Dexam">
+              <span class="check-text">오늘 진행할 할 일이 없습니다!</span>
+            </div>
+          <% } else { %>
+            <% todolist.forEach(todo => { %>
+              <div class="check-item" data-id="<%= todo._id %>">
+                <div class="check-box delete-todo" onclick="toggleCheck(this)"></div>
+                <span class="check-text"><%= todo.title %></span>
+                <span class="check-time"><%= todo.note %></span>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
       <!-- 버튼 -->
       <div style="display:flex;gap:8px;">
         <button onclick="closeTodoModal()"
           class="btn btn-ghost" style="flex:1;">취소</button>
         <button onclick="clearModalInputs()"
           class="btn btn-ghost" style="flex:2;">초기화</button>
-        <button onclick="addTodoItem()"
+        <button onclick="confirmAddTodo()" id="btn-delTodo"
           class="btn btn-accent" style="flex:3;">+ 추가</button>
       </div>
 

@@ -14,15 +14,20 @@ const user = {
 
 };
 
+// Todo 항목 추가
 const addTodo = async (req, res) => {
   try {
+    // #후순위 유저 유효성 검사
+
     const {content, note} = req.body;
-    await userService.addTodo(user.email, content, note);
+    
+    // DB에 추가 + 추가한 todo의 _id 가져오기
+    const todoId = await userService.addTodo(user.email, content, note);
     
     console.log('todo 추가 완료!')
 
     // success가 없으면 화면에 표시 X
-    res.json({success: true});
+    res.json({success: true, todoId});
   } catch (error) {
     console.error(error.message);
     res.json({success: false});
@@ -30,4 +35,25 @@ const addTodo = async (req, res) => {
 
 } // addTodo()
 
-module.exports = {addTodo};
+// Todo 삭제
+const deleteTodo = async (req, res) => {
+  try {
+    const {deleteTodoList} = req.body;
+    // 삭제 항목이 없으면 리턴
+    if(deleteTodoList.length === 0) return res.json({success: false});
+
+    await userService.deleteTodo(user.email, deleteTodoList);
+
+    console.log('todo 삭제 완료!!');
+
+    // success가 없으면 화면에 표시 X
+    res.json({success: true});
+  } catch (error) {
+    console.log('todo 삭제 실패!!');
+    console.error(error.message);
+    res.json({success: false});
+  }
+
+} // deleteTodo()
+
+module.exports = {addTodo, deleteTodo};
