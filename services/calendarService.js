@@ -91,21 +91,18 @@ async function getTimetableListByUser(userId) {
 
 //시간표 생성
 async function createNewTimetable(userId, timetableData) {
-    if (!timetableData.title) {
-        throw new Error('시간표 제목은 필수입니다.');
-    }
+    validateTimetableData(timetableData);
 
-    if (!timetableData.schedule || timetableData.schedule.length === 0) {
-        throw new Error('시간표 시간 정보는 필수입니다.');
-    }
+    const isLecture = !!timetableData.semester;
+
     const newTimetable = await Timetable.create({
-        userId : userId,
-        semester : timetableData.semester || null,
-        title : timetableData.title,
+        userId: userId,
+        semester: timetableData.semester || null,
+        title: timetableData.title.trim(),
         location: timetableData.location || null,
-        type: timetableData.type || 'lecture',
-        professorName: timetableData.professorName || null,
-        credits: timetableData.credits || 0,
+        type: timetableData.type || (isLecture ? 'lecture' : 'other'),
+        professorName: isLecture ? (timetableData.professorName || null) : null,
+        credits: isLecture ? (timetableData.credits || 0) : 0,
         color: timetableData.color || '#60A5FA',
         schedule: timetableData.schedule,
     });
@@ -114,15 +111,36 @@ async function createNewTimetable(userId, timetableData) {
 
 //시간표 수정
 async function updateTimetable(userId, timetableId, updateData) {
-  return await Timetable.findOneAndUpdate(
-    {
-      _id: timetableId,
-      userId: userId,
-      isActive: true,
-    },
-    updateData,
-    { new: true }
-  );
+    validateTimetableData(updateData);
+
+    const isLecture = !!updateData.semester;
+
+    const sanitizedData = {
+        semester: updateData.semester || null,
+        title: updateData.title.trim(),
+        location: updateData.location || null,
+        type: updateData.type || (isLecture ? 'lecture' : 'other'),
+        professorName: isLecture ? (updateData.professorName || null) : null,
+        credits: isLecture ? (updateData.credits || 0) : 0,
+        color: updateData.color || '#60A5FA',
+        schedule: updateData.schedule,
+    };
+
+    const updateTimetable =  await Timetable.findOneAndUpdate(
+        {
+            _id: timetableId,
+            userId: userId,
+            isActive: true,
+        },
+        sanitizedData,
+        { new: true , runValidators: true}
+    );
+
+    if (!updatedTimetable) {
+        throw new Error('시간표를 찾을 수 없습니다.');
+    }
+
+    return updatedTimetable;
 };
 
 //시간표 제거
@@ -141,7 +159,7 @@ async function deleteTimetable(userId,timetableId) {
 };
 
 
-//도메인 규칙
+//일정 도메인 규칙
 const EVENT_CATEGORIES = [
   'personal',
   'lecture',
@@ -184,6 +202,35 @@ function validateEventData(eventData) {
     if (!String(eventData.startDate).includes('T') || !String(eventData.endDate).includes('T')) {
         throw new Error('시간 일정은 시작 시간과 종료 시간이 필요합니다.');
     }
+  }
+}
+
+//시간표 도매인 규칙
+function validateTimetableData(timetableData) {
+  if (!timetableData.title || timetableData.title.trim() === '') {
+    throw new Error('시간표 제목은 필수입니다.');
+  }
+
+  if (!Array.isArray(timetableData.schedule) || timetableData.schedule.length === 0) {
+    throw new Error('시간표 시간 정보는 필수입니다.');
+  }
+
+  timetableData.schedule.forEach(sch => {
+    if (sch.dayOfWeek === undefined || sch.dayOfWeek === null) {
+      throw new Error('요일 정보는 필수입니다.');
+    }
+
+    if (!sch.startTime || !sch.endTime) {
+      throw new Error('시작 시간과 종료 시간은 필수입니다.');
+    }
+
+    if (sch.startTime >= sch.endTime) {
+      throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
+    }
+  });
+
+  if (timetableData.credits !== undefined && Number(timetableData.credits) < 0) {
+    throw new Error('학점은 0 이상이어야 합니다.');
   }
 }
 
