@@ -4,7 +4,6 @@
   <%- include('../partials/head') %>
   <title><%= pageTitle %></title>
   <style>
-    /* 리스트 아이템: 호버 시 칸 전체 강조 */
     .notice-item { 
       cursor: default !important; 
       border-bottom: 1px solid #f1f5f9; 
@@ -15,7 +14,6 @@
     }
     .notice-item:hover { background-color: #f8fafc; }
 
-    /* 필터 칩: 글자만 강조하는 스타일 */
     .chip { 
       cursor: pointer; 
       padding: 8px 12px; 
@@ -29,50 +27,40 @@
       font-weight: 700 !important; 
     }
 
-    /* 보라색 배지 (자격증 전용) */
-    .badge-purple {
-      background-color: #f3e8ff;
-      color: #7e22ce;
-    }
+    .badge-purple { background-color: #f3e8ff; color: #7e22ce; }
 
-    /* 사이드바 애니메이션 핵심 CSS */
     #app-sidebar {
-      position: fixed;
-      left: -280px;
-      top: 0;
-      width: 280px;
-      height: 100vh;
-      background: white;
-      transition: left 0.3s ease-in-out;
-      z-index: 2000;
+      position: fixed; left: -280px; top: 0; width: 280px; height: 100vh;
+      background: white; transition: left 0.3s ease-in-out; z-index: 2000;
       box-shadow: 2px 0 10px rgba(0,0,0,0.1);
     }
-    #app-sidebar.open {
-      left: 0 !important;
-    }
+    #app-sidebar.open { left: 0 !important; }
 
-    /* 배경 레이어 스타일 */
     .sidebar-backdrop {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.4);
-      z-index: 1999;
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4); z-index: 1999;
     }
-    .sidebar-backdrop.active {
-      display: block !important;
-    }
-
+    .sidebar-backdrop.active { display: block !important; }
     .notice-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 6px; }
+
+    /* 페이징 디자인 스타일 */
+    .pagination-container {
+      display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 30px; margin-bottom: 20px;
+    }
+    .page-btn {
+      text-decoration: none; color: #64748b; padding: 8px 14px; border-radius: 8px;
+      background: white; border: 1px solid #e2e8f0; font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+    }
+    .page-btn:hover { background: #f1f5f9; color: #1e293b; }
+    .page-btn.active { background: #1e293b; color: white; border-color: #1e293b; font-weight: 700; }
+    .page-btn.disabled { color: #cbd5e1; background: #f8fafc; pointer-events: none; border-color: #e2e8f0; }
   </style>
 </head>
 <body>
   <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
-
   <%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
   
   <main class="main-content">
-    
     <%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
 
     <div class="page-content">
@@ -115,50 +103,53 @@
           <div style="padding: 40px; text-align: center; color: #94a3b8;">표시할 일정이 없습니다.</div>
         <% } %>
       </div>
+
+      <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+        <div class="pagination-container">
+          <a href="/notice?page=<%= currentPageNum - 1 %>" class="page-btn <%= currentPageNum === 1 ? 'disabled' : '' %>">이전</a>
+          
+          <% for (let i = 1; i <= totalPages; i++) { %>
+            <a href="/notice?page=<%= i %>" class="page-btn <%= currentPageNum === i ? 'active' : '' %>"><%= i %></a>
+          <% } %>
+          
+          <a href="/notice?page=<%= currentPageNum + 1 %>" class="page-btn <%= currentPageNum === totalPages ? 'disabled' : '' %>">다음</a>
+        </div>
+      <% } %>
+
     </div>
   </main>
 
   <script>
-    // 1. 사이드바 제어 함수
     window.toggleSidebar = function() {
       const sidebar = document.getElementById('app-sidebar');
       const backdrop = document.getElementById('sidebar-backdrop');
-      
       if (sidebar && backdrop) {
         sidebar.classList.toggle('open');
         backdrop.classList.toggle('active');
-      } else {
-        console.error("사이드바 요소를 찾을 수 없습니다.");
       }
     };
 
     window.closeSidebar = function() {
       const sidebar = document.getElementById('app-sidebar');
       const backdrop = document.getElementById('sidebar-backdrop');
-      
       if (sidebar && backdrop) {
         sidebar.classList.remove('open');
         backdrop.classList.remove('active');
       }
     };
 
-    // 2. 카테고리 필터링 함수 
     function filterChip(clickedChip) {
-      // 모든 칩의 활성화 해제 및 클릭된 칩 강조
       const chips = document.querySelectorAll('.chip'); 
       chips.forEach(chip => chip.classList.remove('active'));
       clickedChip.classList.add('active');
 
-      // 이모지 제외하고 순수 텍스트만 추출 
       const selected = clickedChip.innerText.replace(/[^\uAC00-\uD7AF]/gi, "").trim();
       const items = document.querySelectorAll('.notice-item');
 
       items.forEach(item => {
         const itemCat = item.getAttribute('data-category');
-        
-        // 전체를 누르거나 카테고리 텍스트가 일치하는 경우만 노출
         if (selected === '전체' || itemCat === selected) {
-          item.style.display = 'flex'; // 
+          item.style.display = 'flex';
         } else {
           item.style.display = 'none';
         }
@@ -166,5 +157,4 @@
     }
   </script>
 </body>
-</html>
 </html>
