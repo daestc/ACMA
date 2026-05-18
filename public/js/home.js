@@ -3,6 +3,9 @@
    홈 페이지 전용: 강의 탭 / 할 일 탭, 습관 트래커
    ================================================ */
 
+// 사용할 변수 선언
+let selectedHabitId = null; // 현재 수정 중인 습관 id
+
 // ── 강의 일정 / 할 일 탭 전환 ────────────────────
 function switchHomeTodo(tab, btn) {
   document.getElementById('ht-lecture').style.display = 'none';
@@ -181,7 +184,7 @@ async function deleteTodoItem() {
   closeTodoModal();
 } // deleteTodoItem()
 
-// ── 습관 트래커 ───────────────────────────────────
+// 습관 클릭 시 완료 || 미완료 처리
 function toggleHabit(el) {
   const isDone = el.dataset.done === 'true';
   el.dataset.done = isDone ? false : true;
@@ -214,19 +217,134 @@ function updateHabitSummary() {
   if (bar)     bar.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
 }
 
-function addHabitItem() {
-  const row = document.getElementById('habit-input-row');
-  const isVisible = row.style.display === 'flex';
-  row.style.display = isVisible ? 'none' : 'flex';
-  if (!isVisible) document.getElementById('habit-new-input').focus();
+// 습관 트래커 수정 모달 열기
+function openHabitModal() {
+  const overlay = document.getElementById('habit-modal-overlay');
+  overlay.style.display = 'flex';
+  switchHabitTab('add');
+  clearHabitModal();
+
+  // add 입력 창 포커스
+  setTimeout(() => document.getElementById('habit-add-name').focus(), 100);
 }
 
-function confirmAddHabit() {
-  const inp = document.getElementById('habit-new-input');
-  const cat = document.getElementById('habit-category');
-  const val = inp.value.trim();
-  if (!val) return;
+// 습관 트래커 수정 모달 닫기
+function closeHabitModal() {
+  document.getElementById('habit-modal-overlay').style.display = 'none';
+  clearHabitModal();
+}
 
+// 습관 트래커 수정 입력 내용 초기화
+function clearHabitModal() {
+  // 추가 폼 초기화
+  document.getElementById('habit-add-name').value = '';
+
+  // 카테고리 초기화 (첫 번째 항목 선택)
+  const catBtns = document.querySelectorAll('.habit-cat-btn');
+  catBtns.forEach((btn, i) => {
+    const isFirst = i === 0;
+    btn.style.background = isFirst ? 'var(--green-bg)' : 'var(--bg3)';
+    btn.style.borderColor = isFirst ? 'var(--green)'   : 'var(--border)';
+    btn.style.color       = isFirst ? 'var(--green)'   : 'var(--text2)';
+    if (isFirst) btn.classList.add('active');
+    else         btn.classList.remove('active');
+  });
+
+  // 수정 폼 닫기
+  cancelHabitEdit();
+}
+
+// 수정 탭 전환
+function switchHabitTab(tab) {
+  const isAdd = tab === 'add';
+
+  document.getElementById('habit-form-add').style.display  = isAdd ? 'block' : 'none';
+  document.getElementById('habit-form-edit').style.display = isAdd ? 'none'  : 'block';
+
+  const addBtn  = document.getElementById('habit-tab-add');
+  const editBtn = document.getElementById('habit-tab-edit');
+
+  addBtn.style.cssText = `flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:700;
+    transition:all .2s;background:${isAdd ? 'var(--accent)' : 'transparent'};
+    color:${isAdd ? 'white' : 'var(--text2)'};cursor:pointer;`;
+
+  editBtn.style.cssText = `flex:1;padding:8px;border-radius:6px;font-size:13px;font-weight:${isAdd ? '600' : '700'};
+    transition:all .2s;background:${isAdd ? 'transparent' : 'var(--accent)'};
+    color:${isAdd ? 'var(--text2)' : 'white'};cursor:pointer;`;
+
+  // 수정 탭으로 전환 시 목록 렌더링
+  if (!isAdd) renderHabitEditList();
+}
+
+// 추가 탭 카테고리 선택
+function selectHabitCategory(el) {
+  const catMap = {
+    '건강': { bg: 'var(--green-bg)',  border: 'var(--green)',  color: 'var(--green)'  },
+    '학습': { bg: 'var(--accent-bg)', border: 'var(--accent)', color: 'var(--accent)' },
+    '마음': { bg: 'var(--purple-bg)', border: 'var(--purple)', color: 'var(--purple)' },
+    '성장': { bg: 'var(--amber-bg)',  border: 'var(--amber)',  color: 'var(--amber)'  },
+  };
+
+  document.querySelectorAll('.habit-cat-btn').forEach(btn => {
+    btn.style.background  = 'var(--bg3)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color       = 'var(--text2)';
+    btn.classList.remove('active');
+  });
+
+  const cat = el.dataset.cat;
+  el.style.background  = catMap[cat].bg;
+  el.style.borderColor = catMap[cat].border;
+  el.style.color       = catMap[cat].color;
+  el.classList.add('active');
+}
+
+// 수정 탭 카테고리 선택
+function selectHabitEditCategory(el) {
+  const catMap = {
+    '건강': { bg: 'var(--green-bg)',  border: 'var(--green)',  color: 'var(--green)'  },
+    '학습': { bg: 'var(--accent-bg)', border: 'var(--accent)', color: 'var(--accent)' },
+    '마음': { bg: 'var(--purple-bg)', border: 'var(--purple)', color: 'var(--purple)' },
+    '성장': { bg: 'var(--amber-bg)',  border: 'var(--amber)',  color: 'var(--amber)'  },
+  };
+
+  document.querySelectorAll('.habit-edit-cat-btn').forEach(btn => {
+    btn.style.background  = 'var(--bg2)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color       = 'var(--text2)';
+    btn.classList.remove('active');
+  });
+
+  const cat = el.dataset.cat;
+  el.style.background  = catMap[cat].bg;
+  el.style.borderColor = catMap[cat].border;
+  el.style.color       = catMap[cat].color;
+  el.classList.add('active');
+}
+
+// 추가 / 수정 display로 분기
+function confirmHabitAction() {
+  const isAdd = document.getElementById('habit-form-add').style.display !== 'none';
+  isAdd ? addHabitFromModal() : confirmHabitEdit();
+}
+
+// Habit 추가
+function addHabitFromModal() {
+  const name = document.getElementById('habit-add-name').value.trim();
+
+  if (!name) {
+    const input = document.getElementById('habit-add-name');
+    input.style.borderColor = 'var(--red)';
+    input.focus();
+    setTimeout(() => input.style.borderColor = '', 1500);
+    return;
+  }
+
+  // 카테고리 가져오기 defalut: 건강
+  const activeCat = document.querySelector('.habit-cat-btn.active');
+  const category  = activeCat ? activeCat.dataset.cat : '건강';
+
+  // 화면에 항목 추가
   const list = document.getElementById('habit-list');
   const div  = document.createElement('div');
   div.className    = 'habit-item';
@@ -235,13 +353,136 @@ function confirmAddHabit() {
   div.innerHTML = `
     <div class="habit-check"></div>
     <div class="habit-body">
-      <div class="habit-name">${val}</div>
-      <div class="habit-sub">${cat.value} · 매일</div>
+      <div class="habit-name">${name}</div>
+      <div class="habit-sub">${category} · 매일</div>
     </div>`;
-
   list.appendChild(div);
-  inp.value = '';
-  document.getElementById('habit-input-row').style.display = 'none';
+  updateHabitSummary();
+
+  // TODO: POST /api/habit API 호출
+  // await fetch('/api/habit', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ name, category })
+  // });
+
+  clearHabitModal();
+  document.getElementById('habit-add-name').focus();
+}
+
+// ── 수정 목록 렌더링 ──────────────────────────────
+function renderHabitEditList() {
+  const items     = document.querySelectorAll('#habit-list .habit-item');
+  const container = document.getElementById('habit-edit-list');
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">
+        등록된 습관이 없습니다!
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = [...items].map((item, i) => {
+    const name = item.querySelector('.habit-name').textContent;
+    const sub  = item.querySelector('.habit-sub').textContent;
+    const habitId = item.dataset.id;
+    return `
+      <div data-id="${habitId}" style="display:flex;align-items:center;justify-content:space-between;
+                  padding:10px 12px;border-bottom:1px solid var(--border);gap:8px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${name}</div>
+          <div style="font-size:11px;color:var(--text2);">${sub}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openHabitEditForm(${habitId})"
+            class="btn btn-ghost btn-sm">수정</button>
+          <button onclick="deleteHabit(${habitId})"
+            style="padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;
+                   font-weight:700;background:var(--red-bg);color:var(--red);
+                   border:1.5px solid #fecdd3;cursor:pointer;transition:all .2s;">
+            삭제
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 수정 폼 열기 ──────────────────────────────────
+function openHabitEditForm(id) {
+  selectedHabitId = id;
+  const item = document.querySelector(`[data-id="${id}"]`);
+
+  const name     = item.querySelector('.habit-name').textContent;
+  const subText  = item.querySelector('.habit-sub').textContent;
+  const category = subText.split(' · ')[0];
+
+  document.getElementById('habit-edit-name').value = name;
+  document.getElementById('habit-edit-form').style.display = 'block';
+
+  // 카테고리 버튼 선택 상태 반영
+  document.querySelectorAll('.habit-edit-cat-btn').forEach(btn => {
+    const isMatch = btn.dataset.cat === category;
+    const catMap  = {
+      '건강': { bg: 'var(--green-bg)',  border: 'var(--green)',  color: 'var(--green)'  },
+      '학습': { bg: 'var(--accent-bg)', border: 'var(--accent)', color: 'var(--accent)' },
+      '마음': { bg: 'var(--purple-bg)', border: 'var(--purple)', color: 'var(--purple)' },
+      '성장': { bg: 'var(--amber-bg)',  border: 'var(--amber)',  color: 'var(--amber)'  },
+    };
+    btn.style.background  = isMatch ? catMap[category].bg     : 'var(--bg2)';
+    btn.style.borderColor = isMatch ? catMap[category].border : 'var(--border)';
+    btn.style.color       = isMatch ? catMap[category].color  : 'var(--text2)';
+    if (isMatch) btn.classList.add('active');
+    else         btn.classList.remove('active');
+  });
+
+  document.getElementById('habit-edit-name').focus();
+}
+
+// ── 수정 완료 ─────────────────────────────────────
+function confirmHabitEdit() {
+  if (!selectedHabitId) return;
+
+  const name = document.getElementById('habit-edit-name').value.trim();
+  if (!name) {
+    const input = document.getElementById('habit-edit-name');
+    input.style.borderColor = 'var(--red)';
+    input.focus();
+    setTimeout(() => input.style.borderColor = '', 1500);
+    return;
+  }
+
+  const activeCat = document.querySelector('.habit-edit-cat-btn.active');
+  const category  = activeCat ? activeCat.dataset.cat : '건강';
+
+  // 화면의 habit-item 업데이트
+  const item = document.querySelector(`[data-id="${selectedHabitId}"]`);
+  item.querySelector('.habit-name').textContent = name;
+  item.querySelector('.habit-sub').textContent  = `${category} · 매일`;
+  // TODO: PUT /api/habit/:id API 호출
+
+  cancelHabitEdit();
+  renderHabitEditList();
+  updateHabitSummary();
+}
+
+// ── 수정 취소 ─────────────────────────────────────
+function cancelHabitEdit() {
+  document.getElementById('habit-edit-form').style.display = 'none';
+  document.getElementById('habit-edit-name').value = '';
+  selectedHabitId = null;
+}
+
+// ── 삭제 ─────────────────────────────────────────
+function deleteHabit(id) {
+  const item = document.querySelector(`[data-id="${id}"]`);
+  if (!item) return;
+
+  items.remove();
+
+  // TODO: DELETE /api/habit/:id API 호출
+
+  renderHabitEditList();
   updateHabitSummary();
 }
 

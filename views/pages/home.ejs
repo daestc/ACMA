@@ -95,7 +95,7 @@
             <span class="card-title">🌱 오늘의 습관 트래커</span>
             <div style="display:flex;align-items:center;gap:8px;">
               <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;"><% completedCount %> / <%= habitList.length %> 완료</span>
-              <button class="btn btn-ghost btn-sm" onclick="addHabitItem()">+ 추가</button>
+              <button class="btn btn-ghost btn-sm" onclick="openHabitModal()">✏️ 수정</button>
             </div>
           </div>
           <!-- 진행률 바 -->
@@ -122,18 +122,6 @@
               </div>
             <% }); %>
             </div>
-          <!-- 습관 추가 입력창 (숨김) -->
-          <div id="habit-input-row" style="display:none;margin-top:12px;display:none;">
-            <div style="display:flex;gap:8px;align-items:center;">
-              <span style="font-size:18px;">✏️</span>
-              <input class="input-field" id="habit-new-input" placeholder="새 습관 입력 (예: 독서 20분)" style="flex:1;" onkeydown="if(event.key==='Enter')confirmAddHabit()">
-              <select class="select-field" id="habit-category" style="font-size:12px;padding:6px 10px;">
-                <option>학습</option><option>건강</option><option>마음</option><option>성장</option>
-              </select>
-              <button class="btn btn-accent btn-sm" onclick="confirmAddHabit()">추가</button>
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('habit-input-row').style.display='none'">취소</button>
-            </div>
-          </div>
         </div>
 		</div>
 
@@ -142,6 +130,7 @@
 	<!-- 모달 -->
 	<%- include('../partials/modals/mypage', { user: user }) %>
 	<%- include('../partials/modals/todo_add', { user: user }) %>
+  <%- include('../partials/modals/habit_edit') %>
 
 	<script src="/js/common.js"> </script>
   <script src="/js/home.js"> </script>
