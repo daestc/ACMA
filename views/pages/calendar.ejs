@@ -70,6 +70,49 @@
     height: 10px;
     border-radius: 50%;
   }
+
+  .timetable {
+    display: grid;
+    position: relative;
+  }
+
+  .tt-header,
+  .tt-time,
+  .tt-cell {
+    border: 1px solid #e5e7eb;
+    box-sizing: border-box;
+  }
+
+  .tt-header {
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .tt-time {
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+  }
+
+  .tt-cell {
+    background: white;
+  }
+
+  .tt-class-block {
+    z-index: 5;
+    margin: 4px;
+    padding: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+    color: #111827;
+    font-weight: 600;
+  }
 </style>
 <body>
 

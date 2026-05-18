@@ -1,46 +1,104 @@
 function renderTimetable() {
   const grid = document.getElementById('timetable-grid');
 
-  const days = ['월', '화', '수', '목', '금'];
-  const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+  const days = [
+    { label: '월', value: 1 },
+    { label: '화', value: 2 },
+    { label: '수', value: 3 },
+    { label: '목', value: 4 },
+    { label: '금', value: 5 },
+  ];
 
-  grid.innerHTML = `
-    <div class="tt-header"></div>
-    ${days.map(day => `<div class="tt-header">${day}</div>`).join('')}
-  `;
+  const startHour = 8;
+  const endHour = 23;
+  const slotMinutes = 30;
+  const slotHeight = 40;
 
-  hours.forEach(hour => {
-    grid.innerHTML += `<div class="tt-time">${String(hour).padStart(2, '0')}:00</div>`;
+  const startMinutes = startHour * 60;
+  const endMinutes = endHour * 60;
+  const slotCount = (endMinutes - startMinutes) / slotMinutes;
 
-    for (let day = 1; day <= 5; day++) {
-      const classes = findTimetableByTime(day, hour);
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `72px repeat(${days.length}, 1fr)`;
+  grid.style.gridTemplateRows = `56px repeat(${slotCount}, ${slotHeight}px)`;
+  grid.style.position = 'relative';
 
+  grid.innerHTML = '';
+
+  // 헤더
+  grid.innerHTML += `<div class="tt-header" style="grid-column:1; grid-row:1;"></div>`;
+
+  days.forEach((day, index) => {
+    grid.innerHTML += `
+      <div class="tt-header" style="grid-column:${index + 2}; grid-row:1;">
+        ${day.label}
+      </div>
+    `;
+  });
+
+  // 배경 칸
+  for (let i = 0; i < slotCount; i++) {
+    const minutes = startMinutes + i * slotMinutes;
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const row = i + 2;
+
+    grid.innerHTML += `
+      <div class="tt-time" style="grid-column:1; grid-row:${row};">
+        ${minute === 0 ? `${String(hour).padStart(2, '0')}:00` : ''}
+      </div>
+    `;
+
+    days.forEach((day, dayIndex) => {
       grid.innerHTML += `
-        <div class="tt-cell">
-          ${classes.map(item => `
-            <div class="tt-class" style="background:${item.color || '#60A5FA'}">
-              ${item.title}
-              <br>
-              <small>${item.location || ''}</small>
-            </div>
-          `).join('')}
-        </div>
+        <div 
+          class="tt-cell" 
+          style="grid-column:${dayIndex + 2}; grid-row:${row};"
+        ></div>
       `;
-    }
+    });
+  }
+
+  // 시간표 블록
+  window.timetables.forEach(item => {
+    item.schedule.forEach(sch => {
+      const dayIndex = days.findIndex(day => day.value === Number(sch.dayOfWeek));
+      if (dayIndex === -1) return;
+
+      const start = timeToMinutes(sch.startTime);
+      const end = timeToMinutes(sch.endTime);
+
+      if (end <= startMinutes || start >= endMinutes) return;
+
+      const visibleStart = Math.max(start, startMinutes);
+      const visibleEnd = Math.min(end, endMinutes);
+
+      const startLine = Math.floor((visibleStart - startMinutes) / slotMinutes) + 2;
+      const endLine = Math.ceil((visibleEnd - startMinutes) / slotMinutes) + 2;
+
+      const block = document.createElement('div');
+      block.className = 'tt-class-block';
+      block.style.gridColumn = `${dayIndex + 2}`;
+      block.style.gridRow = `${startLine} / ${endLine}`;
+      block.style.background = item.color || '#60A5FA';
+
+      block.innerHTML = `
+        <strong>${item.title}</strong><br>
+        <small>${sch.startTime}~${sch.endTime}</small><br>
+        <small>${item.location || ''}</small>
+      `;
+      block.addEventListener('click', () => {
+        openTimetableDetail(item._id);
+      });
+
+      grid.appendChild(block);
+    });
   });
 }
 
-function findTimetableByTime(dayOfWeek, hour) {
-  return window.timetables.filter(item => {
-    return item.schedule.some(sch => {
-      const startHour = Number(sch.startTime.split(':')[0]);
-      const endHour = Number(sch.endTime.split(':')[0]);
-
-      return sch.dayOfWeek === dayOfWeek &&
-             hour >= startHour &&
-             hour < endHour;
-    });
-  });
+function timeToMinutes(time) {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!openBtn || !closeBtn || !form) return;
 
+  document.getElementById('delete-timetable-btn').addEventListener('click', deleteTimetable);
   openBtn.addEventListener('click', openTimetableModal);
   closeBtn.addEventListener('click', closeTimetableModal);
   form.addEventListener('submit', createTimetable);
@@ -141,8 +200,16 @@ async function createTimetable(e) {
     ]
   };
 
-  const res = await fetch('/calendar/timetables', {
-    method: 'POST',
+  const timetableId = document.getElementById('timetable-id').value;
+
+  const url = timetableId
+    ? `/calendar/timetables/${timetableId}`
+    : '/calendar/timetables';
+
+  const method = timetableId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
     headers: {
       'Content-Type': 'application/json'
     },
@@ -152,6 +219,60 @@ async function createTimetable(e) {
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
     alert(errorData?.error || '시간표 저장 실패');
+    return;
+  }
+
+  closeTimetableModal();
+
+  const timetableRes = await fetch('/calendar/timetables');
+  window.timetables = await timetableRes.json();
+
+  renderTimetable();
+}
+
+function openTimetableDetail(timetableId) {
+  const item = window.timetables.find(t => t._id === timetableId);
+  if (!item) return;
+
+  const firstSchedule = item.schedule[0];
+
+  document.getElementById('timetable-id').value = item._id;
+  document.getElementById('timetable-modal-title').textContent = '시간표 상세 / 수정';
+
+  document.getElementById('tt-semester').value = item.semester || '';
+  document.getElementById('tt-title').value = item.title || '';
+  document.getElementById('tt-location').value = item.location || '';
+  document.getElementById('tt-type').value = item.type || 'lecture';
+  document.getElementById('tt-professor').value = item.professorName || '';
+  document.getElementById('tt-credits').value = item.credits || 0;
+  document.getElementById('tt-color').value = item.color || '#60A5FA';
+
+  document.getElementById('tt-day').value = firstSchedule.dayOfWeek;
+  document.getElementById('tt-start-time').value = firstSchedule.startTime;
+  document.getElementById('tt-end-time').value = firstSchedule.endTime;
+
+  document.getElementById('delete-timetable-btn').style.display = 'inline-block';
+
+  toggleLectureFields();
+
+  document.getElementById('timetable-modal').style.display = 'flex';
+}
+
+async function deleteTimetable() {
+  const timetableId = document.getElementById('timetable-id').value;
+
+  if (!timetableId) return;
+
+  if (!confirm('이 시간표를 삭제할까요?')) {
+    return;
+  }
+
+  const res = await fetch(`/calendar/timetables/${timetableId}`, {
+    method: 'DELETE'
+  });
+
+  if (!res.ok) {
+    alert('시간표 삭제 실패');
     return;
   }
 
