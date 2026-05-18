@@ -19,7 +19,7 @@ const getAndProcessQnetData = async () => {
         const url = 'http://openapi.q-net.or.kr/api/service/rest/InquiryTestInformationNTQSVC/getJMList';
         
         const response = await axios.get(url, {
-            params: { serviceKey, jmCd: '2471', _type: 'json' },
+            params: { serviceKey, jmCd: '1320', _type: 'json' },
             timeout: 30000 
         });
 

@@ -36,7 +36,7 @@
     }
 
     /* 사이드바 애니메이션 핵심 CSS */
-    #sidebar {
+    #app-sidebar {
       position: fixed;
       left: -280px;
       top: 0;
@@ -47,34 +47,43 @@
       z-index: 2000;
       box-shadow: 2px 0 10px rgba(0,0,0,0.1);
     }
-    #sidebar.active {
+    #app-sidebar.open {
       left: 0 !important;
+    }
+
+    /* 배경 레이어 스타일 */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 1999;
+    }
+    .sidebar-backdrop.active {
+      display: block !important;
     }
 
     .notice-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 6px; }
   </style>
 </head>
 <body>
-  <!-- 사이드바 (id="sidebar" 필수) -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
   <%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
   
   <main class="main-content">
-    <!-- 상단바 (함수 연결됨) -->
     <%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
 
     <div class="page-content">
-      <!-- 필터 메뉴 -->
       <div class="filter-row" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 1px solid #f1f5f9;">
-      <div class="chip active" onclick="filterChip(this)">전체</div>
+        <div class="chip active" onclick="filterChip(this)">전체</div>
         <div class="chip" onclick="filterChip(this)">🏆 자격증</div>
         <div class="chip" onclick="filterChip(this)">💰 장학금</div>
         <div class="chip" onclick="filterChip(this)">📅 학사일정</div>
         <div class="chip" onclick="filterChip(this)">📅 채용/인턴</div>
         <div class="chip" onclick="filterChip(this)">📅 공모전</div>
       </div>
-      </div>
 
-      <!-- 공지 리스트 -->
       <div class="card" style="padding: 0; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
         <% if (typeof notices !== 'undefined' && notices.length > 0) { %>
           <% notices.forEach(item => { %>
@@ -101,53 +110,60 @@
               <% } %>
             </div>
           <% }) %>
+        <% } else { %>
+          <div style="padding: 40px; text-align: center; color: #94a3b8;">표시할 일정이 없습니다.</div>
         <% } %>
       </div>
     </div>
   </main>
 
   <script>
-    // 1. 사이드바 토글 함수 (topbar의 onclick="toggleSidebar()"와 연결)
-window.toggleSidebar = function() {
-    const sidebar = document.getElementById('app-sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    
-    if (sidebar && backdrop) {
-      sidebar.classList.toggle('open');
-      backdrop.classList.toggle('active');
-      console.log("사이드바 토글됨");
-    } else {
-      console.error("사이드바 요소를 찾을 수 없습니다. ID를 확인하세요.");
-    }
-  };
+    // 1. 사이드바 제어 함수
+    window.toggleSidebar = function() {
+      const sidebar = document.getElementById('app-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      
+      if (sidebar && backdrop) {
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('active');
+      } else {
+        console.error("사이드바 요소를 찾을 수 없습니다.");
+      }
+    };
 
-  /**
-   * 💡 사이드바 닫기 함수 (X 버튼이나 배경 클릭 시)
-   */
-  window.closeSidebar = function() {
-    const sidebar = document.getElementById('app-sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    
-    if (sidebar && backdrop) {
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('active');
-    }
-  };
+    window.closeSidebar = function() {
+      const sidebar = document.getElementById('app-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      
+      if (sidebar && backdrop) {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      }
+    };
 
-    // 2. 카테고리 필터링 함수
+    // 2. 카테고리 필터링 함수 (💡 오타 완전 수정 버전)
     function filterChip(clickedChip) {
+      // 모든 칩의 활성화 해제 및 클릭된 칩 강조
       const chips = document.querySelectorAll('.chip'); 
       chips.forEach(chip => chip.classList.remove('active'));
       clickedChip.classList.add('active');
 
+      // 이모지 제외하고 순수 텍스트만 추출 (예: "🏆 자격증" -> "자격증")
       const selected = clickedChip.innerText.replace(/[^\uAC00-\uD7AF]/gi, "").trim();
       const items = document.querySelectorAll('.notice-item');
 
       items.forEach(item => {
         const itemCat = item.getAttribute('data-category');
-        item.style.display = (selected === '전체' || itemCat === selected) ? 'flex' : 'none';
+        
+        // 전체를 누르거나 카테고리 텍스트가 일치하는 경우만 노출
+        if (selected === '전체' || itemCat === selected) {
+          item.style.display = 'flex'; // 👈 item.style.style.display 에서 style 한 개 제거 완료!
+        } else {
+          item.style.display = 'none';
+        }
       });
     }
   </script>
 </body>
+</html>
 </html>
