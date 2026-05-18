@@ -1,47 +1,153 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-	<%- include('../partials/head') %>
-	<title>공지사항</title>
+  <%- include('../partials/head') %>
+  <title><%= pageTitle %></title>
+  <style>
+    /* 리스트 아이템: 호버 시 칸 전체 강조 */
+    .notice-item { 
+      cursor: default !important; 
+      border-bottom: 1px solid #f1f5f9; 
+      transition: all 0.2s ease; 
+      display: flex; 
+      align-items: center; 
+      padding: 20px;
+    }
+    .notice-item:hover { background-color: #f8fafc; }
+
+    /* 필터 칩: 글자만 강조하는 스타일 */
+    .chip { 
+      cursor: pointer; 
+      padding: 8px 12px; 
+      font-size: 0.95rem; 
+      color: #94a3b8; 
+      font-weight: 500;
+      transition: all 0.2s; 
+    }
+    .chip.active { 
+      color: #1e293b !important; 
+      font-weight: 700 !important; 
+    }
+
+    /* 보라색 배지 (자격증 전용) */
+    .badge-purple {
+      background-color: #f3e8ff;
+      color: #7e22ce;
+    }
+
+    /* 사이드바 애니메이션 핵심 CSS */
+    #sidebar {
+      position: fixed;
+      left: -280px;
+      top: 0;
+      width: 280px;
+      height: 100vh;
+      background: white;
+      transition: left 0.3s ease-in-out;
+      z-index: 2000;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+    #sidebar.active {
+      left: 0 !important;
+    }
+
+    .notice-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 6px; }
+  </style>
 </head>
-
 <body>
+  <!-- 사이드바 (id="sidebar" 필수) -->
+  <%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
+  
+  <main class="main-content">
+    <!-- 상단바 (함수 연결됨) -->
+    <%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
 
-	<!-- 사이드바 -->
-	<%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
-
-	<main class="main-content">
-
-		<!-- 상단 헤더 -->
-		<%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
-
-		<div class="page-content">
-    <!-- ══ NOTICE ══ -->
     <div class="page-content">
-        <div class="filter-row">
-          <div class="chip active" onclick="filterChip(this)">전체</div>
-          <div class="chip" onclick="filterChip(this)">🏆 자격증</div>
-          <div class="chip" onclick="filterChip(this)">💰 장학금</div>
-          <div class="chip" onclick="filterChip(this)">📅 학사일정</div>
-          <div class="chip" onclick="filterChip(this)">💼 채용/인턴</div>
-          <div class="chip" onclick="filterChip(this)">🏅 공모전</div>
-        </div>
-        <div class="card">
-          <div class="notice-item"><div class="notice-icon" style="background:var(--red-bg);">📌</div><div class="notice-body"><div class="notice-title">2026-1학기 기말고사 일정 공고</div><div class="notice-meta"><span class="badge badge-green">학사일정</span>2026.04.16 · 조회 1,234</div></div><span class="badge badge-red">D-20</span></div>
-          <div class="notice-item"><div class="notice-icon" style="background:var(--amber-bg);">💰</div><div class="notice-body"><div class="notice-title">2026-1학기 성적우수 장학금 신청 안내</div><div class="notice-meta"><span class="badge badge-amber">장학금</span>2026.04.10 · 조회 892</div></div><span class="badge badge-amber">D-5</span></div>
-          <div class="notice-item"><div class="notice-icon" style="background:var(--accent-bg);">💼</div><div class="notice-body"><div class="notice-title">카카오 2026 동계 인턴십 채용 안내</div><div class="notice-meta"><span class="badge badge-blue">채용/인턴</span>2026.04.09 · 조회 2,104</div></div><span class="badge badge-blue">D-12</span></div>
-          <div class="notice-item"><div class="notice-icon" style="background:var(--purple-bg);">🏆</div><div class="notice-body"><div class="notice-title">2026 정보처리기사 1회 시험 원서 접수</div><div class="notice-meta"><span class="badge badge-purple">자격증</span>2026.04.07 · 조회 567</div></div><span class="badge badge-purple">D-15</span></div>
-          <div class="notice-item"><div class="notice-icon" style="background:var(--green-bg);">🏅</div><div class="notice-body"><div class="notice-title">제26회 대학생 소프트웨어 공모전 안내</div><div class="notice-meta"><span class="badge badge-green">공모전</span>2026.04.05 · 조회 430</div></div><span class="badge badge-green">D-30</span></div>
-        </div>
-		</div>
+      <!-- 필터 메뉴 -->
+      <div class="filter-row" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 1px solid #f1f5f9;">
+      <div class="chip active" onclick="filterChip(this)">전체</div>
+        <div class="chip" onclick="filterChip(this)">🏆 자격증</div>
+        <div class="chip" onclick="filterChip(this)">💰 장학금</div>
+        <div class="chip" onclick="filterChip(this)">📅 학사일정</div>
+        <div class="chip" onclick="filterChip(this)">📅 채용/인턴</div>
+        <div class="chip" onclick="filterChip(this)">📅 공모전</div>
+      </div>
+      </div>
 
-	</main>
+      <!-- 공지 리스트 -->
+      <div class="card" style="padding: 0; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <% if (typeof notices !== 'undefined' && notices.length > 0) { %>
+          <% notices.forEach(item => { %>
+            <div class="notice-item" data-category="<%= item.categoryName %>">      
+              <div class="notice-icon" style="background: <%= item.iconBgColor %>; margin-right: 20px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 1.3rem;">
+                <%= item.icon %>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div class="notice-title"><%= item.title %></div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span class="badge <%= item.categoryBadgeClass %>" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 6px;"><%= item.categoryName %></span>
+                  <span style="color: #94a3b8; font-size: 0.85rem;">
+                    일정: <%= item.startDate ? item.startDate.toLocaleDateString() : '' %> 
+                    <% if (item.endDate && item.startDate.getTime() !== item.endDate.getTime()) { %>
+                      ~ <%= item.endDate.toLocaleDateString() %>
+                    <% } %>
+                  </span>
+                </div>
+              </div>
+              <% if (item.dDayText) { %>
+                <div style="margin-left: 20px;">
+                  <span class="badge <%= item.dDayBadgeClass %>" style="font-weight: 700; font-size: 0.9rem; padding: 6px 14px; border-radius: 10px;"><%= item.dDayText %></span>
+                </div>
+              <% } %>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </main>
 
-	<!-- 모달 -->
-	<%- include('../partials/modals/mypage', { user: user }) %>
+  <script>
+    // 1. 사이드바 토글 함수 (topbar의 onclick="toggleSidebar()"와 연결)
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    
+    if (sidebar && backdrop) {
+      sidebar.classList.toggle('open');
+      backdrop.classList.toggle('active');
+      console.log("사이드바 토글됨");
+    } else {
+      console.error("사이드바 요소를 찾을 수 없습니다. ID를 확인하세요.");
+    }
+  };
 
-	<script src="/js/common.js"></script>
+  /**
+   * 💡 사이드바 닫기 함수 (X 버튼이나 배경 클릭 시)
+   */
+  window.closeSidebar = function() {
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    
+    if (sidebar && backdrop) {
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('active');
+    }
+  };
+
+    // 2. 카테고리 필터링 함수
+    function filterChip(clickedChip) {
+      const chips = document.querySelectorAll('.chip'); 
+      chips.forEach(chip => chip.classList.remove('active'));
+      clickedChip.classList.add('active');
+
+      const selected = clickedChip.innerText.replace(/[^\uAC00-\uD7AF]/gi, "").trim();
+      const items = document.querySelectorAll('.notice-item');
+
+      items.forEach(item => {
+        const itemCat = item.getAttribute('data-category');
+        item.style.display = (selected === '전체' || itemCat === selected) ? 'flex' : 'none';
+      });
+    }
+  </script>
 </body>
-
 </html>

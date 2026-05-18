@@ -1,11 +1,13 @@
 <div class="global-header" id="global-header">
   <div class="gh-left">
+    <!-- 💡 사이드바 토글 버튼 (toggleSidebar 함수 연결) -->
     <button class="gh-hamburger" onclick="toggleSidebar()" aria-label="메뉴">
       <div class="gh-hamburger-icon" id="hamburger-icon">
         <span></span><span></span><span></span>
       </div>
     </button>
-    <div class="gh-logo">
+    <!-- 💡 AcadMe 로고 (클릭 시 홈 이동) -->
+    <div class="gh-logo" onclick="location.href='/home'" style="cursor: pointer;">
       <div class="gh-logo-icon">A</div>
       <span class="gh-logo-text">AcadMe</span>
     </div>
@@ -16,12 +18,48 @@
   </div>
 
   <div class="gh-right">
+    <!-- 알림 버튼 -->
     <div class="gh-btn" onclick="document.getElementById('notif-panel')?.classList.toggle('open')">
       🔔
-      <div class="gh-notif-dot"></div>
+      <% if (typeof notices !== 'undefined' && Array.isArray(notices) && notices.some(n => n.isUrgent === true)) { %>
+        <div class="gh-notif-dot"></div>
+      <% } %>
     </div>
+
+    <!-- 아바타 (마이페이지 모달 연결) -->
     <div class="gh-avatar" onclick="openMyPageModal()">
-      <%= user ? user.name[0] : '김' %>
+      <%= (typeof user !== 'undefined' && user) ? user.name[0] : '김' %>
     </div>
+  </div>
+</div>
+
+<!-- 알림 패널 섹션 -->
+<div id="notif-panel" class="notif-panel">
+  <div class="notif-header">
+    <span>새로운 알림</span>
+    <button onclick="document.getElementById('notif-panel').classList.remove('open')" class="notif-close-btn">닫기</button>
+  </div>
+  
+  <div class="notif-list" id="notif-list">
+    <% 
+      const currentNotices = (typeof notices !== 'undefined' && Array.isArray(notices)) ? notices : [];
+      if (currentNotices.length > 0) { 
+        const urgentNotices = currentNotices.filter(n => n.isUrgent === true);
+        if (urgentNotices.length > 0) { 
+          urgentNotices.forEach(notice => { 
+    %>
+        <div class="notif-item">
+          <span class="notif-icon"><%= notice.icon %></span>
+          <div class="notif-content">
+            <p class="notif-text"><strong><%= notice.title %></strong> 일정이 얼마 남지 않았어요!</p>
+            <p class="notif-date"><%= notice.dDayText %></p>
+          </div>
+        </div>
+      <% }); } else { %>
+        <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">긴급한 일정이 없습니다.</p>
+      <% } %>
+    <% } else { %>
+      <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">표시할 알림이 없습니다.</p>
+    <% } %>
   </div>
 </div>

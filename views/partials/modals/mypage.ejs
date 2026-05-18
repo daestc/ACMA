@@ -112,5 +112,9 @@ function updateGlobalHeader(pageId){
   const actionsEl=document.getElementById('gh-actions');
   if(actionsEl) actionsEl.innerHTML=pageActions[pageId]||'';
 }
+function switchPage(page, params) {
+      console.log('이동 시도:', page);
+      window.location.href = '/' + page;
+}
 </script>
 <!-- // 사이드바 토글 -->

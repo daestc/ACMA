@@ -305,7 +305,96 @@ input,select,textarea{font-family:inherit;}
 .notice-body{flex:1;}
 .notice-title{font-size:13px;font-weight:600;margin-bottom:4px;color:var(--text);}
 .notice-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);}
-
+.notif-panel {
+  position: absolute; 
+  top: 70px; 
+  right: 20px; 
+  width: 280px; 
+  max-height: 400px; 
+  background: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(10px); 
+  border-radius: 16px; 
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); 
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: none; 
+  flex-direction: column;
+  z-index: 1100;
+  overflow: hidden;
+}
+.notif-panel.open {
+  display: flex;
+  animation: fadeInDown 0.3s ease; 
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.notif-header {
+  padding: 14px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notif-header span {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+}
+.notif-close-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+}
+.notif-list {
+  overflow-y: auto;
+  padding: 8px;
+}
+.notif-item {
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 12px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.notif-item:hover {
+  background: #f0f4ff;
+}
+.notif-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.notif-content {
+  flex: 1;
+}
+.notif-text {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #444;
+  margin-bottom: 4px;
+}
+.notif-date {
+  font-size: 11px;
+  color: #aaa;
+}
+.notif-empty {
+  padding: 30px 0;
+  text-align: center;
+  color: #ccc;
+  font-size: 13px;
+}
 /* ── CALENDAR ─────────────────────────── */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .cal-nav{display:flex;gap:8px;align-items:center;}
