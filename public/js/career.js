@@ -24,7 +24,6 @@ let certSearchState = {
   keyword: '',
 };
 
-
 // ============ 2. 유틸 ============
 // XSS 방지용. API에서 받은 데이터는 신뢰할 수 없으므로 반드시 거치게 함.
 function escapeHtml(value) {
@@ -35,7 +34,7 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
-
+// 셀렉트 요소 초기화 + placeholder 설정
 function clearSelect(select, placeholder) {
   select.innerHTML = '';
   const option = document.createElement('option');
@@ -43,7 +42,7 @@ function clearSelect(select, placeholder) {
   option.textContent = placeholder;
   select.appendChild(option);
 }
-
+// 옵션 추가 함수 (중복 없이)
 function appendOptions(select, nameSet) {
   nameSet.forEach(name => {
     const option = document.createElement('option');
@@ -52,7 +51,7 @@ function appendOptions(select, nameSet) {
     select.appendChild(option);
   });
 }
-
+// 카테고리 선택에 따라 검색 버튼 활성화
 function updateCareerSearchAvailability() {
   const searchBtn = document.getElementById('career-search-btn');
   if (!searchBtn) return;
@@ -68,7 +67,7 @@ function updateCareerSearchAvailability() {
     ? '카테고리 선택 후 키워드 검색이 가능합니다.'
     : '카테고리를 먼저 선택해야 검색할 수 있습니다.';
 }
-
+// API에서 받은 데이터는 신뢰할 수 없으므로 반드시 거치게 함. (특히 자격증 이름이 악의적으로 조작될 수 있음)
 function escapeAttr(value) {
   return escapeHtml(value).replaceAll('`', '&#96;');
 }
@@ -87,7 +86,7 @@ const myCertModule = {
       if (!res.ok) throw new Error('Failed to load my certifications');
 
       const certs = await res.json();
-      this.render(Array.isArray(certs) ? certs : []);
+      this.render(Array.isArray(certs) ? certs : []); // API가 배열을 반환하지 않을 경우 빈 배열로 처리
     } catch (error) {
       console.error('Error fetching my certifications:', error);
       wrap.innerHTML = '<div class="career-empty-state">현재 선택한 자격증을 불러오지 못했습니다.</div>';
@@ -105,7 +104,7 @@ const myCertModule = {
 
     wrap.innerHTML = `
       <div class="my-cert-head">
-        <div class="my-cert-title">목표 자격증</div>
+        <div class="my-cert-title">관심 자격증</div>
         <div class="my-cert-count">${certs.length}개</div>
       </div>
       <div class="my-cert-grid">
@@ -113,7 +112,7 @@ const myCertModule = {
           const info = cert.certificationId || {};
           const name = info.name || '자격증';
           const fieldParts = [info.field1, info.field2, info.seriesName].filter(Boolean);
-          const statusLabel = cert.status === 'target' ? '목표' : cert.status || '저장됨';
+          const statusLabel = cert.status === 'target' ? '목표' : cert.status ==='wish' ? '관심' : '취득';
 
           return `
             <div class="my-cert-chip-wrapper">
@@ -183,17 +182,6 @@ const myJobModule = {
       </div>
     `;
   },
-};
-
-
-// ============ 4. 데이터 (자격증 모달) ============
-// TODO: 비어져 있지만 지우면 안됨...
-const jobCertData = {
-  
-};
-
-const certDetailData = {
-  
 };
 
 
@@ -272,7 +260,6 @@ const tabsModule = {
 };
 // EJS의 onclick="switchCareerTab(...)"에서 호출되므로 글로벌 별칭 유지
 function switchCareerTab(tab, btn) { tabsModule.switch(tab, btn); }
-
 
 // ============ 5. 자격증 모달 모듈 ============
 const certModalModule = {
@@ -395,7 +382,7 @@ const certModalModule = {
   },
 
   async show(name, fallback = {}) {
-    const d = certDetailData[name] || {
+    const d = (typeof certDetailData !== 'undefined' ? certDetailData[name] : undefined) || {
       overview: fallback.description || '상세 설명이 준비 중입니다.',
       prospect: fallback.careerPath || '진로 및 전망 정보가 준비 중입니다.',
       way: fallback.way || '',
@@ -421,7 +408,6 @@ const certModalModule = {
     this.fillProspect(prospectEl, fallback.careerPath || d.prospect || '');
     this.fillDuties(dutiesEl, d.duties);
     this.fillWay(wayEl, fallback.way || d.way || '');
-    this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || fallback.relatedJobs || []);
 
     // store identifiers on modal for save action
     const resolvedFallback = await this.resolveFallbackByName(name, fallback);
@@ -434,7 +420,6 @@ const certModalModule = {
     overviewEl.textContent = resolvedFallback.description || d.overview || '정보 없음';
     this.fillProspect(prospectEl, resolvedFallback.careerPath || d.prospect || '');
     this.fillWay(wayEl, resolvedFallback.way || d.way || '');
-    this.fillRelatedJobs(document.getElementById('cd-related-jobs'), d.relatedJobs || resolvedFallback.relatedJobs || []);
 
     // 합격률 정보 로딩
     const passEl = document.getElementById('cd-passrate');
@@ -478,8 +463,9 @@ const certModalModule = {
 
     modalEl.style.display = 'flex';
   },
-
+  // 자격증 모달 버튼 초기화 (관심 설정 + 목표 설정)
   init() {
+    // 관심 설정 버튼
     const saveBtn = document.getElementById('cd-save-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
@@ -503,6 +489,34 @@ const certModalModule = {
         } catch (err) {
           console.error('자격증 저장 실패:', err);
           alert('저장 중 오류가 발생했습니다.');
+        }
+      });
+    }
+
+    // 목표 설정 버튼
+    const changeBtn = document.getElementById('cd-change-btn');
+    if (changeBtn) {
+      changeBtn.addEventListener('click', async () => {
+        const modal = document.getElementById('cert-detail-modal');
+        if (!modal) return;
+        const jmcd = modal.dataset.jmcd;
+        const name = document.getElementById('cd-title')?.textContent || '';
+        try {
+          const res = await fetch('/career/save-cert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jmcd, name, status: 'target' })
+          });
+          const result = await res.json();
+          if (res.ok && result.success) {
+            alert('자격증이 목표로 설정되었습니다.');
+            myCertModule.load().catch(err => console.error('Error refreshing my certs:', err));
+          } else {
+            alert(result.error || '목표 설정에 실패했습니다.');
+          }
+        } catch (err) {
+          console.error('목표 설정 실패:', err);
+          alert('목표 설정 중 오류가 발생했습니다.');
         }
       });
     }
@@ -555,7 +569,7 @@ const certModalModule = {
       </div>
     `;
   },
-
+// 진로 및 전망 정보는 '-'로 구분된 단락이 많음. 이를 감안하여 별도의 처리 로직 추가.
   fillProspect(target, prospectText) {
     if (!target) return;
     const text = String(prospectText || '').trim();
@@ -588,30 +602,6 @@ const certModalModule = {
     `;
   },
 
-  fillRelatedJobs(target, arr) {
-    if (!target) return;
-    if (!arr || arr.length === 0) {
-      target.innerHTML = `<span style="font-size:12px;color:var(--text2);">관련 직무 정보가 없습니다.</span>`;
-      return;
-    }
-    target.innerHTML = '';
-    arr.forEach(name => {
-      const span = document.createElement('span');
-      span.className = 'tag';
-      span.textContent = name;
-      span.style.cursor = 'pointer';
-      span.addEventListener('click', () => {
-        // 클릭하면 직무 검색 탭으로 이동 후 키워드로 검색
-        switchCareerTab('job', document.querySelector('.tabs .tab-btn[onclick*="job"]') || document.querySelector('.tabs .tab-btn'));
-        const input = document.getElementById('career-search-keyword');
-        if (input) {
-          input.value = name;
-          searchModule.run().catch(err => console.error('Error searching careers from related job tag:', err));
-        }
-      });
-      target.appendChild(span);
-    });
-  },
 };
 function showCertDetail(name) { certModalModule.show(name); }
 
@@ -750,11 +740,6 @@ const searchModule = {
       return;
     }
 
-    if (!depth1 && !depth2 && !depth3 && !depth4 && !keyword) {
-      this.render([], '검색 결과');
-      return;
-    }
-
     const params = new URLSearchParams();
     if (depth1) params.set('depth1_name', depth1);
     if (depth2) params.set('depth2_name', depth2);
@@ -871,178 +856,93 @@ const searchModule = {
 async function searchCareerJobs() { return searchModule.run(); }
 
 
-// ============ 9. 카테고리 드롭다운 모듈 ============
-const dropdownModule = {
-  async init() {
-    try {
-      const res = await fetch('../career/categories');
-      const categories = (await res.json()) || [];
-      this.setup(categories);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  },
+// 통합된 카테고리 드롭다운은 아래 `createCategoryDropdown`로 대체됩니다.
 
-  setup(categoriesData) {
-    const depth1Select = document.getElementById('depth1');
-    const depth2Select = document.getElementById('depth2');
-    const depth3Select = document.getElementById('depth3');
-    const depth4Select = document.getElementById('depth4');
-
-    const reset = (select, placeholder) => clearSelect(select, placeholder || '선택');
-
-    // 대분류 채우기
-    const depth1Set = new Set();
-    categoriesData.forEach(cat => { if (cat.depth1_name) depth1Set.add(cat.depth1_name); });
-    reset(depth1Select, '대분류 선택');
-    reset(depth2Select, '중분류 선택');
-    reset(depth3Select, '소분류 선택');
-    reset(depth4Select, '세분류 선택');
-    appendOptions(depth1Select, depth1Set);
-
-    // 대분류 → 중분류
-    depth1Select.addEventListener('change', () => {
-      const sel1 = depth1Select.value;
-      reset(depth2Select, '중분류 선택');
-      reset(depth3Select, '소분류 선택');
-      reset(depth4Select, '세분류 선택');
-      updateCareerSearchAvailability();
-      if (!sel1) return;
-      const set = new Set();
-      categoriesData.forEach(cat => {
-        if (cat.depth1_name === sel1 && cat.depth2_name) set.add(cat.depth2_name);
-      });
-      appendOptions(depth2Select, set);
-    });
-
-    // 중분류 → 소분류
-    depth2Select.addEventListener('change', () => {
-      const sel1 = depth1Select.value;
-      const sel2 = depth2Select.value;
-      reset(depth3Select, '소분류 선택');
-      reset(depth4Select, '세분류 선택');
-      updateCareerSearchAvailability();
-      if (!sel2) return;
-      const set = new Set();
-      categoriesData.forEach(cat => {
-        if (cat.depth1_name === sel1 && cat.depth2_name === sel2 && cat.depth3_name) set.add(cat.depth3_name);
-      });
-      appendOptions(depth3Select, set);
-    });
-
-    // 소분류 → 세분류
-    depth3Select.addEventListener('change', () => {
-      const sel1 = depth1Select.value;
-      const sel2 = depth2Select.value;
-      const sel3 = depth3Select.value;
-      reset(depth4Select, '세분류 선택');
-      updateCareerSearchAvailability();
-      if (!sel3) return;
-      const set = new Set();
-      categoriesData.forEach(cat => {
-        if (cat.depth1_name === sel1 && cat.depth2_name === sel2 && cat.depth3_name === sel3 && cat.depth4_name) {
-          set.add(cat.depth4_name);
-        }
-      });
-      appendOptions(depth4Select, set);
-    });
-
-    // 페이지 로드 시 기본값이 있으면 트리거
-    if (depth1Select.value) {
-      depth1Select.dispatchEvent(new Event('change'));
-      if (depth2Select.value) {
-        depth2Select.dispatchEvent(new Event('change'));
-        if (depth3Select.value) {
-          depth3Select.dispatchEvent(new Event('change'));
-          if (depth4Select.value) {
-            depth4Select.dispatchEvent(new Event('change'));
-          }
-        }
-      }
-    }
-
-    updateCareerSearchAvailability();
-  },
-};
-
-// 드롭다운 모듈2(자격증 카테고리 옵션 채우기)
-const dropdownModule2 = {
-  async init() {
-    try {
-      const res = await fetch('../career/cert-categories');
-      const categories = (await res.json()) || [];
-      this.setup(categories);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  },
-
-  setup(categoriesData) {
-    const depth1Select = document.getElementById('cert_depth1');
-    const depth2Select = document.getElementById('cert_depth2');
-    const depth3Select = document.getElementById('cert_depth3');
-
-    const reset = (select, placeholder) => clearSelect(select, placeholder || '선택');
-
-    // 대분류 채우기
-    const depth1Set = new Set();
-    categoriesData.forEach(cat => { if (cat.field1) depth1Set.add(cat.field1); });
-    reset(depth1Select, '대분류 선택');
-    reset(depth2Select, '중분류 선택');
-    reset(depth3Select, '등급 선택');
-    appendOptions(depth1Select, depth1Set);
-
-    // 대분류 → 중분류
-    depth1Select.addEventListener('change', () => {
-  const sel1 = depth1Select.value;
-  reset(depth2Select, '중분류 선택');
-  reset(depth3Select, '등급 선택');
-  
-  if (!sel1) return;
-  
-  // ✅ 국가전문자격이면 중분류/등급 비활성화
-  if (sel1 === '국가전문자격') {
-    depth2Select.disabled = true;
-    depth3Select.disabled = true;
-    return;
-  }
-  
-  depth2Select.disabled = false;
-  depth3Select.disabled = false;
-  
-  const set = new Set();
-  categoriesData.forEach(cat => {
-    if (cat.field1 === sel1 && cat.field2) set.add(cat.field2);
-  });
-  appendOptions(depth2Select, set);
+//로직 통합
+// 직무용
+const jobDropdown = createCategoryDropdown({
+  apiUrl: '/career/categories',
+  selectIds: ['depth1', 'depth2', 'depth3', 'depth4'],
+  fields: ['depth1_name', 'depth2_name', 'depth3_name', 'depth4_name'],
+  placeholders: ['대분류 선택', '중분류 선택', '소분류 선택', '세분류 선택'],
 });
 
-    // 중분류 → 등급
-    depth2Select.addEventListener('change', () => {
-      const sel1 = depth1Select.value;
-      const sel2 = depth2Select.value;
-      reset(depth3Select, '등급 선택');
-      if (!sel2) return;
-      const set = new Set();
-      categoriesData.forEach(cat => {
-        if (cat.field1 === sel1 && cat.field2 === sel2 && cat.seriesName) set.add(cat.seriesName);
-      });
-      appendOptions(depth3Select, set);
-    });
+// 자격증용  
+const certDropdown = createCategoryDropdown({
+  apiUrl: '/career/cert-categories',
+  selectIds: ['cert_depth1', 'cert_depth2', 'cert_depth3'],
+  fields: ['field1', 'field2', 'seriesName'],
+  placeholders: ['대분류 선택', '중분류 선택', '등급 선택'],
+});
 
-    // 페이지 로드 시 기본값이 있으면 트리거
-    if (depth1Select.value) {
-      depth1Select.dispatchEvent(new Event('change'));
-      if (depth2Select.value) {
-        depth2Select.dispatchEvent(new Event('change'));
-        if (depth3Select.value) {
-          depth3Select.dispatchEvent(new Event('change'));
-        }
+function createCategoryDropdown({
+  apiUrl,           // 카테고리 API
+  selectIds,        // 셀렉트 ID 배열 (3단계 or 4단계)
+  fields,           // 데이터 필드명 ['field1', 'field2', 'seriesName']
+  placeholders,     // 각 단계 placeholder
+}) {
+  return {
+    async init() {
+      try {
+        const res = await fetch(apiUrl);
+        const categories = (await res.json()) || [];
+        this.setup(categories);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
       }
-    }
-  },
-};
+    },
 
+    setup(data) {
+      const selects = selectIds.map(id => document.getElementById(id));
+      // 안전 검사: 필요한 select 요소들이 존재해야 동작
+      if (selects.some(s => !s)) return;
+
+      selects.forEach((sel, i) => {
+        clearSelect(sel, placeholders[i] || '선택');
+        sel.disabled = false;
+        if (i === 0) {
+          const set = new Set();
+          data.forEach(d => { if (d[fields[0]]) set.add(d[fields[0]]); });
+          appendOptions(sel, set);
+        }
+
+        sel.addEventListener('change', () => {
+          this.onChange(i, selects, data);
+          // 외부 훅 호출 가능 (옵션): 예: certDropdown의 특수 로직
+          if (typeof this.onLevelChange === 'function') this.onLevelChange(i, sel, selects);
+        });
+      });
+
+      // 페이지 로드 시 이미 선택된 값이 있으면 하위 단계들 트리거
+      for (let i = 0; i < selects.length; i++) {
+        if (selects[i].value) selects[i].dispatchEvent(new Event('change'));
+      }
+    },
+
+    onChange(level, selects, data) {
+      for (let i = level + 1; i < selects.length; i++) {
+        clearSelect(selects[i], placeholders[i] || '선택');
+        selects[i].disabled = false;
+      }
+
+      const next = level + 1;
+      if (next >= selects.length) return;
+
+      const selectedValues = selects.slice(0, next).map(s => s.value);
+      if (selectedValues.some(v => !v)) return;
+
+      const set = new Set();
+      data.forEach(d => {
+        const match = selectedValues.every((v, i) => d[fields[i]] === v);
+        if (match && d[fields[next]]) set.add(d[fields[next]]);
+      });
+      appendOptions(selects[next], set);
+    },
+
+    // 외부에서 onLevelChange 훅을 주입 가능
+    onLevelChange: null,
+  };
+}
 
 // ============ 10. 모달 외부 클릭 닫기 ============
 const modalCloseModule = {
@@ -1213,8 +1113,22 @@ document.addEventListener('DOMContentLoaded', () => {
   jobModalModule.init(); // 직무 모달
   certModalModule.init(); // 자격증 모달
   searchModule.init(); // 직무 검색
-  dropdownModule.init(); // 카테고리 드롭다운
-  dropdownModule2.init(); // 자격증 카테고리 드롭다운
+  // 직무 드롭다운: 선택 변경 시 검색 버튼 활성화 상태 갱신
+  jobDropdown.onLevelChange = () => updateCareerSearchAvailability();
+  jobDropdown.init(); // 카테고리 드롭다운 (직무)
+  // certDropdown는 '국가전문자격' 비활성화 로직을 훅으로 제공 가능
+  certDropdown.onLevelChange = (level, sel, selects) => {
+    if (level === 0 && sel.value === '국가전문자격') {
+      if (selects[1]) { clearSelect(selects[1], '중분류 선택'); selects[1].disabled = true; }
+      if (selects[2]) { clearSelect(selects[2], '등급 선택'); selects[2].disabled = true; }
+      return;
+    }
+    if (level === 0) {
+      if (selects[1]) selects[1].disabled = false;
+      if (selects[2]) selects[2].disabled = false;
+    }
+  };
+  certDropdown.init(); // 자격증 카테고리 드롭다운
   certSearchModule.init(); // 자격증 검색
   myCertModule.load().catch(err => console.error('Error loading my certs:', err));
   myJobModule.load().catch(err => console.error('Error loading my jobs:', err));

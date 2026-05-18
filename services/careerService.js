@@ -284,7 +284,7 @@ async function searchCertifications(field1, field2, seriesName, keyword){
 }
 
 // 자격증 선택하여 DB에 저장하기 (사용자 자격증 목표 추가)
-async function saveCertification(jmcd, userId) {
+async function saveCertification(jmcd, userId, status = 'wish') {
   try {
     // 1. jmcd로 자격증 조회
     const cert = await Certification.findOne({ jmcd }).lean();
@@ -309,23 +309,30 @@ async function saveCertification(jmcd, userId) {
 
     const userId_ObjectId = userDoc._id;
 
-    // 3. 중복 체크: 이미 저장된 자격증인지 확인
+    // 3. 기존 레코드 조회 (상태 무관 - 같은 자격증이 있으면 status 업데이트)
     const existingUserCert = await UserCertification.findOne({
       userId: userId_ObjectId,
-      certificationId: cert._id,
-      status: 'target'
+      certificationId: cert._id
     });
 
     if (existingUserCert) {
-      // 이미 저장되어 있으면 그대로 반환
-      return existingUserCert;
+      // 기존 레코드의 status만 업데이트
+      existingUserCert.status = status;
+      await existingUserCert.save();
+      
+      // 업데이트된 문서 반환 (populate 포함)
+      const updatedUserCert = await UserCertification.findById(existingUserCert._id)
+        .populate('certificationId', 'name jmcd field1 field2 seriesName')
+        .populate('userId', 'name email');
+      
+      return updatedUserCert;
     }
 
     // 4. 새로운 UserCertification 생성
     const userCertification = await UserCertification.create({
       userId: userId_ObjectId,
       certificationId: cert._id,
-      status: 'target',
+      status: status, // 전달받은 status 사용
       progress: 0,
       memo: '',
       isVisible: true
@@ -491,7 +498,6 @@ async function deleteJob(jobId, userId) {
     throw error;
   }
 };
-
 
 module.exports = {
   getCategories, // 진로 검색db에서 대분류, 중분류, 소분류 가져오기

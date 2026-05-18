@@ -37,10 +37,10 @@ const userCertificationSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     certificationId: { type: Schema.Types.ObjectId, ref: 'Certification', required: true },
 
-    // 상태 구분: 'acquired'(취득), 'target'(목표)
+    // 상태 구분: 'acquired'(취득), 'target'(목표), 'wish'(관심)
     status: { 
       type: String, 
-      enum: ['acquired', 'target'], 
+      enum: ['acquired', 'target','wish'], 
       required: true,
       default: 'target'
     },

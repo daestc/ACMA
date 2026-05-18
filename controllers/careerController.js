@@ -128,7 +128,7 @@ const searchCertifications = async (req, res) => {
 // 자격증 선택 저장
 const saveCertification = async (req, res) => {
   try {
-    const { jmcd, name } = req.body;
+    const { jmcd, name, status } = req.body;
     if (!jmcd || !name) {
       return res.status(400).json({ error: 'jmcd and name are required' });
     }
@@ -139,7 +139,7 @@ const saveCertification = async (req, res) => {
     }
     
     const userId = req.user._id || req.user.email;
-    const userCert = await careerService.saveCertification(jmcd, userId);
+    const userCert = await careerService.saveCertification(jmcd, userId, status);
     if (!userCert) {
       return res.status(404).json({ error: 'Certification not found' });
     }
