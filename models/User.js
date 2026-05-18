@@ -98,6 +98,11 @@ const UserSchema = new mongoose.Schema({
         type: Boolean, 
         default: false
       },
+      // 최신 변경일 -> 날짜가 바뀌면 수행 여부를 false로 변경
+      lastUpdatedDate: {
+        type: Date,
+        default: Date.now
+      }
     }
   ],
 
