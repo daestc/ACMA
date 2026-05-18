@@ -298,8 +298,7 @@ const certModalModule = {
         field1: fallback.field1 || exact?.field1 || '',
         field2: fallback.field2 || exact?.field2 || '',
         seriesName: fallback.seriesName || exact?.seriesName || '',
-        description: fallback.description || exact?.description || '',
-        relatedJobs: fallback.relatedJobs || exact?.relatedJobs || [],
+        description: fallback.description || exact?.description || ''
       };
     } catch (error) {
       console.error('Failed to resolve certification fallback:', error);
