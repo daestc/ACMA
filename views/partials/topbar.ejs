@@ -6,15 +6,21 @@
         <span></span><span></span><span></span>
       </div>
     </button>
-    <!-- 💡 AcadMe 로고 (클릭 시 홈 이동) -->
+    <!-- AcadMe 로고 (클릭 시 홈 이동) -->
     <div class="gh-logo" onclick="location.href='/home'" style="cursor: pointer;">
       <div class="gh-logo-icon">A</div>
       <span class="gh-logo-text">AcadMe</span>
     </div>
   </div>
 
-  <div class="gh-center">
-    <span class="gh-title"><%= pageTitle || '홈' %></span>
+<div class="gh-center">
+    <% if (typeof pageTitle !== 'undefined' && pageTitle === '공지사항') { %>
+      <a href="/notice" style="text-decoration: none; color: inherit; cursor: pointer;">
+        <span class="gh-title"><%= pageTitle %></span>
+      </a>
+    <% } else { %>
+      <span class="gh-title"><%= pageTitle || '홈' %></span>
+    <% } %>
   </div>
 
   <div class="gh-right">
@@ -56,7 +62,7 @@
           </div>
         </div>
       <% }); } else { %>
-        <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">긴급한 일정이 없습니다.</p>
+        <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">다가오는 일정이 없습니다.</p>
       <% } %>
     <% } else { %>
       <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">표시할 알림이 없습니다.</p>

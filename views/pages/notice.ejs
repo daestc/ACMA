@@ -72,6 +72,7 @@
   <%- include('../partials/sidebar', { currentPage: 'notice', user: user }) %>
   
   <main class="main-content">
+    
     <%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
 
     <div class="page-content">
@@ -141,14 +142,14 @@
       }
     };
 
-    // 2. 카테고리 필터링 함수 (💡 오타 완전 수정 버전)
+    // 2. 카테고리 필터링 함수 
     function filterChip(clickedChip) {
       // 모든 칩의 활성화 해제 및 클릭된 칩 강조
       const chips = document.querySelectorAll('.chip'); 
       chips.forEach(chip => chip.classList.remove('active'));
       clickedChip.classList.add('active');
 
-      // 이모지 제외하고 순수 텍스트만 추출 (예: "🏆 자격증" -> "자격증")
+      // 이모지 제외하고 순수 텍스트만 추출 
       const selected = clickedChip.innerText.replace(/[^\uAC00-\uD7AF]/gi, "").trim();
       const items = document.querySelectorAll('.notice-item');
 
@@ -157,7 +158,7 @@
         
         // 전체를 누르거나 카테고리 텍스트가 일치하는 경우만 노출
         if (selected === '전체' || itemCat === selected) {
-          item.style.display = 'flex'; // 👈 item.style.style.display 에서 style 한 개 제거 완료!
+          item.style.display = 'flex'; // 
         } else {
           item.style.display = 'none';
         }

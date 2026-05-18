@@ -6,7 +6,7 @@ const Notice = require('./models/Notice');
 const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ 시드 작업을 위한 DB 연결 성공');
+        console.log('DB 연결 성공');
     } catch (error) {
         console.error('❌ DB 연결 실패:', error.message);
         process.exit(1);
@@ -39,7 +39,7 @@ const getAndProcessQnetData = async () => {
             const round = safeStr(item.implplannm); // 예: "2026년 정기 기사 3회"
             const name = safeStr(item.jmfldnm);    // 예: "정보처리기사"
             
-            // 💡 6가지 세부 일정 정의
+            
             const schedules = [
                 { type: "필기 원서접수", start: toDate(item.docregstartdt), end: toDate(item.docregenddt) },
                 { type: "필기 시험", start: toDate(item.docexamstartdt), end: toDate(item.docexamstartdt) }, // 시작/종료 동일 처리
