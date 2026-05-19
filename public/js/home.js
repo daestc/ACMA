@@ -5,6 +5,25 @@
 
 // 사용할 변수 선언
 let selectedHabitId = null; // 현재 수정 중인 습관 id
+let pendingChanges = {}; // habitList에서 변경된 값만 모아두기
+
+// 페이지 로드 시 진행률 초기화
+document.addEventListener('DOMContentLoaded', updateHabitSummary);
+
+// 페이지 이탈시 isCompleted 수정 사항 DB 반영
+document.addEventListener('visibilitychange', function() {
+  // pendingChanges의 객체가 0이면 실행 X
+  if (document.visibilityState === 'hidden' && Object.keys(pendingChanges).length > 0) {
+    // 기존 async와 달리 sendBeacon으로 페이지가 닫혔을 때 API 요청
+    const blob = new Blob(
+      [JSON.stringify({ changes: pendingChanges })],
+      { type: 'application/json' }
+    );
+    navigator.sendBeacon('/user/saveIsCompleted', blob);
+    
+    pendingChanges = {}; // 저장 후 변경사항 초기화
+  }
+});
 
 // ── 강의 일정 / 할 일 탭 전환 ────────────────────
 function switchHomeTodo(tab, btn) {
@@ -188,6 +207,7 @@ async function deleteTodoItem() {
 function toggleHabit(el) {
   const isDone = el.dataset.done === 'true';
   el.dataset.done = isDone ? false : true;
+  const habitId = el.dataset.id;
 
   const check = el.querySelector('.habit-check');
   const name  = el.querySelector('.habit-name');
@@ -201,6 +221,14 @@ function toggleHabit(el) {
     check.textContent = '';
     name.classList.remove('done');
   }
+
+  // 클릭한 habit 찾기
+  const habit = habits.find(h => h._id === habitId);
+  habit.isCompleted = !habit.isCompleted;
+  
+  // 변경된 내용 기록
+  pendingChanges[habitId] = habit.isCompleted;
+
   updateHabitSummary();
 }
 
@@ -254,7 +282,7 @@ function clearHabitModal() {
   cancelHabitEdit();
 }
 
-// 수정 탭 전환
+// 습관 수정 탭 전환
 function switchHabitTab(tab) {
   const isAdd = tab === 'add';
 
@@ -276,7 +304,7 @@ function switchHabitTab(tab) {
   if (!isAdd) renderHabitEditList();
 }
 
-// 추가 탭 카테고리 선택
+// 습관 추가 탭 카테고리 선택
 function selectHabitCategory(el) {
   const catMap = {
     '건강': { bg: 'var(--green-bg)',  border: 'var(--green)',  color: 'var(--green)'  },
@@ -299,7 +327,7 @@ function selectHabitCategory(el) {
   el.classList.add('active');
 }
 
-// 수정 탭 카테고리 선택
+// 습관 수정 탭 카테고리 선택
 function selectHabitEditCategory(el) {
   const catMap = {
     '건강': { bg: 'var(--green-bg)',  border: 'var(--green)',  color: 'var(--green)'  },
@@ -328,10 +356,11 @@ function confirmHabitAction() {
   isAdd ? addHabitFromModal() : confirmHabitEdit();
 }
 
-// Habit 추가
-function addHabitFromModal() {
+// 습관 추가
+async function addHabitFromModal() {
   const name = document.getElementById('habit-add-name').value.trim();
 
+  // 입력 내용이 없으면 빈칸 강조 표시
   if (!name) {
     const input = document.getElementById('habit-add-name');
     input.style.borderColor = 'var(--red)';
@@ -344,33 +373,38 @@ function addHabitFromModal() {
   const activeCat = document.querySelector('.habit-cat-btn.active');
   const category  = activeCat ? activeCat.dataset.cat : '건강';
 
-  // 화면에 항목 추가
-  const list = document.getElementById('habit-list');
-  const div  = document.createElement('div');
-  div.className    = 'habit-item';
-  div.dataset.done = 'false';
-  div.setAttribute('onclick', 'toggleHabit(this)');
-  div.innerHTML = `
-    <div class="habit-check"></div>
-    <div class="habit-body">
-      <div class="habit-name">${name}</div>
-      <div class="habit-sub">${category} · 매일</div>
-    </div>`;
-  list.appendChild(div);
-  updateHabitSummary();
+  // DB에 habit 추가 및 _id, success 값 가져오기
+  const response = await fetch('/user/addHabit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: name, category })
+  });
 
-  // TODO: POST /api/habit API 호출
-  // await fetch('/api/habit', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ name, category })
-  // });
+  const result = await response.json();
+  // DB에 성공적으로 저장하면 화면에 표시
+  if(result.success) {
+    // 화면에 항목 추가
+    const list = document.getElementById('habit-list');
+    const div  = document.createElement('div');
+    div.className    = 'habit-item';
+    div.dataset.id = result.habitId;
+    div.dataset.done = 'false';
+    div.setAttribute('onclick', 'toggleHabit(this)');
+    div.innerHTML = `
+      <div class="habit-check"></div>
+      <div class="habit-body">
+        <div class="habit-name">${name}</div>
+        <div class="habit-sub">${category} · 매일</div>
+      </div>`;
+    list.appendChild(div);
+    updateHabitSummary();
+  }
 
   clearHabitModal();
   document.getElementById('habit-add-name').focus();
 }
 
-// ── 수정 목록 렌더링 ──────────────────────────────
+// 습관 수정 목록 렌더링
 function renderHabitEditList() {
   const items     = document.querySelectorAll('#habit-list .habit-item');
   const container = document.getElementById('habit-edit-list');
@@ -395,9 +429,9 @@ function renderHabitEditList() {
           <div style="font-size:11px;color:var(--text2);">${sub}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openHabitEditForm(${habitId})"
+          <button onclick="openHabitEditForm('${habitId}')"
             class="btn btn-ghost btn-sm">수정</button>
-          <button onclick="deleteHabit(${habitId})"
+          <button onclick="deleteHabit('${habitId}')"
             style="padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;
                    font-weight:700;background:var(--red-bg);color:var(--red);
                    border:1.5px solid #fecdd3;cursor:pointer;transition:all .2s;">
@@ -408,7 +442,7 @@ function renderHabitEditList() {
   }).join('');
 }
 
-// ── 수정 폼 열기 ──────────────────────────────────
+// 습관 수정 폼 열기
 function openHabitEditForm(id) {
   selectedHabitId = id;
   const item = document.querySelector(`[data-id="${id}"]`);
@@ -439,11 +473,13 @@ function openHabitEditForm(id) {
   document.getElementById('habit-edit-name').focus();
 }
 
-// ── 수정 완료 ─────────────────────────────────────
-function confirmHabitEdit() {
+// 습관 수정 완료
+async function confirmHabitEdit() {
   if (!selectedHabitId) return;
 
   const name = document.getElementById('habit-edit-name').value.trim();
+
+  // 제목 입력 없으면 강조 표시
   if (!name) {
     const input = document.getElementById('habit-edit-name');
     input.style.borderColor = 'var(--red)';
@@ -455,36 +491,57 @@ function confirmHabitEdit() {
   const activeCat = document.querySelector('.habit-edit-cat-btn.active');
   const category  = activeCat ? activeCat.dataset.cat : '건강';
 
-  // 화면의 habit-item 업데이트
-  const item = document.querySelector(`[data-id="${selectedHabitId}"]`);
-  item.querySelector('.habit-name').textContent = name;
-  item.querySelector('.habit-sub').textContent  = `${category} · 매일`;
-  // TODO: PUT /api/habit/:id API 호출
+  // DB에 habit 수정
+  const response = await fetch('/user/editHabit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: name, category, habitId: selectedHabitId })
+  });
+
+  const result = await response.json();
+
+  // DB에 성공적으로 수정되면 화면도 수정
+  if(result.success) {
+    // 화면의 habit-item 업데이트
+    const item = document.querySelector(`[data-id="${selectedHabitId}"]`);
+    item.querySelector('.habit-name').textContent = name;
+    item.querySelector('.habit-sub').textContent  = `${category} · 매일`;
+  }
 
   cancelHabitEdit();
   renderHabitEditList();
   updateHabitSummary();
 }
 
-// ── 수정 취소 ─────────────────────────────────────
+// 습관 수정 취소
 function cancelHabitEdit() {
   document.getElementById('habit-edit-form').style.display = 'none';
   document.getElementById('habit-edit-name').value = '';
   selectedHabitId = null;
 }
 
-// ── 삭제 ─────────────────────────────────────────
-function deleteHabit(id) {
+// 습관 삭제
+async function deleteHabit(id) {
   const item = document.querySelector(`[data-id="${id}"]`);
   if (!item) return;
 
-  items.remove();
+  // DB에 habit 삭제
+  const response = await fetch('/user/deleteHabit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ habitId: id })
+  });
 
-  // TODO: DELETE /api/habit/:id API 호출
+  const result = await response.json();
+
+  // DB에 성공적으로 삭제되면 화면에서도 삭제
+  if(result.success) {
+    // 화면의 해당 habit 삭제
+    item.remove();
+  }
 
   renderHabitEditList();
   updateHabitSummary();
 }
 
-// 페이지 로드 시 진행률 초기화
-document.addEventListener('DOMContentLoaded', updateHabitSummary);
+

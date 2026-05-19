@@ -87,7 +87,6 @@ async function deleteTodo(userEmail, deletetodoList) {
 
 // habit 리스트 가져오기
 async function getHabitList(userEmail) {
-  // habitList 가져오기
   const user = await User.findOne({email: userEmail});
   if(!user) throw new Error('사용자를 찾지 못했습니다.');
 
@@ -97,4 +96,75 @@ async function getHabitList(userEmail) {
   return {habitList, completedCount};
 }
 
-module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList};
+// habit 추가하기
+async function addHabit(userEmail, title, category) {
+  
+  const updatedUser = await User.findOneAndUpdate(
+    {email: userEmail}, 
+    {
+      $push: {
+        habitTracker: {
+          title,
+          category
+        }
+      }
+    },
+    // 추가한 User 데이터 가져오기
+    {returnDocument: 'after'}
+  );
+
+  const lastHabit = updatedUser.habitTracker[updatedUser.habitTracker.length - 1];
+
+  return lastHabit._id;
+}
+
+// habit 수정하기
+async function editHabit(userEmail, habitId, title, category) {
+  return await User.findOneAndUpdate(
+    {
+      email: userEmail,
+      "habitTracker._id": habitId
+    }, 
+    {
+      $set: {
+        habitTracker: {
+          "habitTracker.$.title": title,
+          "habitTracker.$.category": category
+        }
+      }
+    },
+  );
+}
+
+// habit 삭제하기
+async function deleteHabit(userEmail, habitId) {
+  return await User.findOneAndUpdate(
+    { email: userEmail },
+    {
+      $pull: {
+        habitTracker: {
+          _id: { $in: habitId } 
+        }
+      }
+    }
+  );
+}
+
+// isCompleted 변경 사항 DB에 저장
+async function saveIsCompleted(userEmail, changes) {
+  for(const [habitId, isCompleted] of Object.entries(pendingChanges)) {
+    await User.findOneAndUpdate(
+      { 
+        email: userEmail,
+        "habitTracker._id": habitId }, 
+      { 
+        $set: {
+          habitTracker: {
+            "habitTracker.$.isCompleted": isCompleted }
+          }
+      }
+    );
+  } // for
+}
+
+module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted};

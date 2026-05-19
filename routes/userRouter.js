@@ -14,11 +14,23 @@ function requireLogin(req, res, next) {
   };
   next();
 }
-// todo 추가 요청
+// Todo 추가 요청
 router.post('/addTodo', userController.addTodo);
 
-// todo 삭제 요청
+// Todo 삭제 요청
 router.post('/deleteTodo', userController.deleteTodo);
+
+// Habit 추가 요청
+router.post('/addHabit', userController.addHabit);
+
+// Habit 수정 요청
+router.post('/editHabit', userController.editHabit);
+
+// Habit 삭제 요청
+router.post('/deleteHabit', userController.deleteHabit);
+
+// IsCompleted 변동 사항 저장
+router.post('/saveIsCompleted', userController.saveIsCompleted);
 
 // 학사관리 페이지 
 router.get('/academic', requireLogin, (req, res) => {
