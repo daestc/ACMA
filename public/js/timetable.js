@@ -110,6 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!openBtn || !closeBtn || !form) return;
 
   document.getElementById('delete-timetable-btn').addEventListener('click', deleteTimetable);
+  document
+  .getElementById('add-schedule-row-btn')
+  .addEventListener('click', () => addScheduleRow());
   openBtn.addEventListener('click', openTimetableModal);
   closeBtn.addEventListener('click', closeTimetableModal);
   form.addEventListener('submit', createTimetable);
@@ -128,6 +131,8 @@ function openTimetableModal() {
   document.getElementById('tt-credits').value = 0;
   document.getElementById('tt-color').value = '#60A5FA';
   document.getElementById('delete-timetable-btn').style.display = 'none';
+  document.getElementById('tt-schedule-list').innerHTML = '';
+  addScheduleRow();
 
   toggleLectureFields();
 
@@ -165,39 +170,29 @@ async function createTimetable(e) {
 
   const semester = document.getElementById('tt-semester').value.trim();
   const title = document.getElementById('tt-title').value.trim();
-  const startTime = document.getElementById('tt-start-time').value;
-  const endTime = document.getElementById('tt-end-time').value;
+  const schedule = getScheduleFromForm();
+
+  if (!schedule) return;
 
   if (!title) {
     alert('제목을 입력해 주세요.');
     return;
   }
 
-  if (!startTime || !endTime) {
-    alert('시작 시간과 종료 시간을 입력해 주세요.');
-    return;
-  }
-
-  if (startTime >= endTime) {
-    alert('종료 시간은 시작 시간보다 늦어야 합니다.');
-    return;
-  }
 
   const timetableData = {
     semester: semester || null,
     title,
     location: document.getElementById('tt-location').value || null,
     type: document.getElementById('tt-type').value || (semester ? 'lecture' : 'other'),
-    professorName: semester ? document.getElementById('tt-professor').value || null : null,
-    credits: semester ? Number(document.getElementById('tt-credits').value || 0) : 0,
+    professorName: semester
+      ? document.getElementById('tt-professor').value || null
+      : null,
+    credits: semester
+      ? Number(document.getElementById('tt-credits').value || 0)
+      : 0,
     color: document.getElementById('tt-color').value || '#60A5FA',
-    schedule: [
-      {
-        dayOfWeek: Number(document.getElementById('tt-day').value),
-        startTime,
-        endTime
-      }
-    ]
+    schedule
   };
 
   const timetableId = document.getElementById('timetable-id').value;
@@ -234,7 +229,7 @@ function openTimetableDetail(timetableId) {
   const item = window.timetables.find(t => t._id === timetableId);
   if (!item) return;
 
-  const firstSchedule = item.schedule[0];
+  
 
   document.getElementById('timetable-id').value = item._id;
   document.getElementById('timetable-modal-title').textContent = '시간표 상세 / 수정';
@@ -247,9 +242,11 @@ function openTimetableDetail(timetableId) {
   document.getElementById('tt-credits').value = item.credits || 0;
   document.getElementById('tt-color').value = item.color || '#60A5FA';
 
-  document.getElementById('tt-day').value = firstSchedule.dayOfWeek;
-  document.getElementById('tt-start-time').value = firstSchedule.startTime;
-  document.getElementById('tt-end-time').value = firstSchedule.endTime;
+  document.getElementById('tt-schedule-list').innerHTML = '';
+
+  item.schedule.forEach(sch => {
+    addScheduleRow(sch);
+  });
 
   document.getElementById('delete-timetable-btn').style.display = 'inline-block';
 
@@ -282,4 +279,74 @@ async function deleteTimetable() {
   window.timetables = await timetableRes.json();
 
   renderTimetable();
+}
+
+function addScheduleRow(schedule = {}) {
+  const list = document.getElementById('tt-schedule-list');
+
+  const row = document.createElement('div');
+  row.className = 'tt-schedule-row';
+
+  row.innerHTML = `
+    <select class="tt-day" required>
+      <option value="1">월</option>
+      <option value="2">화</option>
+      <option value="3">수</option>
+      <option value="4">목</option>
+      <option value="5">금</option>
+    </select>
+
+    <input type="time" class="tt-start-time" required>
+    <input type="time" class="tt-end-time" required>
+
+    <button type="button" class="btn btn-sm remove-schedule-row-btn">삭제</button>
+  `;
+
+  row.querySelector('.tt-day').value = schedule.dayOfWeek ?? 1;
+  row.querySelector('.tt-start-time').value = schedule.startTime || '';
+  row.querySelector('.tt-end-time').value = schedule.endTime || '';
+
+  row.querySelector('.remove-schedule-row-btn').addEventListener('click', () => {
+    const rows = document.querySelectorAll('.tt-schedule-row');
+
+    if (rows.length <= 1) {
+      alert('시간 정보는 최소 1개 이상 필요합니다.');
+      return;
+    }
+
+    row.remove();
+  });
+
+  list.appendChild(row);
+}
+
+function getScheduleFromForm() {
+  const rows = document.querySelectorAll('.tt-schedule-row');
+
+  if (rows.length === 0) {
+    alert('시간 정보를 최소 1개 이상 입력해 주세요.');
+    return null;
+  }
+
+  const schedule = [];
+
+  for (const row of rows) {
+    const dayOfWeek = Number(row.querySelector('.tt-day').value);
+    const startTime = row.querySelector('.tt-start-time').value;
+    const endTime = row.querySelector('.tt-end-time').value;
+
+    if (!startTime || !endTime) {
+      alert('모든 시간 정보의 시작 시간과 종료 시간을 입력해 주세요.');
+      return null;
+    }
+
+    if (startTime >= endTime) {
+      alert('종료 시간은 시작 시간보다 늦어야 합니다.');
+      return null;
+    }
+
+    schedule.push({ dayOfWeek, startTime, endTime });
+  }
+
+  return schedule;
 }
