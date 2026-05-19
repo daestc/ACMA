@@ -217,7 +217,7 @@ function parseCertLic(str) {
 }
 
 // DB 저장 (또는 캐시 조회)
-async function saveCareerDetails(jobCode, userContext) {
+async function saveCareerDetails(jobCode, userContext, status = 'wish') {
   let userDoc = null;
 
   if (userContext?._id) {
@@ -236,9 +236,23 @@ async function saveCareerDetails(jobCode, userContext) {
   const data = await getCareerDetails(jobCode);
   if (!data) return null;
 
+  if (status === 'target') {
+    await Job.updateMany(
+      {
+        userId,
+        status: 'target',
+        jobCode: { $ne: jobCode },
+      },
+      { $set: { status: 'wish' } }
+    );
+  }
+
   return await Job.findOneAndUpdate(
     { userId, jobCode },
     {
+      $set: {
+        status,
+      },
       $setOnInsert: {
         ...data,
         jobCode,
@@ -247,7 +261,7 @@ async function saveCareerDetails(jobCode, userContext) {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
       setDefaultsOnInsert: true,
     }
   );
@@ -460,6 +474,12 @@ async function getMyJobs(userId) {
     }
 
     const userJobs = await Job.find({ userId: userDoc._id }).lean();
+    userJobs.sort((a, b) => {
+      const aPriority = a.status === 'target' ? 0 : 1;
+      const bPriority = b.status === 'target' ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+    });
     return userJobs;
   } catch (error) {
     console.error('Error fetching user jobs:', error);

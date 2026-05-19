@@ -75,7 +75,8 @@ const saveCareerDetails = async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const data = await careerService.saveCareerDetails(req.params.jobCode, req.user);
+    const { status } = req.body;
+    const data = await careerService.saveCareerDetails(req.params.jobCode, req.user, status);
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {

@@ -104,7 +104,7 @@ const myCertModule = {
 
     wrap.innerHTML = `
       <div class="my-cert-head">
-        <div class="my-cert-title">관심 자격증</div>
+        <div class="my-cert-title">선택한 자격증</div>
         <div class="my-cert-count">${certs.length}개</div>
       </div>
       <div class="my-cert-grid">
@@ -130,7 +130,7 @@ const myCertModule = {
   },
 };
 
-// 3-2. 현재 선택한 직무 정보 가져오기
+// ============ 4. 현재 선택한 직무 목록 ============
 const myJobModule = {
   async load() {
     const wrap = document.getElementById('my-job-info');
@@ -161,19 +161,21 @@ const myJobModule = {
 
     wrap.innerHTML = `
       <div class="my-job-head">
-        <div class="my-job-title">관심 직무</div>
+        <div class="my-job-title">선택한 직무</div>
         <div class="my-job-count">${jobs.length}개</div>
       </div>
       <div class="my-job-grid">
         ${jobs.map(job => {
           const title = job.title || '직무';
           const jobSeq = job.jobSeq || '1';
+          const statusLabel = job.status === 'target' ? '목표' : '관심';
 
           return `
             <div class="my-job-chip-wrapper">
               <button type="button" class="my-job-chip" onclick="jobModalModule.openByCode('${escapeAttr(job.jobCode)}', '${escapeAttr(jobSeq)}')">
                 <span class="my-job-chip-name">${escapeHtml(title)}</span>
                 <span class="my-job-chip-meta">직무코드: ${escapeHtml(job.jobCode)}</span>
+                <span class="badge badge-green my-cert-chip-badge">${escapeHtml(statusLabel)}</span>
               </button>
               <button type="button" class="my-job-delete-btn" title="삭제" onclick="removeJob('${escapeAttr(job._id)}', event)">×</button>
             </div>
@@ -185,7 +187,7 @@ const myJobModule = {
 };
 
 
-// ============ 3-1. 자격증 삭제 함수 ============
+// ============ 5. 자격증 삭제 함수 ============
 async function removeCertification(userCertId, event) {
   if (event) {
     event.stopPropagation();
@@ -216,7 +218,7 @@ async function removeCertification(userCertId, event) {
   }
 }
 
-// ============ 3-2. 직무 삭제 함수 ============
+// ============ 6. 직무 삭제 함수 ============
 async function removeJob(jobId, event) {
   if (event) {
     event.stopPropagation();
@@ -247,7 +249,7 @@ async function removeJob(jobId, event) {
   }
 }
 
-// ============ 4. 탭 전환 모듈 ============
+// ============ 7. 탭 전환 모듈 ============
 const tabsModule = {
   switch(tab, btn) {
     ['cert', 'job'].forEach(t => {
@@ -261,7 +263,7 @@ const tabsModule = {
 // EJS의 onclick="switchCareerTab(...)"에서 호출되므로 글로벌 별칭 유지
 function switchCareerTab(tab, btn) { tabsModule.switch(tab, btn); }
 
-// ============ 5. 자격증 모달 모듈 ============
+// ============ 8. 자격증 모달 모듈 ============
 const certModalModule = {
   async resolveFallbackByName(name, fallback = {}) {
     if (fallback.jmcd) return fallback;
@@ -606,12 +608,14 @@ const certModalModule = {
 function showCertDetail(name) { certModalModule.show(name); }
 
 
-// ============ 7. 직무 모달 모듈 ============
+// ============ 9. 직무 모달 모듈 ============
 const jobModalModule = {
   // 모달에 직무 정보 채우고 표시
   open(data, jobCode) {
     
     document.getElementById('jd-save-btn').dataset.jobcode = jobCode;
+    const changeBtn = document.getElementById('jd-change-btn');
+    if (changeBtn) changeBtn.dataset.jobcode = jobCode;
     document.getElementById('jd-title').textContent = data.title;
     document.getElementById('jd-category').textContent = data.category || '';
     document.getElementById('jd-desc').textContent = data.description;
@@ -680,7 +684,11 @@ const jobModalModule = {
   // 저장 버튼: DB에 저장
   async save(jobCode) {
     try {
-      const res = await fetch(`/career/save/${jobCode}`, { method: 'POST' });
+      const res = await fetch(`/career/save/${jobCode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'wish' })
+      });
       const result = await res.json();
       if (result.success) alert('직무가 저장되었습니다!');
       if (res.ok && result.success) {
@@ -691,6 +699,23 @@ const jobModalModule = {
     }
   },
 
+  async setTarget(jobCode) {
+    try {
+      const res = await fetch(`/career/save/${jobCode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'target' })
+      });
+      const result = await res.json();
+      if (result.success) alert('목표 직무로 저장되었습니다!');
+      if (res.ok && result.success) {
+        myJobModule.load().catch(err => console.error('Error refreshing my jobs:', err));
+      }
+    } catch (err) {
+      console.error('직무 목표 저장 실패:', err);
+    }
+  },
+
   init() {
     // 저장 버튼
     const saveBtn = document.getElementById('jd-save-btn');
@@ -698,6 +723,14 @@ const jobModalModule = {
       saveBtn.addEventListener('click', () => {
         const jobCode = saveBtn.dataset.jobcode;
         if (jobCode) this.save(jobCode);
+      });
+    }
+
+    const changeBtn = document.getElementById('jd-change-btn');
+    if (changeBtn) {
+      changeBtn.addEventListener('click', () => {
+        const jobCode = changeBtn.dataset.jobcode;
+        if (jobCode) this.setTarget(jobCode);
       });
     }
 
@@ -717,7 +750,7 @@ const jobModalModule = {
 function openJobDetailModal(data, jobCode) { jobModalModule.open(data, jobCode); }
 
 
-// ============ 8. 검색 / 페이지네이션 모듈 ============
+// ============ 10. 검색 / 페이지네이션 모듈 ============
 const searchModule = {
   // 검색 실행
   async run() {
@@ -944,17 +977,6 @@ function createCategoryDropdown({
   };
 }
 
-// ============ 10. 모달 외부 클릭 닫기 ============
-const modalCloseModule = {
-  init() {
-    ['cert-detail-modal', 'job-detail-modal'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('click', e => {
-        if (e.target === el) el.style.display = 'none';
-      });
-    });
-  },
-};
 // 자격증 목록 검색 모듈 (드롭다운과 검색 결과 렌더링 담당)
 const certSearchModule = {
   async run() {
@@ -1107,7 +1129,19 @@ const certSearchModule = {
   },
 };
 
-// ============ 11. 진입점 ============
+// ============ 11. 모달 외부 클릭 닫기 ============
+const modalCloseModule = {
+  init() {
+    ['cert-detail-modal', 'job-detail-modal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', e => {
+        if (e.target === el) el.style.display = 'none';
+      });
+    });
+  },
+};
+
+// ============ 12. 진입점 ============
 document.addEventListener('DOMContentLoaded', () => {
   modalCloseModule.init(); // 모달 외부 클릭 닫기
   jobModalModule.init(); // 직무 모달

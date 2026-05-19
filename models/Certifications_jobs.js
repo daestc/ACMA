@@ -144,7 +144,7 @@ const jobSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // 직무 정보가 특정 사용자와 연관될 경우
     jobCode: { type: String, required: true, index: true }, // 외부 API의 고유 직무 코드
     title: { type: String, required: true, trim: true, index: true }, // 검색을 위해 인덱스 추가
-    description: { type: String, default: "" },
+    description: { type: String, default: "" }, // 직무 설명
 
     // 배열 필드 최적화 (null 대신 빈 배열 [] 추천)
     responsibilities: [String], // 주요 업무
@@ -166,6 +166,13 @@ const jobSchema = new Schema(
       lower25: { type: Number, default: 0 }, 
       median50: { type: Number, default: 0 },
       upper25: { type: Number, default: 0 },
+    },
+    // 상태 구분: , 'target'(목표), 'wish'(관심)
+    status: { 
+      type: String, 
+      enum: ['target','wish'], 
+      required: true,
+      default: 'wish'
     },
 
     lastSyncedAt: { type: Date, default: Date.now },
