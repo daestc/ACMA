@@ -230,11 +230,21 @@ function validateTimetableData(timetableData) {
     if (sch.startTime >= sch.endTime) {
       throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
     }
+
+    if (timeToMinutes(sch.startTime) < 8 * 60 || timeToMinutes(sch.endTime) > 22 * 60) {
+        throw new Error('시간표는 08:00~22:00 사이만 입력할 수 있습니다.');
+    }
+
+    if (timeToMinutes(sch.startTime) % 30 !== 0 || timeToMinutes(sch.endTime) % 30 !== 0) {
+        throw new Error('시간표는 30분 단위로만 입력할 수 있습니다.');
+    }
+
   });
 
-  if (timetableData.credits !== undefined && Number(timetableData.credits) < 0) {
-    throw new Error('학점은 0 이상이어야 합니다.');
-  }
+    if (timetableData.credits !== undefined && Number(timetableData.credits) < 0) {
+        throw new Error('학점은 0 이상이어야 합니다.');
+    }
+
 }
 
 function timeToMinutes(time) {

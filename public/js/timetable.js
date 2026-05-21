@@ -10,7 +10,7 @@ function renderTimetable() {
   ];
 
   const startHour = 8;
-  const endHour = 23;
+  const endHour = 22;
   const slotMinutes = 30;
   const slotHeight = 40;
 
@@ -106,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeBtn = document.getElementById('close-timetable-form-btn');
   const form = document.getElementById('timetable-form');
   const semesterInput = document.getElementById('tt-semester');
+  
+  setSemesterOptions();
 
   if (!openBtn || !closeBtn || !form) return;
 
@@ -117,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   closeBtn.addEventListener('click', closeTimetableModal);
   form.addEventListener('submit', createTimetable);
 
-  semesterInput.addEventListener('input', toggleLectureFields);
+  semesterInput.addEventListener('change', toggleLectureFields);
 });
 
 function openTimetableModal() {
@@ -296,9 +298,13 @@ function addScheduleRow(schedule = {}) {
       <option value="5">금</option>
     </select>
 
-    <input type="time" class="tt-start-time" required>
-    <input type="time" class="tt-end-time" required>
+    <select class="tt-start-time" required>
+      ${getTimeOptions()}
+    </select>
 
+    <select class="tt-end-time" required>
+      ${getTimeOptions()}
+    </select>
     <button type="button" class="btn btn-sm remove-schedule-row-btn">삭제</button>
   `;
 
@@ -345,8 +351,49 @@ function getScheduleFromForm() {
       return null;
     }
 
+    if (!isValidTimetableTime(startTime) || !isValidTimetableTime(endTime)) {
+      alert('시간은 08:00~22:00 사이에서 30분 단위로 입력해야 합니다.');
+      return null;
+    }
+
     schedule.push({ dayOfWeek, startTime, endTime });
   }
 
   return schedule;
+}
+
+function setSemesterOptions() {
+  const semesterSelect = document.getElementById('tt-semester');
+  const year = new Date().getFullYear();
+
+  semesterSelect.innerHTML = `
+    <option value="">학기 없음</option>
+    <option value="${year}-1">${year}-1</option>
+    <option value="${year}-2">${year}-2</option>
+  `;
+}
+
+function isValidTimetableTime(time) {
+  const minutes = timeToMinutes(time);
+
+  if (minutes < 8 * 60 || minutes > 22 * 60) {
+    return false;
+  }
+
+  return minutes % 30 === 0;
+}
+
+function getTimeOptions() {
+  let options = '<option value="">시간 선택</option>';
+
+  for (let hour = 8; hour <= 22; hour++) {
+    for (let minute of [0, 30]) {
+      if (hour === 22 && minute === 30) continue;
+
+      const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      options += `<option value="${value}">${value}</option>`;
+    }
+  }
+
+  return options;
 }
