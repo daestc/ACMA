@@ -92,6 +92,7 @@ async function getTimetableListByUser(userId) {
 //시간표 생성
 async function createNewTimetable(userId, timetableData) {
     validateTimetableData(timetableData);
+    await validateTimetableOverlap(userId, timetableData.schedule);
 
     const isLecture = !!timetableData.semester;
 
@@ -106,12 +107,14 @@ async function createNewTimetable(userId, timetableData) {
         color: timetableData.color || '#60A5FA',
         schedule: timetableData.schedule,
     });
+
     return newTimetable;
-};
+}
 
 //시간표 수정
 async function updateTimetable(userId, timetableId, updateData) {
     validateTimetableData(updateData);
+    await validateTimetableOverlap(userId, updateData.schedule, timetableId);
 
     const isLecture = !!updateData.semester;
 
@@ -126,14 +129,14 @@ async function updateTimetable(userId, timetableId, updateData) {
         schedule: updateData.schedule,
     };
 
-    const updatedTimetable =  await Timetable.findOneAndUpdate(
+    const updatedTimetable = await Timetable.findOneAndUpdate(
         {
             _id: timetableId,
             userId: userId,
             isActive: true,
         },
         sanitizedData,
-        { new: true , runValidators: true}
+        { new: true, runValidators: true }
     );
 
     if (!updatedTimetable) {
@@ -141,7 +144,7 @@ async function updateTimetable(userId, timetableId, updateData) {
     }
 
     return updatedTimetable;
-};
+}
 
 //시간표 제거
 async function deleteTimetable(userId,timetableId) {
@@ -231,6 +234,58 @@ function validateTimetableData(timetableData) {
 
   if (timetableData.credits !== undefined && Number(timetableData.credits) < 0) {
     throw new Error('학점은 0 이상이어야 합니다.');
+  }
+}
+
+function timeToMinutes(time) {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function isScheduleOverlap(a, b) {
+  if (Number(a.dayOfWeek) !== Number(b.dayOfWeek)) {
+    return false;
+  }
+
+  const aStart = timeToMinutes(a.startTime);
+  const aEnd = timeToMinutes(a.endTime);
+  const bStart = timeToMinutes(b.startTime);
+  const bEnd = timeToMinutes(b.endTime);
+
+  return aStart < bEnd && bStart < aEnd;
+}
+
+//시간표 겹침 검증
+async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId = null) {
+  //같은 시간표 내부 schedule끼리 겹치는지 검사
+  for (let i = 0; i < newSchedule.length; i++) {
+    for (let j = i + 1; j < newSchedule.length; j++) {
+      if (isScheduleOverlap(newSchedule[i], newSchedule[j])) {
+        throw new Error('입력한 시간표 내부에 서로 겹치는 시간이 있습니다.');
+      }
+    }
+  }
+
+  //기존 시간표와 겹치는지 검사
+  const query = {
+    userId,
+    isActive: true,
+  };
+
+  if (excludeTimetableId) {
+    query._id = { $ne: excludeTimetableId };
+  }
+
+  const existingTimetables = await Timetable.find(query);
+
+  for (const timetable of existingTimetables) {
+    for (const existingSch of timetable.schedule) {
+      for (const newSch of newSchedule) {
+        if (isScheduleOverlap(existingSch, newSch)) {
+          throw new Error(`'${timetable.title}' 시간표와 시간이 겹칩니다.`);
+        }
+      }
+    }
   }
 }
 
