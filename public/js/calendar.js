@@ -6,6 +6,10 @@
 function switchCalView(view) {
   const isMonth = view === 'month';
 
+  // 탭 전환 시 열려있는 모달 닫기
+  closeEventModal();
+  closeTimetableModal();
+
   document.getElementById('cal-month-view').style.display = isMonth ? 'block' : 'none';
   document.getElementById('cal-week-view').style.display  = isMonth ? 'none'  : 'block';
 
