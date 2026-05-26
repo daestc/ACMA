@@ -96,27 +96,26 @@ function renderCalendar() {
 
   for (let date = 1; date <= lastDate; date++) {
     const dateStr = formatDate(year, month + 1, date);
-    const dayEvents = events.filter(event => {
-      const eventDate = new Date(event.startDate);
-      return formatDate(
-        eventDate.getFullYear(),
-        eventDate.getMonth() + 1,
-        eventDate.getDate()
-      ) === dateStr;
-    });
+    const dayEvents = getEventsByDate(dateStr);
 
     grid.innerHTML += `
       <div class="cal-day" onclick="selectDate('${dateStr}')">
         <div class="day-num">${date}</div>
         <div class="day-events">
-          ${dayEvents.map(event => `
-            <span 
-              class="event-dot"
-              title="${event.title}&#10;${event.description || ''}&#10;${formatEventDate(event)}"
-              style="background:${event.color || '#3B82F6'}"
-              onclick="event.stopPropagation(); openEventDetail('${event._id}')"
-            ></span>
-          `).join('')}
+          ${dayEvents.map(event => {
+            const multiDay = isMultiDayEvent(event);
+
+            return `
+          <div 
+            class="${multiDay ? 'multi-day-event-bar' : 'single-day-event-bar'}"
+            title="${event.title}&#10;${event.description || ''}&#10;${formatEventDate(event)}"
+            style="background:${event.color || '#3B82F6'}"
+            onclick="event.stopPropagation(); openEventDetail('${event._id}')"
+          >
+            ${event.title}
+          </div>
+          `;
+        }).join('')}
        </div>
       </div>
 `   ;
@@ -227,15 +226,13 @@ function selectDate(dateStr) {
 
 //일정 확인
 function getEventsByDate(dateStr) {
-  return events.filter(event => {
-    const eventDate = new Date(event.startDate);
-    const eventDateStr = formatDate(
-      eventDate.getFullYear(),
-      eventDate.getMonth() + 1,
-      eventDate.getDate()
-    );
+  const target = new Date(dateStr);
 
-    return eventDateStr === dateStr;
+  return events.filter(event => {
+    const start = new Date(toInputDate(event.startDate));
+    const end = new Date(toInputDate(event.endDate || event.startDate));
+
+    return target >= start && target <= end;
   });
 }
 
@@ -355,4 +352,12 @@ function toggleTimeFields() {
 function toInputTime(dateValue) {
   const date = new Date(dateValue);
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+//다일일정인지 구분 함수
+function isMultiDayEvent(event) {
+  const start = toInputDate(event.startDate);
+  const end = toInputDate(event.endDate || event.startDate);
+
+  return start !== end;
 }

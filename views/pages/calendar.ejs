@@ -8,17 +8,11 @@
 <style>  <!--캘린더 일정 색깔 원-->
   .day-events {
     display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
     margin-top: 8px;
   }
 
-  .event-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-  }
   <!--일정 추가 css-->
   .event-modal {
   position: fixed;
@@ -111,6 +105,27 @@
     overflow: hidden;
     box-sizing: border-box;
     color: #111827;
+    font-weight: 600;
+  }
+  .single-day-event-bar,
+  .multi-day-event-bar {
+    width: 100%;
+    padding: 2px 6px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .single-day-event-bar {
+    opacity: 0.85;
+  }
+
+  .multi-day-event-bar {
     font-weight: 600;
   }
 </style>
