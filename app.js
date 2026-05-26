@@ -18,6 +18,9 @@ const authRouter = require('./routes/authRouter');
 const mystatusRouter = require('./routes/mystatusRouter');
 const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
+const alertRouter = require('./routes/alertRouter');
+
+
 
 //DB 연결
 connectDB();
@@ -42,8 +45,8 @@ app.use('/auth', authRouter);
 app.use('/calendar', calendarRouter);
 app.use('/career', careerRouter);
 app.use('/mystatus', mystatusRouter);
-
 app.use('/study', studyRouter);
+app.use('/', alertRouter);
 
 //서버 시작
 app.listen(3000, ()=>{

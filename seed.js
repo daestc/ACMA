@@ -8,7 +8,7 @@ const connectDB = async () => {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('DB 연결 성공');
     } catch (error) {
-        console.error('❌ DB 연결 실패:', error.message);
+        console.error(' DB 연결 실패:', error.message);
         process.exit(1);
     }
 };
@@ -54,12 +54,12 @@ const getAndProcessQnetData = async () => {
                     allNotices.push({
                         category: 'certification',
                         source: 'q-net',
-                        // 💡 제목 예시: "2026년 정기 기사 3회 정보처리기사 실기 시험"
+                        //  "2026년 정기 기사 3회 정보처리기사 실기 시험"
                         title: `${round} ${name} ${sched.type}`, 
                         organization: '한국산업인력공단',
                         startDate: sched.start,
                         endDate: sched.end || sched.start,
-                        externalId: `qnet-${name}-${round}-${sched.type}`, // 💡 중복 방지를 위해 type까지 포함
+                        externalId: `qnet-${name}-${round}-${sched.type}`, //  중복 방지를 위해 type까지 포함
                         isPublished: true,
                         details: {
                             round: round,

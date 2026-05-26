@@ -39,33 +39,51 @@
   </div>
 </div>
 
-<!-- 알림 패널 섹션 -->
 <div id="notif-panel" class="notif-panel">
   <div class="notif-header">
     <span>새로운 알림</span>
     <button onclick="document.getElementById('notif-panel').classList.remove('open')" class="notif-close-btn">닫기</button>
   </div>
   
-  <div class="notif-list" id="notif-list">
-    <% 
-      const currentNotices = (typeof notices !== 'undefined' && Array.isArray(notices)) ? notices : [];
-      if (currentNotices.length > 0) { 
-        const urgentNotices = currentNotices.filter(n => n.isUrgent === true);
-        if (urgentNotices.length > 0) { 
-          urgentNotices.forEach(notice => { 
-    %>
-        <div class="notif-item">
-          <span class="notif-icon"><%= notice.icon %></span>
-          <div class="notif-content">
-            <p class="notif-text"><strong><%= notice.title %></strong> 일정이 얼마 남지 않았어요!</p>
-            <p class="notif-date"><%= notice.dDayText %></p>
-          </div>
-        </div>
-      <% }); } else { %>
-        <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">다가오는 일정이 없습니다.</p>
-      <% } %>
-    <% } else { %>
-      <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">표시할 알림이 없습니다.</p>
-    <% } %>
+  <div class="notif-list" id="dynamic-notif-list">
+    <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">표시할 알림이 없습니다.</p>
   </div>
 </div>
+
+<script>
+  // 페이지가 로드되면 자동으로 서버에서 가공된 실시간 알림 데이터를 긁어옴
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      // 💡 아까 만든 가짜 로그인/실시간 알림 API 호출 (주소 규격 확인해줘!)
+      const response = await fetch('/api/banner'); 
+      const result = await response.json();
+
+      if (result.success && result.liveAlerts) {
+        const notifListDiv = document.getElementById('dynamic-notif-list');
+        notifListDiv.innerHTML = ''; // "불러오는 중..." 문구 지우기
+
+        const alerts = result.liveAlerts;
+
+        if (alerts.length > 0) {
+          alerts.forEach(notice => {
+            const notifItem = `
+              <div class="notif-item" style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; gap: 15px;">
+                <span class="notif-icon" style="font-size: 1.3rem;">${notice.icon}</span>
+                <div class="notif-content" style="flex: 1;">
+                  <p class="notif-text" style="margin: 0; font-size: 0.95rem; color: #1e293b;"><strong>${notice.body}</strong></p>
+                  <p class="notif-date" style="margin: 4px 0 0 0; font-size: 0.8rem; color: #94a3b8; font-weight: 600;">${notice.dDayText}</p>
+                </div>
+              </div>
+            `;
+            notifListDiv.insertAdjacentHTML('beforeend', notifItem);
+          });
+        } else {
+          notifListDiv.innerHTML = '<p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">다가오는 일정이 없습니다.</p>';
+        }
+      }
+    } catch (error) {
+      console.error("알림 데이터를 가져오는데 실패함:", error);
+      document.getElementById('dynamic-notif-list').innerHTML = '<p class="notif-empty" style="padding: 20px; text-align: center; color: #ef4444;">알림 로드 실패</p>';
+    }
+  });
+</script>
