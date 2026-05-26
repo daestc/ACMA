@@ -82,7 +82,7 @@ const createTimetable = async(req,res) => {
         const newTimetable = await calendarService.createNewTimetable(userId, req.body);
         res.status(201).json(newTimetable); //요청 성공시 json반환 
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
       message: '시간표 생성 실패',
       error: error.message,
         });
@@ -97,7 +97,7 @@ const updatedTimetable = async(req,res) => {
         const updateTimetable = await calendarService.updateTimetable(userId,timetableId,req.body);
         res.json(updateTimetable); //json으로 수정사항 반환
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
         message: '시간표 수정 실패',
         error: error.message,
         });

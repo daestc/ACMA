@@ -147,8 +147,8 @@ async function updateTimetable(userId, timetableId, updateData) {
 }
 
 //시간표 제거
-async function deleteTimetable(userId,timetableId) {
-    return await Timetable.findOneAndUpdate(//isActive를 false 바꾸는 것이므로 update 사용
+async function deleteTimetable(userId, timetableId) {
+    const deletedTimetable = await Timetable.findOneAndUpdate(
         {
             _id: timetableId,
             userId: userId,
@@ -157,8 +157,14 @@ async function deleteTimetable(userId,timetableId) {
         {
             isActive: false
         },
-        {new: true}
+        { new: true }
     );
+
+    if (!deletedTimetable) {
+        throw new Error('시간표를 찾을 수 없습니다.');
+    }
+
+    return deletedTimetable;
 };
 
 
