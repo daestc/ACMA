@@ -13,10 +13,14 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "csv-parser": "^3.2.0",
     "dotenv": "^17.4.2",
     "ejs": "^5.0.2",
     "express": "^5.2.1",
-    "mongoose": "^9.5.0"
+    "iconv-lite": "^0.7.2",
+    "mongoose": "^9.6.1",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
