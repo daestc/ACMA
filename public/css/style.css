@@ -587,6 +587,131 @@ input,select,textarea{font-family:inherit;}
 .exp-period{font-size:11px;color:var(--text3);font-weight:500;}
 .exp-ach{font-size:12px;color:var(--text2);padding-left:4px;}
 
+/*캘린더 CSS _________________________ */
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* 일정 추가 css */
+.event-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.event-modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 360px;
+}
+
+.event-modal-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-modal-content input,
+.event-modal-content textarea,
+.event-modal-content select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+}
+/* 일정 확인, 수정, 삭제 css */
+.selected-day-panel {
+  margin-top: 20px;
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.selected-event-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.selected-event-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.timetable {
+  display: grid;
+  position: relative;
+}
+
+.tt-header,
+.tt-time,
+.tt-cell {
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.tt-header {
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.tt-time {
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.tt-cell {
+  background: white;
+}
+
+.tt-class-block {
+  z-index: 5;
+  margin: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  color: #111827;
+  font-weight: 600;
+}
+.single-day-event-bar,
+.multi-day-event-bar {
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.single-day-event-bar {
+  opacity: 0.85;
+}
+
+.multi-day-event-bar {
+  font-weight: 600;
+}
+
+=======
 .job-detail-resp-list {
   display: flex;
   flex-direction: column;
