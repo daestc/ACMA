@@ -4,6 +4,10 @@
 <head>
 	<%- include('../partials/head') %>
 	<title>홈</title>
+  <script>
+    // 페이지 랜딩시 받은 habitList
+    let habits = <%- JSON.stringify(habitList) %>;
+  </script>
 </head>
 
 <body>
@@ -19,8 +23,9 @@
 		<div class="page-content">
     <!-- ══ HOME ══ -->
     <div class="page-content">
-        <!-- 날씨 + 명언 -->
+        <!-- 날씨 + 명언 #후순위 -->
         <div class="grid-2" style="margin-bottom:16px;">
+          <!-- 날씨 API -->
           <div class="weather-widget">
             <div class="weather-left">
               <div class="temp">18°C</div>
@@ -33,13 +38,14 @@
               <div class="weather-detail" style="text-align:center;">오늘 최고 21°</div>
             </div>
           </div>
+          <!-- 명언 API -->
           <div class="quote-card">
             <div class="quote-text">교육은 미래를 위한 가장 강력한 무기다</div>
             <div class="quote-author">— 넬슨 만델라</div>
           </div>
         </div>
 
-        <!-- D-Day -->
+        <!-- D-Day 나중에 Notice, Calendar 데이터 추가 #후순위 -->
         <div class="dday-row">
           <div class="dday-card blue"><div class="dday-label">자격증 시험</div><div class="dday-title">정보처리기사</div><div class="dday-count">D-12</div></div>
           <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
@@ -52,7 +58,6 @@
           <div class="card">
             <div class="card-header">
               <span class="card-title">📋 오늘의 강의 & 할 일</span>
-              <span class="card-action">+ 추가</span>
             </div>
             <div class="tabs" style="margin-bottom:14px;">
               <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
@@ -64,9 +69,18 @@
               <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
             </div>
             <div id="ht-todo" style="display:none;">
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">과제 제출 — 자료구조 3주차</span><span class="check-time">23:59</span></div>
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">정보처리기사 기출 20문제</span><span class="check-time">오늘</span></div>
-              <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">교재 구매 — 알고리즘</span><span class="check-time">완료</span></div>
+              <% if(!todoList || todoList.length === 0) { %>
+                <div class="check-item todo-exam"><span class="check-text">오늘의 할 일을 추가하세요</span></div>
+              <% } else { %>
+                <% todoList.forEach(todo => { %>
+                  <div class="check-item" data-id="<%= todo._id %>">
+                    <div class="check-box" onclick="toggleCheck(this)"></div>
+                    <span class="check-text"><%= todo.title %></span>
+                    <span class="check-time"><%= todo.note %></span>
+                  </div>
+                <% }) %>
+              <% } %>
+              <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">편집</span>
             </div>
           </div>
 
@@ -84,8 +98,8 @@
           <div class="card-header">
             <span class="card-title">🌱 오늘의 습관 트래커</span>
             <div style="display:flex;align-items:center;gap:8px;">
-              <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;">3 / 5 완료</span>
-              <button class="btn btn-ghost btn-sm" onclick="addHabitItem()">+ 추가</button>
+              <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;"><% completedCount %> / <%= habitList.length %> 완료</span>
+              <button class="btn btn-ghost btn-sm" onclick="openHabitModal()">✏️ 수정</button>
             </div>
           </div>
           <!-- 진행률 바 -->
@@ -96,54 +110,22 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;" id="habit-list">
             <!-- 습관 항목들 — 할 일(todo)과 달리 매일 반복하는 루틴 -->
-            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
-              <div class="habit-check done">✓</div>
-              <div class="habit-body">
-                <div class="habit-name done">💧 물 2L 마시기</div>
-                <div class="habit-sub">건강 · 매일</div>
+            <% habitList.forEach(habit => { %>
+              <div class="habit-item" data-id="<%= habit._id %>" data-done="<%= habit.isCompleted %>" onclick="toggleHabit(this)">
+                <% if(habit.isCompleted) { %>
+                  <div class="habit-check done">✓</div>
+                  <div class="habit-body">
+                    <div class="habit-name done"><%= habit.title %></div>
+                <% } else { %>
+                  <div class="habit-check"></div>
+                  <div class="habit-body">
+                    <div class="habit-name"><%= habit.title %></div>
+                <% } %>
+                  <div class="habit-sub"><%= habit.category %> · 매일</div>
+                </div>
               </div>
+            <% }); %>
             </div>
-            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
-              <div class="habit-check done">✓</div>
-              <div class="habit-body">
-                <div class="habit-name done">📖 오늘 강의 복습</div>
-                <div class="habit-sub">학습 · 매일</div>
-              </div>
-            </div>
-            <div class="habit-item" data-done="true" onclick="toggleHabit(this)">
-              <div class="habit-check done">✓</div>
-              <div class="habit-body">
-                <div class="habit-name done">🧘 명상 10분</div>
-                <div class="habit-sub">마음 · 매일</div>
-              </div>
-            </div>
-            <div class="habit-item" data-done="false" onclick="toggleHabit(this)">
-              <div class="habit-check"></div>
-              <div class="habit-body">
-                <div class="habit-name">🏃 30분 운동</div>
-                <div class="habit-sub">건강 · 매일</div>
-              </div>
-            </div>
-            <div class="habit-item" data-done="false" onclick="toggleHabit(this)">
-              <div class="habit-check"></div>
-              <div class="habit-body">
-                <div class="habit-name">📝 오늘의 일기 쓰기</div>
-                <div class="habit-sub">성장 · 매일</div>
-              </div>
-            </div>
-          </div>
-          <!-- 습관 추가 입력창 (숨김) -->
-          <div id="habit-input-row" style="display:none;margin-top:12px;display:none;">
-            <div style="display:flex;gap:8px;align-items:center;">
-              <span style="font-size:18px;">✏️</span>
-              <input class="input-field" id="habit-new-input" placeholder="새 습관 입력 (예: 독서 20분)" style="flex:1;" onkeydown="if(event.key==='Enter')confirmAddHabit()">
-              <select class="select-field" id="habit-category" style="font-size:12px;padding:6px 10px;">
-                <option>학습</option><option>건강</option><option>마음</option><option>성장</option>
-              </select>
-              <button class="btn btn-accent btn-sm" onclick="confirmAddHabit()">추가</button>
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('habit-input-row').style.display='none'">취소</button>
-            </div>
-          </div>
         </div>
 		</div>
 
@@ -151,9 +133,15 @@
 
 	<!-- 모달 -->
 	<%- include('../partials/modals/mypage', { user: user }) %>
+	<%- include('../partials/modals/todo_add', { user: user }) %>
+  <%- include('../partials/modals/habit_edit') %>
 
 	<script src="/js/common.js"> </script>
-	<script src="/js/home.js"> </script>
+  <script src="/js/home.js"> </script>
+	<script>
+
+  </script>
+
 </body>
 
 </html>

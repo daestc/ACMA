@@ -1,35 +1,95 @@
 <!-- ══ 직무 세부 모달 ══ -->
-<div id="job-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.5);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:600px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:10;border-radius:20px 20px 0 0;">
+<div id="job-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(17,20,45,.56);z-index:1000;backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;">
+  <div class="job-detail-modal-shell">
+    <div class="job-detail-modal-accent"></div>
+
+    <!-- 헤더 -->
+    <div class="job-detail-modal-header">
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">💼 직무 상세 정보</div>
-        <div id="jd-title" style="font-size:18px;font-weight:800;color:var(--text);">웹 개발자</div>
+        <div class="job-detail-modal-kicker">직무 상세 정보</div>
+        <div id="jd-title" class="job-detail-modal-title"></div>
+        <div id="jd-category" class="job-detail-modal-category"></div>
       </div>
-      <button onclick="document.getElementById('job-detail-modal').style.display='none'" style="width:30px;height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;color:var(--text2);">✕</button>
+      <button onclick="document.getElementById('job-detail-modal').style.display='none'"
+              class="job-detail-modal-close">✕</button>
     </div>
-    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px;">
-      <!-- 관련 학과 -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🎓 관련 학과</div>
-        <div id="jd-departments" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+    <!-- 본문 -->
+    <div class="job-detail-modal-body">
+      <div class="job-detail-hero">
+        <div class="job-detail-hero-left">
+          <div class="job-detail-section-label"> 직무 개요</div>
+          <div id="jd-desc" class="job-detail-copy"></div>
+        </div>
+        <div class="job-detail-hero-right">
+          <div class="job-detail-section-label"> 평균 연봉</div>
+          <div class="job-detail-salary-grid">
+            <div class="job-salary-card">
+              <div id="jd-sal-lower" class="job-salary-value"></div>
+              <div class="job-salary-label">하위 25%</div>
+            </div>
+            <div class="job-salary-card job-salary-card--featured">
+              <div id="jd-sal-median" class="job-salary-value job-salary-value--featured"></div>
+              <div class="job-salary-label">평균</div>
+            </div>
+            <div class="job-salary-card">
+              <div id="jd-sal-upper" class="job-salary-value"></div>
+              <div class="job-salary-label">상위 25%</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <!-- 직무 설명 -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📋 직무 설명</div>
-        <div id="jd-desc" style="font-size:13px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:var(--radius-sm);padding:14px;"></div>
+       <!-- ✅ 새로 추가: 주요 업무 -->
+      <div class="job-detail-panel">
+        <div class="job-detail-section-label"> 주요 업무</div>
+        <div id="jd-responsibilities" class="job-detail-resp-list"></div>
       </div>
-      <!-- 주요 기술 -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">⚡ 주요 기술</div>
-        <div id="jd-skills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+      <!-- 되는 법 -->
+      <div class="job-detail-panel">
+        <div class="job-detail-section-label"> 되는 법</div>
+        <div id="jd-way" class="job-detail-copy job-detail-copy--preline"></div>
       </div>
-      <!-- 관련 자격증 -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🏆 관련 자격증</div>
-        <div id="jd-certs" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+      <!-- 업무 수행 능력 / 관련 지식 -->
+      <div class="job-detail-grid-2">
+        <div class="job-detail-panel">
+          <div class="job-detail-section-label"> 업무 수행 능력</div>
+          <div id="jd-abilities" class="job-detail-tags"></div>
+        </div>
+        <div class="job-detail-panel">
+          <div class="job-detail-section-label"> 관련 지식</div>
+          <div id="jd-knowledge" class="job-detail-tags"></div>
+        </div>
       </div>
+
+      <!-- 업무 관련 성격 -->
+      <div class="job-detail-panel">
+        <div class="job-detail-section-label"> 업무 관련 성격</div>
+        <div id="jd-characteristics" class="job-detail-tags"></div>
+      </div>
+
+      <!-- 관련 학과 / 관련 자격증 -->
+      <div class="job-detail-grid-2">
+        <div class="job-detail-panel">
+          <div class="job-detail-section-label"> 관련 학과</div>
+          <div id="jd-departments" class="job-detail-tags"></div>
+        </div>
+        <div class="job-detail-panel">
+          <div class="job-detail-section-label"> 관련 자격증</div>
+          <div id="jd-certs" class="job-detail-tags"></div>
+        </div>
+      </div>
+
+      <!-- 관련 직업 -->
+      <div class="job-detail-panel">
+        <div class="job-detail-section-label"> 관련 직업</div>
+        <div id="jd-occupations" class="job-detail-tags"></div>
+      </div>
+    </div>
+    <div class="job-detail-action-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="jd-save-btn" class="btn btn-ghost">관심 설정</button>
+      <button id="jd-change-btn" class="btn btn-accent">목표 설정</button>
     </div>
   </div>
 </div>
-
