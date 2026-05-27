@@ -155,6 +155,13 @@ async function addTodoItem() {
 
     // 마지막 자식 앞에 추가
     list.insertBefore(itemHome, list.lastElementChild);
+
+    // 삭제 목록에는 체크박스에 class 추가
+    itemModal.innerHTML = `
+      <div class="check-box delete-todo" onclick="toggleCheck(this)"></div>
+      <span class="check-text">${content}</span>
+      <span class="check-time">${note || '오늘'}</span>`;
+
     todoDList.appendChild(itemModal);
 
     
