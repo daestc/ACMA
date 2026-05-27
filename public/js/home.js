@@ -156,6 +156,8 @@ async function addTodoItem() {
     // 마지막 자식 앞에 추가
     list.insertBefore(itemHome, list.lastElementChild);
     todoDList.appendChild(itemModal);
+
+    
   }
 
   closeTodoModal();
@@ -398,6 +400,11 @@ async function addHabitFromModal() {
       </div>`;
     list.appendChild(div);
     updateHabitSummary();
+    
+    habits.push({
+      _id: result.habitId,
+      isCompletd: false
+    });
   }
 
   clearHabitModal();

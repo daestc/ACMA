@@ -48,7 +48,7 @@ const deleteTodo = async (req, res) => {
 
 } // deleteTodo()
 
-// Todo 항목 추가
+// habit 항목 추가
 const addHabit = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
@@ -110,7 +110,7 @@ const deleteHabit = async (req, res) => {
 // isCompleted 변동 사항 저장
 const saveIsCompleted = async (req, res) => {
   try {
-     // #후순위 유저 유효성 검사
+    // #후순위 유저 유효성 검사
     const changes = req.body.changes;
     
     // DB에 추가 + 추가한 habit의 _id 가져오기

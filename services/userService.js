@@ -90,7 +90,15 @@ async function getHabitList(userEmail) {
   const user = await User.findOne({email: userEmail});
   if(!user) throw new Error('사용자를 찾지 못했습니다.');
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0); // 오늘 00:00:00
+
   const habitList = user.habitTracker;
+  habitList.forEach(h => {
+    if(h.lastUpdatedDate < todayStart) {
+      h.isCompleted = false;
+    }
+  });
   const completedCount = habitList.filter(habit => habit.isCompleted).length;
 
   return {habitList, completedCount};
@@ -152,15 +160,15 @@ async function deleteHabit(userEmail, habitId) {
 
 // isCompleted 변경 사항 DB에 저장
 async function saveIsCompleted(userEmail, changes) {
-  for(const [habitId, isCompleted] of Object.entries(pendingChanges)) {
+  for(const [habitId, isCompleted] of Object.entries(changes)) {
     await User.findOneAndUpdate(
       { 
         email: userEmail,
-        "habitTracker._id": habitId }, 
+        "habitTracker._id": habitId 
+      },
       { 
         $set: {
-          habitTracker: {
-            "habitTracker.$.isCompleted": isCompleted }
+            "habitTracker.$.isCompleted": isCompleted
           }
       }
     );
