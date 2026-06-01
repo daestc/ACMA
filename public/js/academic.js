@@ -29,9 +29,10 @@ function calcGPA() {
   let pts = 0, creds = 0;
 
   rows.forEach(r => {
-    const selects = r.querySelectorAll('select');
-    const c = parseInt(selects[0].value) || 3;
-    const g = selects[1].value;
+    const creditSelect = r.querySelector('select[name="credits"]');
+    const gradeSelect = r.querySelector('select[name="grade"]');
+    const c = parseInt(creditSelect?.value) || 3;
+    const g = gradeSelect?.value;
     pts   += (gradeMap[g] ?? 0) * c;
     creds += c;
   });
@@ -46,17 +47,94 @@ function addSubjectRow() {
   const row  = document.createElement('div');
   row.className = 'subject-row';
   row.innerHTML = `
-    <input  class="input-field" placeholder="과목명" style="flex:2;">
-    <select class="select-field">
-      <option>3학점</option><option>2학점</option><option>1학점</option>
+    <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
+    <select class="select-field" name="subjectType" style="min-width:120px;">
+      <option value="major_required">전필</option>
+      <option value="major_elective">전선</option>
+      <option value="general_required">교필</option>
+      <option value="general_elective">교선</option>
+      <option value="free">일선</option>
     </select>
-    <select class="select-field" onchange="calcGPA()">
-      <option>B+</option><option>A+</option><option>A</option><option>B</option>
-      <option>C+</option><option>C</option><option>D+</option><option>D</option><option>F</option>
+    <select class="select-field" name="credits">
+      <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
     </select>
-    <button class="btn btn-ghost btn-sm"
+    <select class="select-field" name="grade" onchange="calcGPA()">
+      <option value="B+">B+</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option>
+      <option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
+    </select>
+    <button type="button" class="btn btn-ghost btn-sm"
       onclick="this.closest('.subject-row').remove(); calcGPA()">✕</button>`;
   list.appendChild(row);
+}
+
+async function saveAcademicData() {
+  const semesterSelect = document.querySelector('#ac-gpa select[name="semester"]');
+  const rows = document.querySelectorAll('#subject-list .subject-row');
+
+  const subjects = Array.from(rows).map(row => {
+    const subjectName = row.querySelector('input[name="subjectName"]')?.value?.trim() || '';
+    const subjectType = row.querySelector('select[name="subjectType"]')?.value || 'free';
+    const credits = row.querySelector('select[name="credits"]')?.value || '3';
+    const grade = row.querySelector('select[name="grade"]')?.value || null;
+
+    return { subjectName, subjectType, credits, grade };
+  }).filter(subject => subject.subjectName);
+
+  if (!subjects.length) {
+    alert('과목을 하나 이상 입력해 주세요.');
+    return;
+  }
+
+  const payload = {
+    semester: semesterSelect?.value || '2026-1',
+    subjectName: subjects.map(subject => subject.subjectName),
+    subjectType: subjects.map(subject => subject.subjectType),
+    credits: subjects.map(subject => subject.credits),
+    grade: subjects.map(subject => subject.grade),
+  };
+
+  const button = document.querySelector('#ac-gpa .btn-accent');
+  const originalText = button ? button.textContent : '저장';
+  let restoreTimer = null;
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = '저장 중...';
+    }
+
+    const response = await fetch('/academic/addCourse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin',
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || '저장에 실패했습니다.');
+    }
+
+    if (button) {
+      button.textContent = '✓ 저장됨';
+      restoreTimer = setTimeout(() => {
+        button.textContent = originalText;
+      }, 1500);
+    }
+  } catch (error) {
+    alert(error.message || '저장에 실패했습니다.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      if (!restoreTimer) {
+        button.textContent = originalText;
+      }
+    }
+  }
 }
 
 // ── 목표 GPA 시뮬레이터 ───────────────────────────
@@ -134,6 +212,7 @@ function updateGradPreview() {
     badge.textContent = pct >= 100 ? '졸업 가능' : '진행중';
   }
 }
+
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', updateGradPreview);
