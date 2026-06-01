@@ -54,7 +54,6 @@
   // 페이지가 로드되면 자동으로 서버에서 가공된 실시간 알림 데이터를 긁어옴
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      // 💡 아까 만든 가짜 로그인/실시간 알림 API 호출 (주소 규격 확인해줘!)
       const response = await fetch('/api/banner'); 
       const result = await response.json();
 

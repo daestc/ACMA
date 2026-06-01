@@ -1,10 +1,10 @@
 // service/notificationService.js
-const Notice = require('../models/Notice'); // 💡 공지사항 모델 (파일명/경로 프로젝트에 맞게 꼭 확인!)
-const { Notification, CalendarEvent } = require('../models/Notification'); // 💡 다은이 스키마 파일 구조 매칭 완료
+const Notice = require('../models/Notice'); // 💡 공지사항 모델 
+const { Notification, CalendarEvent } = require('../models/Notification'); 
 
-/**
- * 1. 읽지 않은 알림 목록 가져오기 (기존 기능 유지)
- */
+
+
+//읽지 않은 알림 목록 가져오기 
 async function getNotifications(userId) {
     try {
         return await Notification.find({ userId: userId }).sort({ createdAt: -1 }); 
@@ -14,9 +14,7 @@ async function getNotifications(userId) {
     }
 }
 
-/**
- * 2. 알림 전체 삭제 (기존 기능 유지)
- */
+//알림 전체 삭제 
 async function deleteNotifications(userId) {
     try {
         await Notification.deleteMany({ userId: userId });
@@ -25,10 +23,9 @@ async function deleteNotifications(userId) {
     }
 }
 
-/**
- * 3. 실시간 알림창 및 배너 데이터 가공/조립 함수
- * 💡 전체를 try-catch로 감싸 백엔드가 터져서 프론트가 '로드 실패'에 빠지는 현상을 원천 차단합니다.
- */
+
+//실시간 알림창 및 배너 데이터 가공/조립 함수
+ 
 async function getBannerData(userId) {
     try {
         const now = new Date();
@@ -56,11 +53,11 @@ async function getBannerData(userId) {
                 });
             }
         } catch (calendarError) {
-            // 💡 컬렉션이 없거나 텅 비어있어도 로그만 찍고 서버는 계속 돌아가게 방어
+            // 컬렉션이 없거나 텅 비어있어도 로그만 찍고 서버는 계속 돌아가게 방어
             console.log("⚠️ CalendarEvent 조회 일시 건너뜀:", calendarError.message);
         }
 
-        // ─── [B] 자격증 및 장학금 d-7, d-day인 거 가져오기 (Notice 연동) ───
+        // ─── 자격증 및 장학금 d-7, d-day인 거 가져오기 (Notice 연동) ───
         const formattedNotices = []; 
         try {
             const matchNotices = await Notice.find({
@@ -133,7 +130,6 @@ async function getBannerData(userId) {
         return [...formattedTodayEvents, ...formattedNotices];
 
     } catch (globalError) {
-        // 💡 최상위 catch: 내부 연산이 완벽히 꼬여도 프론트엔드가 에러 핸들러로 튕기지 않게 방어 팝업 전송
         console.error("❌ 서비스 최상위 크래시 예방:", globalError.message)
     }
 }

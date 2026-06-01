@@ -12,11 +12,9 @@ exports.getScholarshipNotice = async () => {
             params: {
                 page: 1,
                 perPage: 10,
-                // 💡 핵심: encodeURIComponent를 쓰지 않고 axios가 처리하게 두거나, 
-                // 키가 이미 인코딩되어 있다면 그대로 전달해야 해.
                 serviceKey: apiKey 
             },
-            // ⚠️ 중요: axios가 serviceKey를 이중으로 인코딩하지 않도록 설정
+
             paramsSerializer: params => {
                 const searchParams = new URLSearchParams();
                 for (const key in params) {
@@ -35,7 +33,7 @@ exports.getScholarshipNotice = async () => {
         const items = response.data?.data || [];
         
         if (items.length === 0) {
-            console.log("### [Scholarship] 데이터가 비어있습니다.");
+            console.log(" [Scholarship] 데이터가 비어있습니다.");
             return [];
         }
 

@@ -71,7 +71,8 @@ const getBannerData = async (req, res) => {
       endDate: { $gte: startOfToday, $lte: tomorrow }
     });
 
-    // [4] 인기 채용 공고 (Scrap 수 기준)
+    
+    // [4] 인기 채용 공고 (Scrap 수 기준) -> 일단 이건 보류 
     const hotRecruits = await Notice.find({
       category: 'recruit',
       endDate: { $gte: startOfToday }
@@ -89,6 +90,7 @@ const getBannerData = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+    
 };
 
 module.exports = {
