@@ -391,6 +391,30 @@ input,select,textarea{font-family:inherit;}
     color: #94a3b8; 
     font-size: 0.95rem;
 }
+/* 8. 알림 패널 하단 [더보기] 버튼 영역 */
+.notif-panel #notif-more-btn-container {
+    padding: 10px;
+    text-align: center;
+    border-top: 1px solid #f1f5f9;
+    display: none; /* 기본 숨김 (JS가 제어) */
+}
+
+.notif-panel #notif-more-btn {
+    background: #f1f5f9;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+    cursor: pointer;
+    width: 90%;
+    transition: background 0.2s ease;
+}
+
+.notif-panel #notif-more-btn:hover {
+    background: #e2e8f0;
+}
 /* ── CALENDAR ─────────────────────────── */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .cal-nav{display:flex;gap:8px;align-items:center;}

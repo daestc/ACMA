@@ -14,14 +14,6 @@ async function getNotifications(userId) {
     }
 }
 
-//알림 전체 삭제 
-async function deleteNotifications(userId) {
-    try {
-        await Notification.deleteMany({ userId: userId });
-    } catch (error) {
-        console.error("deleteNotifications DB 삭제 에러:", error.message);
-    }
-}
 
 
 //실시간 알림창 및 배너 데이터 가공/조립 함수

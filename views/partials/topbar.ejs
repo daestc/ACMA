@@ -25,7 +25,7 @@
 
   <div class="gh-right">
     <!-- 알림 버튼 -->
-    <div class="gh-btn" onclick="document.getElementById('notif-panel')?.classList.toggle('open')">
+    <div class="gh-btn" onclick="AlertButtonClick()">
       🔔
       <% if (typeof notices !== 'undefined' && Array.isArray(notices) && notices.some(n => n.isUrgent === true)) { %>
         <div class="gh-notif-dot"></div>
@@ -49,8 +49,41 @@
     <p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">표시할 알림이 없습니다.</p>
   </div>
 </div>
+<div id="notif-more-btn-container">
+      <button id="notif-more-btn">더보기 ▾</button>
+    </div>
+  </div>
+</div>
 
 <script>
+  let allAlerts = []; //전체 알림 저장할 변수
+  let currentPage = 1; 
+  let itemsPerpage = 5;
+
+  //페이징 처리
+  function renderNotifPage(){
+    const notifListDiv = document.getElementById('dynamic-notif-list');
+    const moreBtnContainer = document.getElementById('notif-more-btn-container');
+
+    const statIndex = (currentPage - 1) * itemPerpage;
+    const endIndex = startIndex + itemsPerPage;
+
+    //5개씩 자르기
+    const pageItems = allAlerts.slice(startIndex, endIndex);
+
+    pageItems.forEach(notice => {
+      notifListDiv.insertAdjacentHTML('beforeend', createNotifItem(notice));
+    });
+
+    //더보기 버튼 보이기/숨기기
+    if(endIndex < allAlerts.length){
+      moreBtnContainer.style.display = "block";
+    }
+    else{
+      moreBtnContainer.style.display = "none";
+    }
+  }
+
   // 페이지가 로드되면 자동으로 서버에서 가공된 실시간 알림 데이터를 긁어옴
   document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -61,28 +94,49 @@
         const notifListDiv = document.getElementById('dynamic-notif-list');
         notifListDiv.innerHTML = ''; // "불러오는 중..." 문구 지우기
 
-        const alerts = result.liveAlerts;
+       allAlerts = result.liveAlerts;
+         //서버에서 알림 받아온 시점
 
-        if (alerts.length > 0) {
-          alerts.forEach(notice => {
-            const notifItem = `
-              <div class="notif-item" style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; gap: 15px;">
-                <span class="notif-icon" style="font-size: 1.3rem;">${notice.icon}</span>
-                <div class="notif-content" style="flex: 1;">
-                  <p class="notif-text" style="margin: 0; font-size: 0.95rem; color: #1e293b;"><strong>${notice.body}</strong></p>
-                  <p class="notif-date" style="margin: 4px 0 0 0; font-size: 0.8rem; color: #94a3b8; font-weight: 600;">${notice.dDayText}</p>
-                </div>
-              </div>
-            `;
-            notifListDiv.insertAdjacentHTML('beforeend', notifItem);
-          });
-        } else {
-          notifListDiv.innerHTML = '<p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">다가오는 일정이 없습니다.</p>';
+        if (allAlerts.length > 0) {
+          currentPage = 1; // 페이지 초기화
+          renderNotifPage(); 
+           
+         const currentAlerts = allAlerts.map(a=>a.body).join('|');
+
+        //브라우저에서 기존에  기억하던 지문 꺼옴
+        const lastReadAlerts = localStorage.getItem('last_read_alerts');
+
+        const redDot = document.querySelector('.gh-notif-dot'); 
+
+        if(currentAlerts != lastReadAlerts){
+          if(redDot) redDot.style.display = 'block'; //빨간점 켜기
+        }else{
+          if(redDot) redDot.style.display = 'none'; //빨간점 끄기
         }
-      }
+    
+    } else{
+      notifListDiv.innerHTML = '<p class="notif-empty">다가오는 일정이 없어요!</p>';
+      document.getElementById('notif-more-btn-container').style.display = 'none';
+    }
+  }
     } catch (error) {
       console.error("알림 데이터를 가져오는데 실패함:", error);
       document.getElementById('dynamic-notif-list').innerHTML = '<p class="notif-empty" style="padding: 20px; text-align: center; color: #ef4444;">알림 로드 실패</p>';
     }
   });
+  
+  //사용자가 알림 패널 클릭 시
+  function AlertButtonClick(){
+    document.getElementById('notif-panel')?.classList.toggle('open');//알림창 열었을 때
+    
+    //알림 버튼 누르면 '읽음' 상태로 만들기
+    if(allAlerts.length > 0){
+      const currentAlerts = allAlerts.map(a => a.body).join('|');
+      localStorage.setItem('last_read_alerts', currentAlerts); //현재 알림 지문 저장
+    }
+
+    //빨간점 끄기
+    const redDot = document.querySelector('.gh-notif-dot');
+    if(redDot) redDot.style.display = 'none';
+  }
 </script>
