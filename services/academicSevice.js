@@ -53,6 +53,16 @@ async function saveSemesterRecord({ userId, semester, year, semesterNumber, stat
     { upsert: true, new: true, runValidators: true }
   );
 }
+
+const getSemesterRecord = async (userId, semester) => {
+  try {
+    const record = await model.AcademicRecord.findOne({ userId, semester }).lean();
+    return record;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
 // GPA 계산기 강의 수정
 async function editCourse(userEmail, courseId, courseName, courseCode, credits) {
   await model.findOneAndUpdate(
@@ -67,6 +77,7 @@ async function deleteCourse(userEmail, courseId) {
 
 module.exports = {
   saveSemesterRecord,
+  getSemesterRecord,
   editCourse,
   deleteCourse,
 };

@@ -44,7 +44,17 @@ function calcGPA() {
 
 function addSubjectRow() {
   const list = document.getElementById('subject-list');
-  const row  = document.createElement('div');
+  const row = buildSubjectRow();
+  list.appendChild(row);
+}
+
+function buildSubjectRow(subject = {}) {
+  const sName = subject.subjectName || '';
+  const sType = subject.subjectType || 'free';
+  const sCredits = String(subject.credits ?? '3');
+  const sGrade = subject.grade || 'A';
+
+  const row = document.createElement('div');
   row.className = 'subject-row';
   row.innerHTML = `
     <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
@@ -59,12 +69,19 @@ function addSubjectRow() {
       <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
     </select>
     <select class="select-field" name="grade" onchange="calcGPA()">
-      <option value="B+">B+</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option>
-      <option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
+      <option value="A+">A+</option><option value="A">A</option><option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
     </select>
-    <button type="button" class="btn btn-ghost btn-sm"
-      onclick="this.closest('.subject-row').remove(); calcGPA()">✕</button>`;
-  list.appendChild(row);
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.subject-row').remove(); calcGPA()">✕</button>`;
+
+  // populate values after element creation
+  setTimeout(() => {
+    row.querySelector('input[name="subjectName"]').value = sName;
+    row.querySelector('select[name="subjectType"]').value = sType;
+    row.querySelector('select[name="credits"]').value = sCredits;
+    row.querySelector('select[name="grade"]').value = sGrade;
+  }, 0);
+
+  return row;
 }
 
 async function saveAcademicData() {
@@ -136,6 +153,53 @@ async function saveAcademicData() {
     }
   }
 }
+
+// 서버에서 학기 레코드를 가져와 subject-list를 채움
+async function fetchSemesterRecord(semester) {
+  try {
+    const res = await fetch(`/academic/record/${encodeURIComponent(semester)}`, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('학기 데이터를 불러오지 못했습니다.');
+    const json = await res.json();
+    if (!json.success) return null;
+    return json.record || null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+async function populateSemester(semester) {
+  const record = await fetchSemesterRecord(semester);
+  const list = document.getElementById('subject-list');
+  list.innerHTML = '';
+
+  if (!record || !record.subjects || !record.subjects.length) {
+    // 기본 빈 행 3개
+    addSubjectRow(); addSubjectRow(); addSubjectRow();
+    calcGPA();
+    return;
+  }
+
+  record.subjects.forEach(s => {
+    const row = buildSubjectRow(s);
+    list.appendChild(row);
+  });
+  // 약간의 지연 후 GPA 계산
+  setTimeout(calcGPA, 10);
+}
+
+// 학기 선택 변경 시 서버에서 데이터 로드
+document.addEventListener('DOMContentLoaded', () => {
+  const semesterSelect = document.querySelector('#ac-gpa select[name="semester"]');
+  if (semesterSelect) {
+    semesterSelect.addEventListener('change', (e) => {
+      const sem = e.target.value;
+      populateSemester(sem);
+    });
+    // 초기 로드
+    populateSemester(semesterSelect.value);
+  }
+});
 
 // ── 목표 GPA 시뮬레이터 ───────────────────────────
 function calcSim() {

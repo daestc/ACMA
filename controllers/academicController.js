@@ -100,8 +100,26 @@ const deleteCourse = async (req, res) => {
   }
 }
 
+// 특정 학기 레코드 조회
+const getSemesterRecord = async (req, res) => {
+  try {
+    if (!req.user || !req.user.email) return res.status(401).json({ success: false });
+    const semesterParam = req.params.semester; // expected like '2026-1'
+    const user = await User.findOne({ email: req.user.email }).select('_id').lean();
+    if (!user) return res.status(404).json({ success: false });
+
+    const record = await academicService.getSemesterRecord(user._id, semesterParam);
+    if (!record) return res.json({ success: true, record: null });
+    return res.json({ success: true, record });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false });
+  }
+}
+
 module.exports = {
   addCourse,
   editCourse,
   deleteCourse,
+  getSemesterRecord,
 };
