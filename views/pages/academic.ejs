@@ -108,71 +108,19 @@
 
         <!-- ── 이수 현황 ── -->
         <div id="ac-credit" style="display:none;">
-          <!-- 학기별 GPA 추이 그래프 (PDF 예시 그대로) -->
           <div class="card" style="margin-bottom:16px;">
             <div class="card-header">
               <span class="card-title">📈 학기별 GPA 추이</span>
-              <div style="display:flex;align-items:center;gap:14px;font-size:11px;">
+              <div style="display:flex;align-items:center;gap:14px;font-size:11px;flex-wrap:wrap;">
                 <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>실제 GPA</span>
                 <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;background:var(--border2);display:inline-block;border-radius:1px;border:none;background:repeating-linear-gradient(90deg,var(--accent2) 0,var(--accent2) 4px,transparent 4px,transparent 8px);"></span>목표 GPA (3.9)</span>
                 <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block;"></span>최고 학기</span>
               </div>
             </div>
-            <!-- SVG 꺾은선 그래프 — PDF 예시 기반 -->
             <div style="overflow-x:auto;">
-              <svg width="100%" viewBox="0 0 700 220" style="min-width:520px;" xmlns="http://www.w3.org/2000/svg">
-                <!-- Y축 눈금선 -->
-                <line x1="60" y1="20" x2="60" y2="175" stroke="var(--border)" stroke-width="1"/>
-                <line x1="60" y1="175" x2="670" y2="175" stroke="var(--border)" stroke-width="1"/>
-                <!-- Y축 라벨 -->
-                <text x="50" y="25"  text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">4.5</text>
-                <text x="50" y="73"  text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">4.0</text>
-                <text x="50" y="121" text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">3.5</text>
-                <text x="50" y="169" text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">3.0</text>
-                <!-- Y축 보조선 -->
-                <line x1="60" y1="24"  x2="670" y2="24"  stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
-                <line x1="60" y1="72"  x2="670" y2="72"  stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
-                <line x1="60" y1="120" x2="670" y2="120" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,4"/>
-                <!-- 목표 GPA 점선 (3.9) -->
-                <line x1="60" y1="55" x2="670" y2="55" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="6,4"/>
-                <text x="675" y="59" fill="#6366f1" font-size="10" font-family="DM Sans" font-weight="700">목표 3.9</text>
-                <text x="650" y="48" fill="#6366f1" font-size="10" font-family="DM Sans">진행중</text>
-                <!-- X축 라벨 (학기): 24-1, 24-2, 25-1, 25-2, 26-1 -->
-                <!-- x좌표: 130, 250, 370, 490, 610 -->
-                <text x="130" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">24-1</text>
-                <text x="250" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">24-2</text>
-                <text x="370" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">25-1</text>
-                <text x="490" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">25-2</text>
-                <text x="610" y="192" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">26-1</text>
-                <!--
-                  GPA → y좌표 환산: y = 175 - (GPA-3.0)/(4.5-3.0) * 151
-                  3.92 → 175 - (0.92/1.5)*151 = 175 - 92.6 ≈ 82
-                  3.75 → 175 - (0.75/1.5)*151 = 175 - 75.5 ≈ 100
-                  4.10 → 175 - (1.10/1.5)*151 = 175 - 110.7 ≈ 64
-                  3.55 → 175 - (0.55/1.5)*151 = 175 - 55.4 ≈ 120
-                  진행중(26-1) → 아직 없음, 표시 생략하고 점선으로 연결
-                -->
-                <!-- 영역 채우기 -->
-                <polygon points="130,82 250,100 370,64 490,120 490,175 130,175" fill="var(--accent)" opacity="0.07"/>
-                <!-- 꺾은선 -->
-                <polyline points="130,82 250,100 370,64 490,120" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-                <!-- 26-1 진행중 점선 연결 -->
-                <line x1="490" y1="120" x2="610" y2="90" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4"/>
-                <!-- 데이터 포인트 -->
-                <circle cx="130" cy="82"  r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
-                <circle cx="250" cy="100" r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
-                <!-- 최고 학기 (4.10) — 초록 강조 -->
-                <circle cx="370" cy="64"  r="6" fill="var(--green)"  stroke="white" stroke-width="2"/>
-                <circle cx="490" cy="120" r="5" fill="var(--accent)" stroke="white" stroke-width="2"/>
-                <!-- 진행중 점 -->
-                <circle cx="610" cy="90"  r="5" fill="white" stroke="var(--accent)" stroke-width="2.5"/>
-                <!-- GPA 라벨 -->
-                <text x="130" y="74"  text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.92</text>
-                <text x="250" y="92"  text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.75</text>
-                <text x="370" y="56"  text-anchor="middle" fill="var(--green)"  font-size="11" font-weight="700" font-family="DM Sans">4.10</text>
-                <text x="490" y="112" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="DM Sans">3.55</text>
-                <text x="625" y="87"  text-anchor="middle" fill="var(--text3)"  font-size="10" font-family="DM Sans">진행중</text>
-              </svg>
+              <div id="semester-gpa-chart" data-target-gpa="3.9" style="min-width:520px;min-height:260px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:13px;padding:12px 0;">
+                학기별 GPA를 불러오는 중...
+              </div>
             </div>
           </div>
 
@@ -200,51 +148,24 @@
                       <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">GPA</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr style="border-bottom:1px solid var(--border);">
-                      <td style="padding:10px;font-size:13px;">2024-1</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;"><strong style="color:var(--green);font-family:'DM Sans';">3.92</strong></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border);background:var(--bg3);">
-                      <td style="padding:10px;font-size:13px;">2024-2</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
-                      <td style="padding:10px;"><strong style="color:var(--accent);font-family:'DM Sans';">3.75</strong></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border);">
-                      <td style="padding:10px;font-size:13px;">2025-1</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;display:flex;align-items:center;gap:6px;"><strong style="color:var(--green);font-family:'DM Sans';">4.10</strong><span class="badge badge-green" style="font-size:9px;padding:1px 6px;">최고</span></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border);background:var(--bg3);">
-                      <td style="padding:10px;font-size:13px;">2025-2</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">21</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;"><strong style="color:var(--amber);font-family:'DM Sans';">3.55</strong></td>
-                    </tr>
+                  <tbody id="semester-gpa-history-body">
                     <tr>
-                      <td style="padding:10px;font-size:13px;">2026-1</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">18</td>
-                      <td style="padding:10px;font-size:13px;color:var(--text2);">-</td>
-                      <td style="padding:10px;"><span class="badge badge-blue">진행중</span></td>
+                      <td colspan="4" style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">학기별 데이터를 불러오는 중...</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:20px;">
                 <div style="text-align:center;">
-                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--accent);">3.80</div>
+                  <div id="semester-gpa-average" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--accent);">-</div>
                   <div style="font-size:11px;color:var(--text2);">누적 평점</div>
                 </div>
                 <div style="text-align:center;">
-                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--green);">4.10</div>
+                  <div id="semester-gpa-best" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--green);">-</div>
                   <div style="font-size:11px;color:var(--text2);">최고 학기</div>
                 </div>
                 <div style="text-align:center;">
-                  <div style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--purple);">92</div>
+                  <div id="semester-gpa-count" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--purple);">-</div>
                   <div style="font-size:11px;color:var(--text2);">총 취득 학점</div>
                 </div>
               </div>
@@ -304,10 +225,10 @@
                 <div>
                   <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">외국어 성적 요건</label>
                   <div style="display:flex;gap:8px;">
-                    <select class="select-field" style="flex:1;">
+                    <select class="select-field" id="gr-lang-type" style="flex:1;">
                       <option>TOEIC</option><option>TOEFL</option><option>IELTS</option><option>JLPT</option><option>없음</option>
                     </select>
-                    <input class="input-field" placeholder="최소 점수 (예: 700)" style="flex:1;">
+                    <input class="input-field" id="gr-lang-score" placeholder="최소 점수 (예: 700)" style="flex:1;">
                   </div>
                 </div>
 
@@ -315,7 +236,7 @@
                 <div>
                   <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">필수 취득 자격증</label>
                   <div id="gr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-                    <div style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
+                    <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
                       정보처리기사 <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
                     </div>
                   </div>
@@ -329,6 +250,7 @@
                   <button class="btn btn-accent" style="flex:1;" onclick="saveGradReq()">💾 저장</button>
                   <button class="btn btn-ghost btn-sm" onclick="resetGradReq()">초기화</button>
                 </div>
+                <div id="gr-save-status" style="font-size:11px;color:var(--text2);margin-top:2px;"></div>
               </div>
             </div>
 

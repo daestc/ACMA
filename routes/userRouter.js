@@ -32,15 +32,7 @@ router.post('/deleteHabit', userController.deleteHabit);
 // IsCompleted 변동 사항 저장
 router.post('/saveIsCompleted', userController.saveIsCompleted);
 
-// 학사관리 페이지 
-router.get('/academic', requireLogin, (req, res) => {
-  res.render('pages/academic', {
-    title:       '학사관리',
-    currentPage: 'academic',
-    pageTitle:   '🎓 학사관리',
-    user:        req.user,
-  });
-});
+
 
 
 module.exports = router;

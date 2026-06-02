@@ -116,10 +116,92 @@ const getSemesterRecord = async (req, res) => {
     return res.status(500).json({ success: false });
   }
 }
+// 모든 학기 gpa 값 조회
+const getSemesterGPA = async (req, res) => {
+  try {
+    if (!req.user || !req.user.email) return res.status(401).json({ success: false });
+    const user = await User.findOne({ email: req.user.email }).select('_id').lean();
+    if (!user) return res.status(404).json({ success: false });
+
+    const records = await academicService.getAllSemesterGPA(user._id);
+    return res.json({ success: true, records });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false });
+  }
+}
+
+// 졸업요건 프로필 조회
+const getGraduationRequirements = async (req, res) => {
+  try {
+    if (!req.user || !req.user.email) return res.status(401).json({ success: false });
+
+    const user = await User.findOne({ email: req.user.email }).select('_id major grade email name').lean();
+    if (!user) return res.status(404).json({ success: false });
+
+    const profile = await academicService.getUniversityProfile(user._id);
+    return res.json({ success: true, profile });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false });
+  }
+};
+
+// 졸업요건 프로필 저장
+const saveGraduationRequirements = async (req, res) => {
+  try {
+    if (!req.user || !req.user.email) return res.status(401).json({ success: false, message: 'User not authenticated' });
+
+    const user = await User.findOne({ email: req.user.email }).select('_id major grade email name').lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const graduationRequirements = req.body?.GraduationRequirements || {};
+    const profile = await academicService.saveUniversityProfile(user._id, {
+      major: req.body?.major || user.major,
+      studentId: req.body?.studentId || null,
+      grade: req.body?.grade ?? user.grade ?? 1,
+      enrollmentStatus: req.body?.enrollmentStatus || 'enrolled',
+      doubleMajor: req.body?.doubleMajor || null,
+      GraduationRequirements: {
+        requiredTotalCredits: Number(graduationRequirements.requiredTotalCredits) || 130,
+        requiredMajorCredits: Number(graduationRequirements.requiredMajorCredits) || 42,
+        requiredMajorElective: Number(graduationRequirements.requiredMajorElective) || 40,
+        requiredGeneralCredits: Number(graduationRequirements.requiredGeneralCredits) || 20,
+        requiredGeneralElective: Number(graduationRequirements.requiredGeneralElective) || 28,
+        requiresGraduationWork: Boolean(graduationRequirements.requiresGraduationWork),
+        requiredCertifications: Array.isArray(graduationRequirements.requiredCertifications)
+          ? graduationRequirements.requiredCertifications.map(value => String(value).trim()).filter(Boolean)
+          : [],
+        requiredLanguageScore: graduationRequirements.requiredLanguageScore || null,
+        requiredInternship: graduationRequirements.requiredInternship === ''
+          ? null
+          : graduationRequirements.requiredInternship === true || graduationRequirements.requiredInternship === 'true',
+        requiredCapstonDesign: graduationRequirements.requiredCapstonDesign === ''
+          ? null
+          : graduationRequirements.requiredCapstonDesign === true || graduationRequirements.requiredCapstonDesign === 'true',
+        requiredNCProgram: graduationRequirements.requiredNCProgram === ''
+          ? null
+          : graduationRequirements.requiredNCProgram === true || graduationRequirements.requiredNCProgram === 'true',
+        requiredVolunteer: graduationRequirements.requiredVolunteer === ''
+          ? null
+          : Number(graduationRequirements.requiredVolunteer) || null,
+      },
+    });
+
+    return res.json({ success: true, profile });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Failed to save graduation requirements' });
+  }
+};
+
 
 module.exports = {
   addCourse,
   editCourse,
   deleteCourse,
   getSemesterRecord,
+  getSemesterGPA,
+  getGraduationRequirements,
+  saveGraduationRequirements,
 };

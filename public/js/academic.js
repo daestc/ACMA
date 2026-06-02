@@ -42,6 +42,161 @@ function calcGPA() {
     : '0.00';
 }
 
+function parseSemesterOrder(semester) {
+  const match = String(semester || '').trim().match(/^(\d{4})-(\d)$/);
+  if (!match) {
+    return { year: 0, semesterNumber: 0 };
+  }
+
+  return {
+    year: Number(match[1]),
+    semesterNumber: Number(match[2]),
+  };
+}
+
+function formatSemesterLabel(semester) {
+  return String(semester || '').replace(/^(\d{4})-(\d)$/, '$1-$2학기');
+}
+
+function buildAcademicTrendSvg(records, targetGpa) {
+  const width = 760;
+  const height = 280;
+  const padding = { top: 28, right: 36, bottom: 54, left: 58 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const validRecords = records.filter(record => Number.isFinite(record.semesterGPA));
+
+  if (!validRecords.length) {
+    return '<div style="display:flex;align-items:center;justify-content:center;min-height:240px;color:var(--text2);font-size:13px;">표시할 GPA 데이터가 없습니다.</div>';
+  }
+
+  const gpaValues = validRecords.map(record => record.semesterGPA);
+  const minGpa = Math.min(...gpaValues, targetGpa);
+  const yMax = 4.5;
+  const yMin = Math.max(0, Math.min(3.0, Math.floor((minGpa - 0.25) * 10) / 10));
+  const yRange = Math.max(0.5, yMax - yMin);
+  const stepX = validRecords.length === 1 ? 0 : chartWidth / (validRecords.length - 1);
+
+  const toY = (value) => padding.top + ((yMax - value) / yRange) * chartHeight;
+  const toX = (index) => padding.left + (index * stepX);
+  const points = validRecords.map((record, index) => `${toX(index)},${toY(record.semesterGPA)}`);
+  const areaPoints = [`${padding.left},${padding.top + chartHeight}`, ...points, `${padding.left + chartWidth},${padding.top + chartHeight}`].join(' ');
+  const targetY = toY(targetGpa);
+  const bestRecord = validRecords.reduce((best, current) => (current.semesterGPA > best.semesterGPA ? current : best), validRecords[0]);
+  const tickValues = [];
+  for (let value = yMax; value >= yMin; value -= 0.5) {
+    tickValues.push(Number(value.toFixed(1)));
+  }
+
+  const pointsMarkup = validRecords.map((record, index) => {
+    const x = toX(index);
+    const y = toY(record.semesterGPA);
+    const isBest = record.semester === bestRecord.semester;
+    return `
+      <g>
+        <circle cx="${x}" cy="${y}" r="${isBest ? 6 : 5}" fill="${isBest ? 'var(--green)' : 'var(--accent)'}" stroke="white" stroke-width="2"/>
+        <text x="${x}" y="${y - 14}" text-anchor="middle" fill="${isBest ? 'var(--green)' : 'var(--accent)'}" font-size="11" font-weight="700" font-family="DM Sans">${record.semesterGPA.toFixed(2)}</text>
+        <text x="${x}" y="${height - 18}" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="DM Sans">${formatSemesterLabel(record.semester)}</text>
+      </g>`;
+  }).join('');
+
+  const gridLines = tickValues.map(value => {
+    const y = toY(value);
+    return `
+      <line x1="${padding.left}" y1="${y}" x2="${padding.left + chartWidth}" y2="${y}" stroke="var(--border)" stroke-width="0.7" stroke-dasharray="3,4"/>
+      <text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" fill="var(--text3)" font-size="11" font-family="DM Sans">${value.toFixed(1)}</text>`;
+  }).join('');
+
+  return `
+    <svg width="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-label="학기별 GPA 추이 그래프">
+      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartHeight}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${padding.left}" y1="${padding.top + chartHeight}" x2="${padding.left + chartWidth}" y2="${padding.top + chartHeight}" stroke="var(--border)" stroke-width="1"/>
+      ${gridLines}
+      <line x1="${padding.left}" y1="${targetY}" x2="${padding.left + chartWidth}" y2="${targetY}" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <text x="${padding.left + chartWidth}" y="${targetY - 6}" text-anchor="end" fill="#6366f1" font-size="10" font-family="DM Sans" font-weight="700">목표 ${targetGpa.toFixed(1)}</text>
+      <polygon points="${areaPoints}" fill="var(--accent)" opacity="0.07"/>
+      ${validRecords.length > 1 ? `<polyline points="${points.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+      ${pointsMarkup}
+    </svg>`;
+}
+
+function renderAcademicTrend(records) {
+  const chartContainer = document.getElementById('semester-gpa-chart');
+  const tableBody = document.getElementById('semester-gpa-history-body');
+  const averageEl = document.getElementById('semester-gpa-average');
+  const bestEl = document.getElementById('semester-gpa-best');
+  const countEl = document.getElementById('semester-gpa-count');
+
+  if (!chartContainer || !tableBody) {
+    return;
+  }
+
+  const targetGpa = Number(chartContainer.dataset.targetGpa) || 3.9;
+  const normalizedRecords = (Array.isArray(records) ? records : [])
+    .filter(record => record && record.semester)
+    .map(record => ({
+      ...record,
+      semesterGPA: Number(record.semesterGPA),
+    }))
+    .sort((left, right) => {
+      const leftOrder = parseSemesterOrder(left.semester);
+      const rightOrder = parseSemesterOrder(right.semester);
+      return (leftOrder.year - rightOrder.year) || (leftOrder.semesterNumber - rightOrder.semesterNumber);
+    });
+
+  const validRecords = normalizedRecords.filter(record => Number.isFinite(record.semesterGPA));
+
+  if (!validRecords.length) {
+    chartContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:240px;color:var(--text2);font-size:13px;">표시할 GPA 데이터가 없습니다.</div>';
+    tableBody.innerHTML = '<tr><td colspan="4" style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">학기별 성적 데이터가 없습니다.</td></tr>';
+    if (averageEl) averageEl.textContent = '-';
+    if (bestEl) bestEl.textContent = '-';
+    if (countEl) countEl.textContent = '-';
+    return;
+  }
+
+  chartContainer.innerHTML = buildAcademicTrendSvg(validRecords, targetGpa);
+
+  const averageGpa = validRecords.reduce((sum, record) => sum + record.semesterGPA, 0) / validRecords.length;
+  const bestRecord = validRecords.reduce((best, current) => (current.semesterGPA > best.semesterGPA ? current : best), validRecords[0]);
+  const totalCredits = validRecords.reduce((sum, record) => sum + (Number(record.earnedCredits) || 0), 0);
+
+  tableBody.innerHTML = validRecords.map((record, index) => {
+    const isBest = record.semester === bestRecord.semester;
+    return `
+      <tr style="border-bottom:1px solid var(--border);${index % 2 === 1 ? 'background:var(--bg3);' : ''}">
+        <td style="padding:10px;font-size:13px;">${formatSemesterLabel(record.semester)}</td>
+        <td style="padding:10px;font-size:13px;color:var(--text2);">${Number(record.attemptedCredits || 0)}</td>
+        <td style="padding:10px;font-size:13px;color:var(--text2);">${Number(record.earnedCredits || 0)}</td>
+        <td style="padding:10px;"><strong style="color:${isBest ? 'var(--green)' : 'var(--accent)'};font-family:'DM Sans';">${record.semesterGPA.toFixed(2)}</strong>${isBest ? ' <span class="badge badge-green" style="font-size:9px;padding:1px 6px;">최고</span>' : ''}</td>
+      </tr>`;
+  }).join('');
+
+  if (averageEl) averageEl.textContent = averageGpa.toFixed(2);
+  if (bestEl) bestEl.textContent = bestRecord.semesterGPA.toFixed(2);
+  if (countEl) countEl.textContent = String(totalCredits);
+}
+
+async function fetchAcademicTrend() {
+  const chartContainer = document.getElementById('semester-gpa-chart');
+  if (!chartContainer) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/academic/all-gpa', { credentials: 'same-origin' });
+    if (!response.ok) {
+      throw new Error('학기별 GPA를 불러오지 못했습니다.');
+    }
+
+    const result = await response.json();
+    renderAcademicTrend(result.success ? result.records : []);
+  } catch (error) {
+    console.error(error);
+    chartContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:240px;color:var(--text2);font-size:13px;">학기별 GPA를 불러오지 못했습니다.</div>';
+  }
+}
+
 function addSubjectRow() {
   const list = document.getElementById('subject-list');
   const row = buildSubjectRow();
@@ -229,18 +384,91 @@ function addGradCert() {
 
   const list = document.getElementById('gr-cert-list');
   const tag  = document.createElement('div');
+  tag.className = 'gr-cert-chip';
   tag.style.cssText = 'display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;';
   tag.innerHTML = `${val} <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>`;
   list.appendChild(tag);
   inp.value = '';
 }
 
-function saveGradReq() {
-  const btn = event.target;
-  btn.textContent = '✓ 저장됨';
-  btn.style.background = 'var(--green)';
-  setTimeout(() => { btn.textContent = '💾 저장'; btn.style.background = ''; }, 2000);
-  // TODO: PUT /api/academic/graduation API 호출
+function getGradReqPayload() {
+  const certList = Array.from(document.querySelectorAll('#gr-cert-list .gr-cert-chip'));
+  const certs = certList.map(el => String(el.childNodes[0]?.textContent || el.textContent || '').trim()).filter(Boolean);
+  const languageType = document.getElementById('gr-lang-type')?.value || '없음';
+  const languageScore = document.getElementById('gr-lang-score')?.value?.trim() || '';
+
+  return {
+    major: document.querySelector('.badge.badge-blue')?.textContent?.trim() || '',
+    GraduationRequirements: {
+      requiredTotalCredits: Number(document.getElementById('gr-total')?.value) || 130,
+      requiredMajorCredits: Number(document.getElementById('gr-major-req')?.value) || 42,
+      requiredMajorElective: Number(document.getElementById('gr-major-el')?.value) || 40,
+      requiredGeneralCredits: Number(document.getElementById('gr-gen-req')?.value) || 20,
+      requiredGeneralElective: Number(document.getElementById('gr-gen-el')?.value) || 28,
+      requiresGraduationWork: document.getElementById('gr-grad-work')?.classList.contains('on') ?? true,
+      requiredCertifications: certs,
+      requiredLanguageScore: languageType === '없음' ? null : `${languageType}${languageScore ? ` ${languageScore}` : ''}`.trim(),
+      requiredInternship: null,
+      requiredCapstonDesign: document.getElementById('gr-grad-work')?.classList.contains('on') ?? true,
+      requiredNCProgram: null,
+      requiredVolunteer: null,
+    },
+  };
+}
+
+function setGradSaveStatus(message, isSuccess = false) {
+  const statusEl = document.getElementById('gr-save-status');
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.style.color = isSuccess ? 'var(--green)' : 'var(--text2)';
+  }
+}
+
+async function saveGradReq() {
+  const button = document.querySelector('#ac-grad .btn.btn-accent');
+  const originalText = button ? button.textContent : '저장';
+  const payload = getGradReqPayload();
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = '저장 중...';
+    }
+    setGradSaveStatus('졸업요건을 저장하는 중입니다...');
+
+    const response = await fetch('/academic/graduation-requirements', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin',
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || '졸업요건 저장에 실패했습니다.');
+    }
+
+    setGradSaveStatus('졸업요건을 저장했습니다.', true);
+    if (button) {
+      button.textContent = '✓ 저장됨';
+      setTimeout(() => {
+        button.textContent = originalText;
+      }, 1500);
+    }
+  } catch (error) {
+    console.error(error);
+    setGradSaveStatus(error.message || '졸업요건 저장에 실패했습니다.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      if (button.textContent === '저장 중...') {
+        button.textContent = originalText;
+      }
+    }
+  }
 }
 
 function resetGradReq() {
@@ -249,6 +477,9 @@ function resetGradReq() {
   document.getElementById('gr-major-el').value  = 40;
   document.getElementById('gr-gen-req').value   = 20;
   document.getElementById('gr-gen-el').value    = 28;
+  document.getElementById('gr-grad-work').classList.add('on');
+  document.getElementById('gr-lang-type').value = 'TOEIC';
+  document.getElementById('gr-lang-score').value = '';
   document.getElementById('gr-cert-list').innerHTML = '';
   updateGradPreview();
 }
@@ -277,6 +508,68 @@ function updateGradPreview() {
   }
 }
 
+function applyGraduationRequirements(profile) {
+  const requirements = profile?.GraduationRequirements;
+  if (!requirements) {
+    return;
+  }
+
+  const total = document.getElementById('gr-total');
+  const majorReq = document.getElementById('gr-major-req');
+  const majorEl = document.getElementById('gr-major-el');
+  const genReq = document.getElementById('gr-gen-req');
+  const genEl = document.getElementById('gr-gen-el');
+  const gradWork = document.getElementById('gr-grad-work');
+  const langType = document.getElementById('gr-lang-type');
+  const langScore = document.getElementById('gr-lang-score');
+  const certList = document.getElementById('gr-cert-list');
+
+  if (total) total.value = requirements.requiredTotalCredits ?? 130;
+  if (majorReq) majorReq.value = requirements.requiredMajorCredits ?? 42;
+  if (majorEl) majorEl.value = requirements.requiredMajorElective ?? 40;
+  if (genReq) genReq.value = requirements.requiredGeneralCredits ?? 20;
+  if (genEl) genEl.value = requirements.requiredGeneralElective ?? 28;
+
+  if (gradWork) {
+    gradWork.classList.toggle('on', Boolean(requirements.requiresGraduationWork));
+  }
+
+  if (langType || langScore) {
+    const languageValue = String(requirements.requiredLanguageScore || '');
+    const knownType = ['TOEIC', 'TOEFL', 'IELTS', 'JLPT'].find(type => languageValue.startsWith(type));
+    if (langType) langType.value = knownType || '없음';
+    if (langScore) langScore.value = knownType ? languageValue.replace(knownType, '').trim() : languageValue;
+  }
+
+  if (certList) {
+    const certifications = Array.isArray(requirements.requiredCertifications) ? requirements.requiredCertifications : [];
+    certList.innerHTML = certifications.map(cert => `
+      <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
+        ${cert} <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
+      </div>`).join('');
+  }
+
+  updateGradPreview();
+}
+
+async function fetchGraduationRequirements() {
+  try {
+    const response = await fetch('/academic/graduation-requirements', { credentials: 'same-origin' });
+    if (!response.ok) {
+      throw new Error('졸업요건을 불러오지 못했습니다.');
+    }
+
+    const result = await response.json();
+    if (result.success && result.profile) {
+      applyGraduationRequirements(result.profile);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', updateGradPreview);
+document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
+document.addEventListener('DOMContentLoaded', fetchGraduationRequirements);
