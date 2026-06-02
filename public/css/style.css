@@ -611,6 +611,8 @@ input,select,textarea{font-family:inherit;}
   padding: 24px;
   border-radius: 12px;
   width: 360px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .event-modal-content form {
@@ -711,7 +713,7 @@ input,select,textarea{font-family:inherit;}
   font-weight: 600;
 }
 
-=======
+
 .job-detail-resp-list {
   display: flex;
   flex-direction: column;
