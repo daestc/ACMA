@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 /**
- * [certifications] 컬렉션
+    jobCode: { type: String, required: true, index: true }, // 외부 API의 고유 직무 코드
  * 자격증 정보 DB (관리자가 등록하는 마스터 데이터)
  */
 const certificationSchema = new Schema(
@@ -13,7 +13,7 @@ const certificationSchema = new Schema(
     field2: { type: String, default: "" },   // 중분야 (예: 정보기술)
     
     seriesName: { type: String, default: "" }, // 자격증 시리즈명 (기사, 산업기사  등)
-    description: { type: String, default: "" }, // 자격증 설명
+    description: { type: String, default: "" }, // 자격증 설명_수행직무
     careerPath: { type: String, default: "" }, // 진로및 전망
     
     way: { type: String, default: "" },        // 취득 방법 (시험 과목 등)
@@ -37,10 +37,10 @@ const userCertificationSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     certificationId: { type: Schema.Types.ObjectId, ref: 'Certification', required: true },
 
-    // 상태 구분: 'acquired'(취득), 'target'(목표)
+    // 상태 구분: 'acquired'(취득), 'target'(목표), 'wish'(관심)
     status: { 
       type: String, 
-      enum: ['acquired', 'target'], 
+      enum: ['acquired', 'target','wish'], 
       required: true,
       default: 'target'
     },
@@ -110,42 +110,6 @@ const passRateSchema = new Schema(
 // 최신 합격률부터 보여주기 위한 복합 인덱스
 passRateSchema.index({ certificationId: 1, year: -1, examType: 1 });
 
-/**
- * [exam_schedules] 컬렉션
- * 외부 API에서 가져온 오피셜 시험 일정
- */
-const examScheduleSchema = new Schema(
-  {
-    certificationId: { type: Schema.Types.ObjectId, ref: 'Certification', required: true },
-    
-    examYear: { type: Number, required: true },    // 시행 년도
-    session: { type: String, required: true },     // 회차 (예: "2025년 정기 기사 1회")
-    
-    // 필기 일정
-    writtenExam: {
-      regStartDate: { type: Date }, // 접수 시작일
-      regEndDate: { type: Date },   // 접수 마감일
-      startExamDate: { type: Date },     // 시험일
-      ednExamDate: { type: Date },       // 시험 종료일 (필요 시)
-      resultDate: { type: Date }    // 합격자 발표일
-    },
-    // 실기 일정
-    practicalExam: {
-      regStartDate: { type: Date },
-      regEndDate: { type: Date },
-      startExamDate: { type: Date },
-      endExamDate: { type: Date },
-      resultDate: { type: Date }
-    },
-
-    lastUpdated: { type: Date, default: Date.now } // API 동기화 시점
-  },
-  { timestamps: true }
-);
-
-// 특정 자격증의 최신 일정을 찾기 위한 인덱스
-examScheduleSchema.index({ certificationId: 1, examYear: -1 });
-
 // 직무 검색용 카테고리 정보 스키마
 const jobSearchSchema = new Schema(
   {
@@ -158,17 +122,10 @@ const jobSearchSchema = new Schema(
     },
     
     // 2. 계층별 이름 (검색 속도를 위해 각각 인덱스 추가)
-    depth1_name: { type: String, index: true }, // 대분류
-    depth2_name: { type: String, index: true }, // 중분류
-    depth3_name: { type: String, index: true }, // 소분류
-    
-    // 3. 전체 경로 (예: "정보통신 > 소프트웨어 > 웹 개발")
-    // 전문 검색(Full-text search)이나 빵부스러기(Breadcrumb) 노출용
-    categoryName: { type: String, required: true, trim: true },
-    
-    // 4. 검색 편의를 위한 키워드 필드 (선택 사항)
-    // 사용자가 "백엔드"라고 쳤을 때 "웹 개발"이 나오게 하고 싶을 때 유용함
-    searchKeywords: [String], 
+    depth1_name: { type: String, default: "", index: true }, // 대분류
+    depth2_name: { type: String, default: "", index: true }, // 중분류
+    depth3_name: { type: String, default: "", index: true }, // 소분류
+    depth4_name: { type: String, default: "", index: true } // 세분류 (필요 시)
   },
   { timestamps: true }
 );
@@ -176,6 +133,7 @@ const jobSearchSchema = new Schema(
 // "대분류 선택 -> 중분류 조회" 속도를 비약적으로 높여줍니다.
 jobSearchSchema.index({ depth1_name: 1, depth2_name: 1 });
 jobSearchSchema.index({ depth2_name: 1, depth3_name: 1 });
+jobSearchSchema.index({ depth3_name: 1, depth4_name: 1 });
 
 /**
  * [jobs] 컬렉션
@@ -183,8 +141,10 @@ jobSearchSchema.index({ depth2_name: 1, depth3_name: 1 });
  */
 const jobSchema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // 직무 정보가 특정 사용자와 연관될 경우
+    jobCode: { type: String, required: true, index: true }, // 외부 API의 고유 직무 코드
     title: { type: String, required: true, trim: true, index: true }, // 검색을 위해 인덱스 추가
-    description: { type: String, default: "" },
+    description: { type: String, default: "" }, // 직무 설명
 
     // 배열 필드 최적화 (null 대신 빈 배열 [] 추천)
     responsibilities: [String], // 주요 업무
@@ -198,14 +158,21 @@ const jobSchema = new Schema(
     relatedOccupations: [String],
     relatedDepartments: [String],
 
-    // 자격증 참조
-    relatedCertifications: [{ type: Schema.Types.ObjectId, ref: 'Certification' }],
+    // 관련 자격증
+    relatedCertifications: [String], // 자격증 이름 배열 (예: ["정보처리기사", "네트워크관리사"])
 
     // 연봉 정보 (하위 25%, 중간값, 상위 25%로 구분)
     averageSalary: {
       lower25: { type: Number, default: 0 }, 
       median50: { type: Number, default: 0 },
       upper25: { type: Number, default: 0 },
+    },
+    // 상태 구분: , 'target'(목표), 'wish'(관심)
+    status: { 
+      type: String, 
+      enum: ['target','wish'], 
+      required: true,
+      default: 'wish'
     },
 
     lastSyncedAt: { type: Date, default: Date.now },
@@ -214,7 +181,8 @@ const jobSchema = new Schema(
   { timestamps: true }
 );
 
-jobSchema.index({ title: 'text', category: 1 });
+jobSchema.index({ userId: 1, jobCode: 1 }, { unique: true });
+jobSchema.index({ title: 'text' });
 
 
 module.exports = {
@@ -222,6 +190,5 @@ module.exports = {
   UserCertification: mongoose.model('UserCertification', userCertificationSchema),
   Job: mongoose.model('Job', jobSchema),
   PassRate: mongoose.model('PassRate', passRateSchema),
-  ExamSchedule: mongoose.model('ExamSchedule', examScheduleSchema),
   JobSearch: mongoose.model('JobSearch', jobSearchSchema)
 };

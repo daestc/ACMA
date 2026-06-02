@@ -66,15 +66,31 @@ const timetableSchema = new Schema(
     // 색상 (시간표 셀 색상)
     color: { type: String, default: '#60A5FA' },
 
-    // 수업 시간 (복수 가능 - ex. 화/목)
-    schedule: [
-      {
-        // 0=일, 1=월 ~ 6=토
-        dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-        startTime: { type: String, required: true }, // "09:00"
-        endTime: { type: String, required: true },   // "10:30"
+    // 수업 시간 (복수 가능 - ex. 화/목) //5/14 수정. 추가 검증 
+    schedule: {
+      type: [
+        {
+          dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+           //5/14 수정: 문자열 형식 검증 추가
+          startTime: { 
+            type: String,
+            required: true,
+            match: /^([01]\d|2[0-3]):[0-5]\d$/
+          },
+          endTime: {
+            type: String,
+            required: true,
+            match: /^([01]\d|2[0-3]):[0-5]\d$/
+          },
+        },
+      ],
+      required: true,
+      validate: {
+        validator: arr => Array.isArray(arr) && arr.length > 0,
+        message: '시간표 시간 정보는 최소 1개 이상 필요합니다.',
       },
-    ],
+    },
+    
 
     isActive: { type: Boolean, default: true },
   },
