@@ -16,59 +16,114 @@
 		<!-- 상단 헤더 -->
 		<%- include('../partials/topbar', { pageTitle: '캘린더', user: user }) %>
 
+		<div class="page-content">
     <!-- ══ CALENDAR ══ -->
     <div class="page-content">
-      <div class="view-tabs" style="display:flex; gap:8px; margin-bottom:16px;">
-        <button id="cal-tab-month" class="btn btn-sm active" onclick="switchCalView('month')">월간 달력</button>
-        <button id="cal-tab-week" class="btn btn-sm" onclick="switchCalView('week')">시간표</button>
-      </div>
 
-      <div id="cal-month-view">
-        <div class="card">
-          <div class="cal-header">
-            <div class="cal-nav">
-              <button id="prev-month" class="cal-nav-btn">‹</button>
-              <span id="cal-month-title" class="cal-month"></span>
-              <button id="next-month" class="cal-nav-btn">›</button>
+        <!-- 월간 달력 (날씨 아이콘 포함) -->
+        <div id="cal-month-view">
+          <div class="card">
+            <div class="cal-header">
+              <div class="cal-nav">
+                <button class="cal-nav-btn">‹</button>
+                <span class="cal-month">2026년 4월</span>
+                <button class="cal-nav-btn">›</button>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span class="badge badge-blue">● 강의</span>
+                <span class="badge badge-green">● 시험</span>
+                <span class="badge badge-amber">● 과제</span>
+                <span class="badge badge-red">● 자격증</span>
+                <button class="btn btn-accent btn-sm">+ 일정 추가</button>
+              </div>
             </div>
-            <button id="open-event-form-btn" class="btn btn-accent btn-sm">+ 일정 추가</button>
-          </div>
-
-          <div id="calendar-grid" class="cal-grid"></div>
-          <div id="selected-day-panel" class="selected-day-panel" style="display:none;">
-            <h3 id="selected-day-title"></h3>
-            <div id="selected-day-events"></div>
+            <div class="cal-grid">
+              <div class="cal-day-header">일</div><div class="cal-day-header">월</div><div class="cal-day-header">화</div><div class="cal-day-header">수</div><div class="cal-day-header">목</div><div class="cal-day-header">금</div><div class="cal-day-header">토</div>
+              <div class="cal-day other-month"><div class="day-num">30</div></div>
+              <div class="cal-day other-month"><div class="day-num">31</div></div>
+              <div class="cal-day"><div class="day-num">1</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day"><div class="day-num">2</div><div class="day-weather">🌤</div><div class="day-dots"><div class="day-dot" style="background:var(--accent)"></div></div></div>
+              <div class="cal-day"><div class="day-num">3</div><div class="day-weather">☁️</div></div>
+              <div class="cal-day"><div class="day-num">4</div><div class="day-weather">🌧</div><div class="day-dots"><div class="day-dot" style="background:var(--amber)"></div></div></div>
+              <div class="cal-day"><div class="day-num">5</div><div class="day-weather">🌧</div></div>
+              <div class="cal-day"><div class="day-num">6</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">7</div><div class="day-weather">☀️</div><div class="day-dots"><div class="day-dot" style="background:var(--accent)"></div></div></div>
+              <div class="cal-day"><div class="day-num">8</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day"><div class="day-num">9</div><div class="day-weather">☀️</div><div class="day-dots"><div class="day-dot" style="background:var(--green)"></div></div></div>
+              <div class="cal-day"><div class="day-num">10</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">11</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day"><div class="day-num">12</div><div class="day-weather">☁️</div></div>
+              <div class="cal-day"><div class="day-num">13</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day"><div class="day-num">14</div><div class="day-weather">☀️</div><div class="day-dots"><div class="day-dot" style="background:var(--accent)"></div><div class="day-dot" style="background:var(--amber)"></div></div></div>
+              <div class="cal-day"><div class="day-num">15</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">16</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day today"><div class="day-num">17</div><div class="day-weather">☀️</div><div class="day-dots"><div class="day-dot" style="background:var(--accent)"></div></div></div>
+              <div class="cal-day"><div class="day-num">18</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day"><div class="day-num">19</div><div class="day-weather">☁️</div></div>
+              <div class="cal-day"><div class="day-num">20</div><div class="day-weather">🌧</div></div>
+              <div class="cal-day"><div class="day-num">21</div><div class="day-weather">🌧</div></div>
+              <div class="cal-day"><div class="day-num">22</div><div class="day-weather">☁️</div><div class="day-dots"><div class="day-dot" style="background:var(--red)"></div></div></div>
+              <div class="cal-day"><div class="day-num">23</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">24</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">25</div><div class="day-weather">🌤</div><div class="day-dots"><div class="day-dot" style="background:var(--green)"></div></div></div>
+              <div class="cal-day"><div class="day-num">26</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">27</div><div class="day-weather">☀️</div></div>
+              <div class="cal-day"><div class="day-num">28</div><div class="day-weather">☁️</div></div>
+              <div class="cal-day"><div class="day-num">29</div><div class="day-weather">🌧</div></div>
+              <div class="cal-day"><div class="day-num">30</div><div class="day-weather">🌤</div></div>
+              <div class="cal-day other-month"><div class="day-num">1</div></div>
+              <div class="cal-day other-month"><div class="day-num">2</div></div>
+              <div class="cal-day other-month"><div class="day-num">3</div></div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div id="cal-week-view" style="display:none;">
-        <div class="card">
-          <div class="cal-header">
-            <span class="cal-month">주간 시간표</span>
-            <button id="open-timetable-form-btn" class="btn btn-accent btn-sm">+ 시간표 추가</button>
+        <!-- 주간 시간표 (기간 선택 제거) -->
+        <div id="cal-week-view" style="display:none;">
+          <div class="card">
+            <div class="cal-header">
+              <div class="cal-nav">
+                <button class="cal-nav-btn">‹</button>
+                <span class="cal-month">이번 주 주간 일정</span>
+                <button class="cal-nav-btn">›</button>
+              </div>
+              <button class="btn btn-accent btn-sm">+ 강의 추가</button>
+            </div>
+            <div class="timetable">
+              <div class="tt-header"></div>
+              <div class="tt-header">월</div><div class="tt-header">화</div><div class="tt-header">수</div><div class="tt-header">목</div><div class="tt-header">금</div>
+              <div class="tt-time">09:00</div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#e8edfb;color:var(--accent);border-left:3px solid var(--accent);top:2px;height:114px;">자료구조<br><small style="font-weight:500;opacity:.7;">공학관 301</small></div></div>
+              <div class="tt-cell"></div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#e8edfb;color:var(--accent);border-left:3px solid var(--accent);top:2px;height:114px;">자료구조<br><small style="font-weight:500;opacity:.7;">공학관 301</small></div></div>
+              <div class="tt-cell"></div><div class="tt-cell"></div>
+              <div class="tt-time">10:00</div>
+              <div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div>
+              <div class="tt-time">11:00</div>
+              <div class="tt-cell"></div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#d1fae5;color:var(--green);border-left:3px solid var(--green);top:2px;height:114px;">알고리즘<br><small style="font-weight:500;opacity:.7;">공학관 102</small></div></div>
+              <div class="tt-cell"></div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#d1fae5;color:var(--green);border-left:3px solid var(--green);top:2px;height:114px;">알고리즘<br><small style="font-weight:500;opacity:.7;">공학관 102</small></div></div>
+              <div class="tt-cell"></div>
+              <div class="tt-time">13:00</div>
+              <div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#fef3c7;color:var(--amber);border-left:3px solid var(--amber);top:2px;height:114px;">운영체제<br><small style="font-weight:500;opacity:.7;">IT관 205</small></div></div>
+              <div class="tt-cell"></div>
+              <div class="tt-time">15:00</div>
+              <div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div><div class="tt-cell"></div>
+              <div class="tt-cell" style="position:relative;"><div class="tt-class" style="background:#ede9fe;color:var(--purple);border-left:3px solid var(--purple);top:2px;height:114px;">데이터베이스<br><small style="font-weight:500;opacity:.7;">공학관 401</small></div></div>
+            </div>
           </div>
-
-          <div id="timetable-grid" class="timetable"></div>
         </div>
-      </div>
-	  </div>
+		</div>
 
 	</main>
 
-  <!--일정 추가-->
-
 	<!-- 모달 -->
-  <%- include('../partials/modals/calendarEventModal') %>
-  <%- include('../partials/modals/timetableModal') %>
 	<%- include('../partials/modals/mypage', { user: user }) %>
 
-
 	<script src="/js/common.js"></script>
-  <script src="/js/timetable.js"></script>
 	<script src="/js/calendar.js"></script>
-
-  
 </body>
 
 </html>

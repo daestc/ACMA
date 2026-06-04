@@ -7,11 +7,15 @@
 </head>
 
 <body>
+
 	<!-- 사이드바 -->
 	<%- include('../partials/sidebar', { currentPage: 'career', user: user }) %>
+
 	<main class="main-content">
+
 		<!-- 상단 헤더 -->
 		<%- include('../partials/topbar', { pageTitle: '진로정보', user: user }) %>
+
 		<div class="page-content">
     <!-- ══ CAREER (진로정보) ══ -->
     <div class="page-content">
@@ -19,90 +23,172 @@
           <button class="tab-btn active" onclick="switchCareerTab('cert',this)">자격증 정보</button>
           <button class="tab-btn" onclick="switchCareerTab('job',this)">직무 정보</button>
         </div>
+
         <!-- 자격증 -->
         <div id="ca-cert">
-          <!-- 현재 선택한 자격증 목록 -->
-          <div id="my-cert-list" class="my-cert-list">
-            <div class="career-empty-state">현재 선택한 자격증을 불러오는 중입니다.</div>
+          <!-- 선택된 직무 기반 자격증 추천 배너 -->
+          <div style="background:linear-gradient(135deg,#eef1fd,#f0f9ff);border:1px solid #c7d2fe;border-radius:var(--radius);padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:16px;">
+            <div style="font-size:28px;">💼</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">선택한 직무 기반 추천</div>
+              <div style="font-size:12px;color:var(--text2);">현재 목표 직무: <strong style="color:var(--accent);">백엔드 개발자</strong> · 아래 자격증 취득을 권장합니다</div>
+            </div>
+            <select class="select-field" id="job-select-cert" onchange="updateJobCertRec()" style="font-size:12px;padding:6px 10px;min-width:140px;">
+              <option value="backend">백엔드 개발자</option>
+              <option value="data">데이터 엔지니어</option>
+              <option value="devops">DevOps 엔지니어</option>
+              <option value="frontend">프론트엔드 개발자</option>
+              <option value="security">정보보안 전문가</option>
+            </select>
           </div>
-          <!-- 자격증 검색 -->
-          <div class="cert-search-box">
-            <div class="cert-search-title">자격증 카테고리 검색</div>
-            <div class="cert-search-dropdowns">
-              <select id="cert_depth1" class="select-field">
-                <option value="">대분류 선택</option>
-              </select>
-              <select id="cert_depth2" class="select-field">
-                <option value="">중분류 선택</option>
-              </select>
-              <select id="cert_depth3" class="select-field">
-                <option value="">등급 선택</option>
-              </select>
-            </div>
-            <div id="cert-search-meta" class="cert-search-meta"></div>
-            <div class="cert-search-bottom">
-              <input id="cert-search-keyword" class="input-field" placeholder="자격증명, 키워드를 입력하세요 (예: 정보처리, SQL)" style="flex:1;">
-              <button id="cert-search-btn" class="btn btn-accent" style="padding:11px 18px;font-weight:700;white-space:nowrap;">검색</button>
+
+          <!-- 직무별 추천 자격증 카드 -->
+          <div id="job-cert-rec" style="margin-bottom:24px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📌 백엔드 개발자 추천 자격증</div>
+            <div class="grid-3" id="job-cert-cards">
+              <!-- JS로 렌더링 -->
             </div>
           </div>
-          <!-- 검색 결과 -->
-          <div id="cert-search-results" class="career-search-results" style="display:none;">
-            <div class="career-search-head">
-              <div id="cert-search-title" class="career-search-title">검색 결과</div>
-              <div id="cert-search-count" class="career-search-count"></div>
+
+          <!-- 구분선 -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="flex:1;height:1px;background:var(--border);"></div>
+            <span style="font-size:12px;color:var(--text3);font-weight:600;">전체 자격증 검색</span>
+            <div style="flex:1;height:1px;background:var(--border);"></div>
+          </div>
+
+          <div style="margin-bottom:16px;"><input class="input-field" placeholder="🔍 자격증 검색" style="width:100%;max-width:400px;"></div>
+          <div class="filter-row">
+            <div class="chip active" onclick="filterChip(this)">전체</div>
+            <div class="chip" onclick="filterChip(this)">IT</div>
+            <div class="chip" onclick="filterChip(this)">경영</div>
+            <div class="chip" onclick="filterChip(this)">외국어</div>
+          </div>
+          <div class="grid-3">
+            <div class="card" style="cursor:pointer;" onclick="showCertDetail('정보처리기사')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">정보처리기사</div><span class="badge badge-blue">IT</span></div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">한국산업인력공단</div>
+              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">34%</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:34%"></div></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <a href="https://www.q-net.or.kr" target="_blank" class="qnet-link" onclick="event.stopPropagation()">🔗 Q-net</a>
+                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
+              </div>
             </div>
-            <div id="cert-search-list" class="career-search-list grid-3"></div>
-            <div class="career-search-footer">
-              <div id="cert-search-page-info" class="career-search-page-info"></div>
-              <div id="cert-search-pagination" class="career-search-pagination"></div>
+            <div class="card" style="cursor:pointer;" onclick="showCertDetail('SQLD')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">SQLD</div><span class="badge badge-blue">IT</span></div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">한국데이터산업진흥원</div>
+              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">52%</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:52%"></div></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <a href="https://www.q-net.or.kr" target="_blank" class="qnet-link" onclick="event.stopPropagation()">🔗 Q-net</a>
+                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
+              </div>
+            </div>
+            <div class="card" style="cursor:pointer;" onclick="showCertDetail('AWS SAA')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div style="font-size:15px;font-weight:800;font-family:'DM Sans';">AWS SAA</div><span class="badge badge-amber">클라우드</span></div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Amazon Web Services</div>
+              <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-header"><span class="progress-label" style="font-size:11px;">합격률</span><span class="progress-value">61%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:61%"></div></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <button class="qnet-link" onclick="event.stopPropagation()">🌐 공식 사이트</button>
+                <span style="font-size:11px;color:var(--accent);font-weight:600;">세부정보 보기 →</span>
+              </div>
             </div>
           </div>
         </div>
-        <!-- 직무 정보 -->
+
+        <!-- 직무 정보 — PNG 예시 그대로 구현 -->
         <div id="ca-job" style="display:none;">
-          <!-- 현재 선택한 직무 -->
-          <div id="my-job-info" class="my-job-info">
-            <div class="career-empty-state">현재 선택한 직무를 불러오는 중입니다.</div>
-          </div>
-          <!-- 분류 검색 -->
+
+          <!-- 분류 검색 (PDF 스크린샷 그대로) -->
           <div class="job-search-box">
-            <div class="job-search-title">직무 카테고리 검색 (한국직업사전분류 기준)</div>
+            <div class="job-search-title">직무 및 카테고리 검색</div>
             <div class="job-search-dropdowns">
-              <select id="depth1" class="select-field" style="width:100%;">
-                <option value="">대분류 선택</option>
+              <select class="select-field" style="width:100%;">
+                <option>대분류 (전체)</option>
+                <option>정보통신</option>
+                <option>경영·회계·사무</option>
+                <option>교육·자연·사회과학</option>
               </select>
-              <select id="depth2" class="select-field" style="width:100%;">
-                <option value="">중분류 선택</option>
+              <select class="select-field" style="width:100%;">
+                <option>중분류 (전체)</option>
+                <option>정보기술</option>
+                <option>통신</option>
               </select>
-              <select id="depth3" class="select-field" style="width:100%;">
-                <option value="">소분류 선택</option>
-              </select>
-              <select id="depth4" class="select-field" style="width:100%;">
-                <option value="">세분류 선택</option>
+              <select class="select-field" style="width:100%;">
+                <option>소분류 (전체)</option>
+                <option>소프트웨어 개발</option>
+                <option>데이터베이스</option>
               </select>
             </div>
-            <div id="career-search-meta" class="career-search-meta"></div>
             <div class="job-search-bottom">
-              <input id="career-search-keyword" class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 데이터, 웹)" style="flex:1;">
-              <button id="career-search-btn" class="btn btn-accent">검색</button>
+              <input class="input-field" placeholder="직무명, 키워드를 입력하세요 (예: 백엔드, 데이터 분석)" style="flex:1;">
+              <button class="btn btn-accent">검색</button>
             </div>
           </div>
-          <!-- 검색 결과 -->
-          <div id="career-search-results" class="career-search-results" style="display:none;">
-            <div class="career-search-head">
-              <div id="career-search-title" class="career-search-title">검색 결과</div>
-              <div id="career-search-count" class="career-search-count"></div>
+
+          <!-- 보유 자격증 기반 직무 추천 -->
+          <div style="margin-bottom:20px;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+              <span>🏅</span> 보유 자격증 기반 추천 직무
+              <span class="badge badge-green">정보처리기사 · SQLD 보유</span>
             </div>
-            <div id="career-search-list" class="career-search-list"></div>
-            <div class="career-search-footer">
-              <div id="career-search-page-info" class="career-search-page-info"></div>
-              <div id="career-search-pagination" class="career-search-pagination"></div>
+            <div class="grid-3">
+              <div class="rec-job-card"><div class="rec-job-icon">💻</div><div><div class="rec-job-name">백엔드 개발자</div><div class="rec-job-reason">정보처리기사, SQLD 보유</div></div></div>
+              <div class="rec-job-card"><div class="rec-job-icon">🗄️</div><div><div class="rec-job-name">데이터 엔지니어</div><div class="rec-job-reason">SQLD 보유</div></div></div>
+              <div class="rec-job-card"><div class="rec-job-icon">🔧</div><div><div class="rec-job-name">시스템 엔지니어</div><div class="rec-job-reason">정보처리기사 보유</div></div></div>
+            </div>
+          </div>
+
+          <!-- 직무 상세 카드 — PNG 예시 + 클릭 시 세부 패널 -->
+          <div class="grid-3">
+            <div class="job-detail-card" onclick="showJobDetail('웹 개발자')">
+              <div class="job-detail-header"><span class="icon">📄</span><span class="label">직무 상세 정보</span></div>
+              <div class="job-detail-name">웹 개발자</div>
+              <div class="job-detail-desc">인터넷 브라우저를 통해 실행되는 웹 사이트나 웹 애플리케이션을 기획, 설계 및 구축합니다. 사용자에게 보이는 프론트엔드와 서버 로직을 담당하는 백엔드로 나뉩니다.</div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🎓</span> 관련 학과</div>
+                <div class="job-dept-list">컴퓨터공학과, 소프트웨어공학과, 정보통신공학과 등</div>
+              </div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🏆</span> 추천 자격증</div>
+                <div class="cert-tags"><span class="cert-tag">정보처리기사</span><span class="cert-tag">SQLD</span><span class="cert-tag">OCP</span></div>
+              </div>
+              <div style="margin-top:12px;text-align:right;font-size:12px;color:var(--accent);font-weight:600;">세부정보 보기 →</div>
+            </div>
+            <div class="job-detail-card" onclick="showJobDetail('데이터 분석가')">
+              <div class="job-detail-header"><span class="icon">📄</span><span class="label">직무 상세 정보</span></div>
+              <div class="job-detail-name">데이터 분석가</div>
+              <div class="job-detail-desc">대규모 데이터를 수집, 정제, 분석하여 비즈니스 의사결정에 필요한 인사이트를 도출합니다. 통계 기법과 시각화 도구를 활용해 결과를 전달합니다.</div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🎓</span> 관련 학과</div>
+                <div class="job-dept-list">통계학과, 데이터사이언스학과, 수학과, 컴퓨터공학과 등</div>
+              </div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🏆</span> 추천 자격증</div>
+                <div class="cert-tags"><span class="cert-tag">SQLD</span><span class="cert-tag">ADsP</span><span class="cert-tag">빅데이터분석기사</span></div>
+              </div>
+              <div style="margin-top:12px;text-align:right;font-size:12px;color:var(--accent);font-weight:600;">세부정보 보기 →</div>
+            </div>
+            <div class="job-detail-card" onclick="showJobDetail('DevOps 엔지니어')">
+              <div class="job-detail-header"><span class="icon">📄</span><span class="label">직무 상세 정보</span></div>
+              <div class="job-detail-name">DevOps 엔지니어</div>
+              <div class="job-detail-desc">개발과 운영을 통합하여 소프트웨어 배포 파이프라인을 자동화합니다. 클라우드 인프라 관리와 CI/CD 구축이 핵심 역할입니다.</div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🎓</span> 관련 학과</div>
+                <div class="job-dept-list">컴퓨터공학과, 정보보안학과, 전기전자공학과 등</div>
+              </div>
+              <div class="job-detail-section">
+                <div class="job-detail-section-label"><span class="icon">🏆</span> 추천 자격증</div>
+                <div class="cert-tags"><span class="cert-tag">AWS SAA</span><span class="cert-tag">리눅스마스터</span><span class="cert-tag">정보처리기사</span></div>
+              </div>
+              <div style="margin-top:12px;text-align:right;font-size:12px;color:var(--accent);font-weight:600;">세부정보 보기 →</div>
             </div>
           </div>
         </div>
       </div>
 		</div>
+
 	</main>
+
 	<!-- 모달 -->
   <%- include('../partials/modals/cert_detail') %>
 	<%- include('../partials/modals/job_detail') %>

@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const careerController = require('../controllers/careerController');
 
 // 로그인 여부 체크 미들웨어 (임시 — JWT/세션 연동 시 교체)
 function requireLogin(req, res, next) {
@@ -24,35 +23,5 @@ router.get('/', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
-// 직무 관련 라우터
-// 진로 검색db에서 대분류, 중분류, 소분류 가져오기
-router.get('/categories', careerController.getCategories);
-// 진로 검색db에서 대분류, 중분류, 소분류에 따른 직무 이름 가져오기
-router.get('/search', careerController.searchCareers);
-// 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
-router.get('/detail/:jobCode', careerController.getCareerDetails);
-// 직무 선택하여 db에 저장하기 
-router.post('/save/:jobCode', requireLogin, careerController.saveCareerDetails);
-// 현재 선택한 직무 정보 가져오기
-router.get('/my-career', requireLogin, careerController.getMyCareer);
-// 현재 선택한 직무 목록 가져오기
-router.get('/my-jobs', requireLogin, careerController.getMyJobs);
-// 직무 삭제하기
-router.delete('/remove-job/:jobId', requireLogin, careerController.removeJob);
-
-// 자격증 관련 라우터
-// 자격증 검색 db에서 대분류, 중분류, 시리즈이름 가져오기
-router.get('/cert-categories', careerController.getCertCategories);
-// 분류에 따른 자격증 목록 가져오기
-router.get('/search-cert', careerController.searchCertifications);
-// 자격증 선택 저장
-router.post('/save-cert',requireLogin ,careerController.saveCertification);
-// 자격증 합격률 가져오기
-router.get('/pass-rate/:jmcd', careerController.getPassRate);
-// 현재 선택한 자격증 목록 가져오기
-router.get('/my-certs', requireLogin, careerController.getMyCertifications);
-// 자격증 삭제하기
-router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeCertification);
-
 
 module.exports = router;

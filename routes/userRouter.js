@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
 
 // 로그인 여부 체크 미들웨어 (임시 — JWT/세션 연동 시 교체)
 function requireLogin(req, res, next) {
@@ -14,23 +13,6 @@ function requireLogin(req, res, next) {
   };
   next();
 }
-// Todo 추가 요청
-router.post('/addTodo', userController.addTodo);
-
-// Todo 삭제 요청
-router.post('/deleteTodo', userController.deleteTodo);
-
-// Habit 추가 요청
-router.post('/addHabit', userController.addHabit);
-
-// Habit 수정 요청
-router.post('/editHabit', userController.editHabit);
-
-// Habit 삭제 요청
-router.post('/deleteHabit', userController.deleteHabit);
-
-// IsCompleted 변동 사항 저장
-router.post('/saveIsCompleted', userController.saveIsCompleted);
 
 // 학사관리 페이지 
 router.get('/academic', requireLogin, (req, res) => {
@@ -41,6 +23,5 @@ router.get('/academic', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
-
 
 module.exports = router;

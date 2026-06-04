@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const landingController = require('../controllers/landingController');
 
 // 베너 페이지 
 router.get('/', (req, res) => {
@@ -12,16 +11,22 @@ function requireLogin(req, res, next) {
   // TODO: JWT 검증 후 req.user 세팅
   // 현재는 더미 유저로 통과
   req.user = {
-    name: '가나다',
-    major: '컴공',
-    grade: 4,
-    email: 'abc@test.com',
-    password: "1234qwer"
+    name: '김민준',
+    major: '컴퓨터공학과',
+    grade: 3,
+    email: 'minkim@korea.ac.kr',
   };
   next();
 }
 
 // 메인 페이지
-router.get('/home', requireLogin, landingController.getHomePage);
+router.get('/home', requireLogin, (req, res) => {
+  res.render('pages/home', {
+    title:       '홈',
+    currentPage: 'home',
+    pageTitle:   `안녕하세요, ${req.user.name}님 👋`,
+    user:        req.user,
+  });
+});
 
 module.exports = router;
