@@ -41,6 +41,25 @@ const UserSchema = new mongoose.Schema({
   // 소셜 로그인
   socialProvider: { type: String, enum: ['google', 'kakao', 'naver', null], default: null },
   
+  //  // 소셜 로그인 제공자 ('local' | 'kakao' | 'naver' | 'google')
+  // provider: {
+  //   type: String,
+  //   enum: ['local', 'kakao', 'naver', 'google'],
+  //   default: 'local',
+  // },
+  // // 소셜 로그인 제공자의 고유 ID
+  // providerId: {
+  //   type: String,
+  //   default: null,
+  // },
+  // // 사용자 비밀번호 (소셜 로그인 유저는 null)
+  // password: {
+  //   type: String,
+  //   required: false,
+  //   minlength: 8,
+  // },  확인 필요
+  
+  
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
 
