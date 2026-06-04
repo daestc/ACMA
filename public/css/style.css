@@ -738,3 +738,10 @@ input,select,textarea{font-family:inherit;}
   color: var(--accent);
   min-width: 20px;
 }
+
+/* 일정 날씨 표시 css*/
+.day-weather-icon {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 2px;
+}

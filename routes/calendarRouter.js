@@ -38,4 +38,7 @@ router.post('/timetables',requireLogin, calendarController.createTimetable); //�
 router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
 router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
 
+//날씨 api(일정페이지에 사용)
+router.get('/weather', requireLogin, calendarController.getWeather);
+
 module.exports = router;
