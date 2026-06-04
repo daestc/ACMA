@@ -1,34 +1,38 @@
 // service/notificationService.js
-const Notice = require('../models/Notice'); // 💡 공지사항 모델 
-const { Notification, CalendarEvent } = require('../models/Notification'); 
+const Notice = require('../models/Notice');             // 공지사항 모델
+const CalendarEvent = require('../models/Calendar');    // 💡 일정 모델은 Calendar 파일에서 가져와야 합니다!
+const Notification = require('../models/Notification'); // 💡 구조분해할당{}을 빼고 단일 모델로 가져옵니다.
 
-
-
-//읽지 않은 알림 목록 가져오기 
-async function getNotifications(userId) {
+/**
+ * [1] 읽지 않은 알림 목록 가져오기 
+ */
+const getNotifications = async (userId) => {
     try {
         return await Notification.find({ userId: userId }).sort({ createdAt: -1 }); 
     } catch (error) {
         console.error("getNotifications DB 조회 에러:", error.message);
         return [];
     }
-}
-//알림 삭제 
-async function deleteNotifications(userId) {
+};
+
+/**
+ * [2] 알림 삭제 
+ */
+const deleteNotifications = async (userId) => {
     try {
         await Notification.deleteMany({ userId: userId });
     } catch (error) {
         console.error("deleteNotifications DB 삭제 에러:", error.message);
     }
-}
+};
 
-
-//실시간 알림창 및 배너 데이터 가공/조립 함수
- 
-async function getBannerData(userId) {
+/**
+ * [3] 실시간 알림창 및 배너 데이터 가공/조립 함수
+ */
+const getBannerData = async (userId) => {
     try {
         const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(),0,0,0,0);
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
         // ─── [A] 오늘의 강의와 중간/기말 가져오기 (CalendarEvent 연동) ───
         let formattedTodayEvents = []; 
@@ -52,11 +56,10 @@ async function getBannerData(userId) {
                 });
             }
         } catch (calendarError) {
-            // 컬렉션이 없거나 텅 비어있어도 로그만 찍고 서버는 계속 돌아가게 방어
             console.log("⚠️ CalendarEvent 조회 일시 건너뜀:", calendarError.message);
         }
 
-        // ─── 자격증 및 장학금 d-7, d-day인 거 가져오기 (Notice 연동) ───
+        // ─── [B] 자격증 및 장학금 d-7, d-day인 거 가져오기 (Notice 연동) ───
         const formattedNotices = []; 
         try {
             const matchNotices = await Notice.find({
@@ -67,9 +70,8 @@ async function getBannerData(userId) {
             matchNotices.forEach(notice => {
                 if (!notice.endDate) return; // 마감일이 없는 건 패스
                 
-                // 연, 월, 일만 추출
                 const noticeEnd = new Date(notice.endDate);
-                const endOfNoticeDay = new Date(noticeEnd.getFullYear(), noticeEnd.getMonth(), noticeEnd.getDate(),0,0,0,0);
+                const endOfNoticeDay = new Date(noticeEnd.getFullYear(), noticeEnd.getMonth(), noticeEnd.getDate(), 0, 0, 0, 0);
 
                 // 날짜 차이 계산 (밀리초 -> 일)
                 const diffTime = endOfNoticeDay.getTime() - startOfToday.getTime();
@@ -109,7 +111,6 @@ async function getBannerData(userId) {
                         }
                     }
 
-                    // 알림 객체로 포맷팅해서 배열에 추가
                     formattedNotices.push({
                         type: notice.category,
                         icon: icon,
@@ -120,18 +121,17 @@ async function getBannerData(userId) {
                 }
             });
         } catch (noticeError) {
-            // 💡 Notice 스키마 매칭이나 DB 연결 오류 시 서버 다운 방어
             console.log("⚠️ Notice 조회 일시 건너뜀:", noticeError.message);
         }
-
 
         // 모든 가공 데이터 결합 후 리턴
         return [...formattedTodayEvents, ...formattedNotices];
 
     } catch (globalError) {
-        console.error("❌ 서비스 최상위 크래시 예방:", globalError.message)
+        console.error("❌ 서비스 최상위 크래시 예방:", globalError.message);
+        return [];
     }
-}
+};
 
 module.exports = { 
     getNotifications, 

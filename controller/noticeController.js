@@ -83,7 +83,10 @@ exports.getHomePage = async (req, res) => {
             notices: showNotice,
             topNotices: showNotice.slice(0, 6), // D-Day 기준 상위 6개 
             urgentNotices: showNotice.filter(n => n.isUrgent === true),
-            pageTitle: '홈'
+            pageTitle: '홈',
+            habitList: [],
+            todoList: [],
+            completedCount: 0
         });
 
     } catch (error) {
