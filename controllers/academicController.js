@@ -1,11 +1,12 @@
 const academicService = require('../services/academicSevice');
 const User = require('../models/User');
 
+// 학기별 과목 추가, 수정, 삭제
 function normalizeArray(value) {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
 }
-
+// 학기 코드 파싱 (ex. "2025-1" → { semester: "2025-1", year: 2025, semesterNumber: 1 })
 function parseSemesterCode(rawSemester) {
   const semesterText = String(rawSemester || '').trim();
   const match = semesterText.match(/(\d{4})\s*[-/]?\s*([12])/);
@@ -195,6 +196,48 @@ const saveGraduationRequirements = async (req, res) => {
   }
 };
 
+// 졸업 진도 프로그레스 조회
+const getProgress = async (req, res) => {
+  try {
+    if (!req.user || !req.user.email) return res.status(401).json({ success: false });
+    const user = await User.findOne({ email: req.user.email }).select('_id').lean();
+    if (!user) return res.status(404).json({ success: false });
+
+    const records = await academicService.getAllSemesterRecords(user._id);
+    const totals = {
+      major_required: 0,
+      major_elective: 0,
+      general_required: 0,
+      general_elective: 0,
+      free: 0,
+      totalEarned: 0,
+    };
+
+    records.forEach(r => {
+      (Array.isArray(r.subjects) ? r.subjects : []).forEach(s => {
+        const credits = Number(s.credits) || 0;
+        const grade = s.grade;
+        const passed = grade != null && grade !== 'F';
+        if (!passed) return;
+
+        const type = String(s.subjectType || 'free');
+        if (type in totals) {
+          totals[type] += credits;
+        } else {
+          totals.free += credits;
+        }
+        totals.totalEarned += credits;
+      });
+    });
+
+    const profile = await academicService.getUniversityProfile(user._id);
+
+    return res.json({ success: true, totals, profile });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false });
+  }
+};
 
 module.exports = {
   addCourse,
@@ -204,4 +247,5 @@ module.exports = {
   getSemesterGPA,
   getGraduationRequirements,
   saveGraduationRequirements,
+  getProgress,
 };

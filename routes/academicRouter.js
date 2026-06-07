@@ -28,6 +28,7 @@ router.post('/editCourse', requireLogin, academicController.editCourse); // GPA 
 router.post('/deleteCourse', requireLogin, academicController.deleteCourse); // GPA 계산기 강의 삭제
 router.get('/record/:semester', requireLogin, academicController.getSemesterRecord); // 특정 학기 레코드 조회
 router.get('/all-gpa', requireLogin, academicController.getSemesterGPA);//모든 학기 gpa 값 조회
+router.get('/progress', requireLogin, academicController.getProgress); // 이수 학점 진도 집계
 router.get('/graduation-requirements', requireLogin, academicController.getGraduationRequirements); // 졸업요건 조회
 router.post('/graduation-requirements', requireLogin, academicController.saveGraduationRequirements); // 졸업요건 저장
 

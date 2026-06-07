@@ -96,7 +96,30 @@ async function getAllSemesterGPA(userId) {
     throw error;
   }
 }
+// 모든 학기 레코드 조회 (GPA 계산기용)
+async function getAllSemesterRecords(userId) {
+  try {
+    const records = await model.AcademicRecord.find({ userId })
+      .select('semester year semesterNumber status semesterSummary subjects')
+      .sort({ year: 1, semesterNumber: 1 })
+      .lean();
 
+    return records.map(r => ({
+      semester: r.semester,
+      year: r.year,
+      semesterNumber: r.semesterNumber,
+      status: r.status,
+      attemptedCredits: r.semesterSummary?.attemptedCredits ?? 0,
+      earnedCredits: r.semesterSummary?.earnedCredits ?? 0,
+      semesterGPA: r.semesterSummary?.semesterGPA ?? null,
+      subjects: r.subjects || [],
+    }));
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+// 대학 프로필 조회(졸업요건 조회)
 async function getUniversityProfile(userId) {
   try {
     return await UniversityProfile.findOne({ userId }).lean();
@@ -105,7 +128,7 @@ async function getUniversityProfile(userId) {
     throw error;
   }
 }
-
+// 대학 프로필 저장(졸업 요건)
 async function saveUniversityProfile(userId, profileData) {
   try {
     const existingProfile = await UniversityProfile.findOne({ userId }).lean();
@@ -152,6 +175,7 @@ module.exports = {
   editCourse,
   deleteCourse,
   getAllSemesterGPA,
+  getAllSemesterRecords,
   getUniversityProfile,
   saveUniversityProfile,
 };

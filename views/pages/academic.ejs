@@ -127,13 +127,13 @@
           <!-- 영역별 이수 현황 + 학기별 성적 이력 -->
           <div class="grid-2">
             <div class="card">
-              <div class="card-title" style="margin-bottom:16px;">📂 영역별 이수 현황</div>
-              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span class="progress-value">32/42</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:76%"></div></div></div>
-              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span class="progress-value">28/40</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:70%"></div></div></div>
-              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span class="progress-value">18/20</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:90%"></div></div></div>
-              <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span class="progress-value">14/28</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:50%"></div></div></div>
-              <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">총 이수 학점</span><span class="progress-value">92/130</span></div><div class="progress-track" style="height:10px;"><div class="progress-fill fill-blue" style="width:71%"></div></div></div>
-            </div>
+                <div class="card-title" style="margin-bottom:16px;">📂 영역별 이수 현황</div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span id="pv-major-req" class="progress-value">-</span></div><div class="progress-track"><div id="pf-major-req" class="progress-fill fill-blue" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span id="pv-major-el" class="progress-value">-</span></div><div class="progress-track"><div id="pf-major-el" class="progress-fill fill-purple" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span id="pv-gen-req" class="progress-value">-</span></div><div class="progress-track"><div id="pf-gen-req" class="progress-fill fill-green" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span id="pv-gen-el" class="progress-value">-</span></div><div class="progress-track"><div id="pf-gen-el" class="progress-fill fill-amber" style="width:0%"></div></div></div>
+                <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">총 이수 학점</span><span id="pv-total" class="progress-value">-</span></div><div class="progress-track" style="height:10px;"><div id="pf-total" class="progress-fill fill-blue" style="width:0%"></div></div></div>
+              </div>
 
             <!-- 학기별 성적 이력 테이블 (PDF 예시 그대로) -->
             <div class="card">
@@ -281,33 +281,33 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
                   <span style="font-size:12px;font-weight:600;">전공필수</span>
                   <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:76%;background:var(--accent);border-radius:3px;"></div></div>
-                    <span style="font-size:11px;color:var(--text2);font-weight:600;">32/42</span>
-                    <span style="font-size:12px;">🟡</span>
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div id="pf-right-major-req" style="height:100%;width:0%;background:var(--accent);border-radius:3px;"></div></div>
+                    <span id="pv-right-major-req" style="font-size:11px;color:var(--text2);font-weight:600;">-/ -</span>
+                    <span id="pv-right-major-req-status" style="font-size:12px;">🟡</span>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
                   <span style="font-size:12px;font-weight:600;">전공선택</span>
                   <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:70%;background:var(--purple);border-radius:3px;"></div></div>
-                    <span style="font-size:11px;color:var(--text2);font-weight:600;">28/40</span>
-                    <span style="font-size:12px;">🟡</span>
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div id="pf-right-major-el" style="height:100%;width:0%;background:var(--purple);border-radius:3px;"></div></div>
+                    <span id="pv-right-major-el" style="font-size:11px;color:var(--text2);font-weight:600;">-/ -</span>
+                    <span id="pv-right-major-el-status" style="font-size:12px;">🟡</span>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
                   <span style="font-size:12px;font-weight:600;">교양필수</span>
                   <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:90%;background:var(--green);border-radius:3px;"></div></div>
-                    <span style="font-size:11px;color:var(--text2);font-weight:600;">18/20</span>
-                    <span style="font-size:12px;">🟢</span>
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div id="pf-right-gen-req" style="height:100%;width:0%;background:var(--green);border-radius:3px;"></div></div>
+                    <span id="pv-right-gen-req" style="font-size:11px;color:var(--text2);font-weight:600;">-/ -</span>
+                    <span id="pv-right-gen-req-status" style="font-size:12px;">🟢</span>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">
                   <span style="font-size:12px;font-weight:600;">교양선택</span>
                   <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:50%;background:var(--amber);border-radius:3px;"></div></div>
-                    <span style="font-size:11px;color:var(--text2);font-weight:600;">14/28</span>
-                    <span style="font-size:12px;">🔴</span>
+                    <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;"><div id="pf-right-gen-el" style="height:100%;width:0%;background:var(--amber);border-radius:3px;"></div></div>
+                    <span id="pv-right-gen-el" style="font-size:11px;color:var(--text2);font-weight:600;">-/ -</span>
+                    <span id="pv-right-gen-el-status" style="font-size:12px;">🔴</span>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg3);">

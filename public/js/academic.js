@@ -23,7 +23,7 @@ const gradeMap = {
   'D+': 1.5, 'D': 1.0,
   'F':  0
 };
-
+// 학기별 과목 입력 → GPA 계산 → 서버 저장
 function calcGPA() {
   const rows = document.querySelectorAll('#subject-list .subject-row');
   let pts = 0, creds = 0;
@@ -41,7 +41,7 @@ function calcGPA() {
     ? (pts / creds).toFixed(2)
     : '0.00';
 }
-
+// 학기 코드 → { semester, year, semesterNumber }
 function parseSemesterOrder(semester) {
   const match = String(semester || '').trim().match(/^(\d{4})-(\d)$/);
   if (!match) {
@@ -53,12 +53,12 @@ function parseSemesterOrder(semester) {
     semesterNumber: Number(match[2]),
   };
 }
-
+// 학기 텍스트 → { semester, year, semesterNumber }
 function formatSemesterLabel(semester) {
   return String(semester || '').replace(/^(\d{4})-(\d)$/, '$1-$2학기');
 }
 
-function buildAcademicTrendSvg(records, targetGpa) {
+function buildAcademicTrendSvg(records, targetGpa) { // GPA 추이 그래프 SVG 생성
   const width = 760;
   const height = 280;
   const padding = { top: 28, right: 36, bottom: 54, left: 58 };
@@ -119,7 +119,7 @@ function buildAcademicTrendSvg(records, targetGpa) {
       ${pointsMarkup}
     </svg>`;
 }
-
+// 학기별 GPA 추이 렌더링
 function renderAcademicTrend(records) {
   const chartContainer = document.getElementById('semester-gpa-chart');
   const tableBody = document.getElementById('semester-gpa-history-body');
@@ -175,6 +175,65 @@ function renderAcademicTrend(records) {
   if (averageEl) averageEl.textContent = averageGpa.toFixed(2);
   if (bestEl) bestEl.textContent = bestRecord.semesterGPA.toFixed(2);
   if (countEl) countEl.textContent = String(totalCredits);
+}
+
+// 진도 프로그레스 (DB 기반)
+window._ac_progress = { totals: null, profile: null };
+
+async function fetchProgress() {
+  try {
+    const res = await fetch('/academic/progress', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.success) return;
+
+    const totals = json.totals || {};
+    const profile = json.profile || {};
+    window._ac_progress = { totals, profile };
+
+    const req = profile?.GraduationRequirements || {};
+    const map = [
+      { key: 'major_required', pv: 'pv-major-req', pf: 'pf-major-req', rightPv: 'pv-right-major-req', rightPf: 'pf-right-major-req', reqKey: 'requiredMajorCredits' },
+      { key: 'major_elective', pv: 'pv-major-el', pf: 'pf-major-el', rightPv: 'pv-right-major-el', rightPf: 'pf-right-major-el', reqKey: 'requiredMajorElective' },
+      { key: 'general_required', pv: 'pv-gen-req', pf: 'pf-gen-req', rightPv: 'pv-right-gen-req', rightPf: 'pf-right-gen-req', reqKey: 'requiredGeneralCredits' },
+      { key: 'general_elective', pv: 'pv-gen-el', pf: 'pf-gen-el', rightPv: 'pv-right-gen-el', rightPf: 'pf-right-gen-el', reqKey: 'requiredGeneralElective' },
+    ];
+
+    map.forEach(item => {
+      const earned = Number(totals[item.key] || 0);
+      const needed = Number(req[item.reqKey] || 0) || 0;
+      const pct = needed ? Math.min(100, Math.round(earned / needed * 100)) : 0;
+
+      const pv = document.getElementById(item.pv);
+      const pf = document.getElementById(item.pf);
+      const rightPv = document.getElementById(item.rightPv);
+      const rightPf = document.getElementById(item.rightPf);
+
+      if (pv) pv.textContent = needed ? `${earned}/${needed}` : `${earned}`;
+      if (pf) pf.style.width = pct + '%';
+      if (rightPv) rightPv.textContent = needed ? `${earned}/${needed}` : `${earned}`;
+      if (rightPf) rightPf.style.width = pct + '%';
+    });
+
+    // 총합
+    const totalEarned = Number(totals.totalEarned || 0);
+    const totalNeeded = Number(req.requiredTotalCredits || 0) || 0;
+    const totalPct = totalNeeded ? Math.min(100, Math.round(totalEarned / totalNeeded * 100)) : 0;
+    const pvTotal = document.getElementById('pv-total');
+    const pfTotal = document.getElementById('pf-total');
+    if (pvTotal) pvTotal.textContent = totalNeeded ? `${totalEarned}/${totalNeeded}` : `${totalEarned}`;
+    if (pfTotal) pfTotal.style.width = totalPct + '%';
+
+    // 오른쪽 요약 총취득학점 업데이트
+    const semesterGpaCount = document.getElementById('semester-gpa-count');
+    if (semesterGpaCount) semesterGpaCount.textContent = String(totalEarned);
+
+    // 그레이드 프리뷰와 시뮬레이터에서 사용
+    window._ac_currentEarnedCredits = totalEarned;
+    updateGradPreview();
+  } catch (err) {
+    console.error('fetchProgress failed', err);
+  }
 }
 
 async function fetchAcademicTrend() {
@@ -238,7 +297,7 @@ function buildSubjectRow(subject = {}) {
 
   return row;
 }
-
+// 학기별 과목 입력 → GPA 계산 → 서버 저장
 async function saveAcademicData() {
   const semesterSelect = document.querySelector('#ac-gpa select[name="semester"]');
   const rows = document.querySelectorAll('#subject-list .subject-row');
@@ -360,8 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function calcSim() {
   const target     = parseFloat(document.getElementById('target-gpa').value)  || 3.9;
   const next       = parseInt(document.getElementById('next-credits').value)   || 18;
-  const curGPA     = 3.80;   // TODO: 실제 데이터로 교체
-  const curCredits = 96;     // TODO: 실제 데이터로 교체
+  const curCredits = Number(window._ac_currentEarnedCredits || document.getElementById('semester-gpa-count')?.textContent || 0) || 0;
+  const curGPA     = Number(document.getElementById('semester-gpa-average')?.textContent || 0) || 0;
 
   const needed = ((target * (curCredits + next)) - (curGPA * curCredits)) / next;
   const grade  = needed >= 4.25 ? 'A+' : needed >= 4.0 ? 'A' : needed >= 3.5 ? 'B+' : needed >= 3.0 ? 'B' : 'C 이상';
@@ -377,7 +436,8 @@ function calcSim() {
 }
 
 // ── 졸업요건 설정 ─────────────────────────────────
-function addGradCert() {
+// 졸업요건 입력 → 서버 저장 → DB 업데이트 → 진도 프로그레스에 반영
+function addGradCert() { 
   const inp = document.getElementById('gr-cert-input');
   const val = inp.value.trim();
   if (!val) return;
@@ -390,7 +450,7 @@ function addGradCert() {
   list.appendChild(tag);
   inp.value = '';
 }
-
+// 졸업요건 입력값 → 서버 저장용 객체 변환
 function getGradReqPayload() {
   const certList = Array.from(document.querySelectorAll('#gr-cert-list .gr-cert-chip'));
   const certs = certList.map(el => String(el.childNodes[0]?.textContent || el.textContent || '').trim()).filter(Boolean);
@@ -470,7 +530,7 @@ async function saveGradReq() {
     }
   }
 }
-
+// 졸업요건 초기화 (기본값으로 리셋)
 function resetGradReq() {
   document.getElementById('gr-total').value    = 130;
   document.getElementById('gr-major-req').value = 42;
@@ -483,7 +543,7 @@ function resetGradReq() {
   document.getElementById('gr-cert-list').innerHTML = '';
   updateGradPreview();
 }
-
+// 졸업요건 입력값 → 미리보기 업데이트
 function updateGradPreview() {
   const total   = parseInt(document.getElementById('gr-total').value) || 130;
   const current = 92;   // TODO: 실제 이수 학점으로 교체
@@ -507,7 +567,7 @@ function updateGradPreview() {
     badge.textContent = pct >= 100 ? '졸업 가능' : '진행중';
   }
 }
-
+// 서버에서 졸업요건 가져와 입력 폼과 미리보기 업데이트
 function applyGraduationRequirements(profile) {
   const requirements = profile?.GraduationRequirements;
   if (!requirements) {
@@ -558,7 +618,6 @@ async function fetchGraduationRequirements() {
     if (!response.ok) {
       throw new Error('졸업요건을 불러오지 못했습니다.');
     }
-
     const result = await response.json();
     if (result.success && result.profile) {
       applyGraduationRequirements(result.profile);
@@ -568,8 +627,9 @@ async function fetchGraduationRequirements() {
   }
 }
 
-
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', updateGradPreview);
 document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
 document.addEventListener('DOMContentLoaded', fetchGraduationRequirements);
+document.addEventListener('DOMContentLoaded', fetchProgress);
+document.addEventListener('DOMContentLoaded', calcSim);
