@@ -6,8 +6,11 @@ const logger      = require('../config/logger');
 
 exports.getLogin = (req, res) => {
   if (req.session.user) return res.redirect('/home');
-  res.render('pages/login', { title: '로그인', error: req.session.authError || null });
+  const error = req.query.expired === '1'
+    ? '세션이 만료되었습니다. 다시 로그인해주세요.'
+    : req.session.authError || null;
   delete req.session.authError;
+  res.render('pages/login', { title: '로그인', error });
 };
 
 exports.getRegister = (req, res) => {

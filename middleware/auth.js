@@ -9,8 +9,8 @@
 
 function requireLogin(req, res, next) {
   if (!req.session || !req.session.user) {
-    req.session.authError = '세션이 만료되었습니다. 다시 로그인해주세요.';
-    return res.redirect('/auth/login');
+    res.redirect('/auth/login?expired=1');
+    return;
   }
   req.user = req.session.user;
   next();
