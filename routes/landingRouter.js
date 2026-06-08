@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const landingController = require('../controllers/landingController');
 
+
 // 베너 페이지 
 router.get('/', (req, res) => {
   res.render('pages/landing', { title: 'AcadMe' });

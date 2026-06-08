@@ -24,73 +24,86 @@ async function fetchAllData() {
             typeIcon = '📢';
             typeColor = '#dcfce7'; 
         }
+        // 카테고리 종류에 따른 텍스트 및 배지 클래스 분기
+        let categoryName = '기타';
+        let categoryBadgeClass = 'badge-gray';
+
+        if (item.category === 'certification') {
+            categoryName = '자격증';
+            categoryBadgeClass = 'badge-purple';
+        } else if (item.category === 'scholarship') {
+            categoryName = '장학금';
+            categoryBadgeClass = 'badge-success';
+        }
+        // 날짜 포맷 (YYYY-MM-DD)
+        const formattedDate = item.createdAt 
+            ? new Date(item.createdAt).toISOString().split('T')[0] 
+            : '';
         
-        return { 
+    return { 
             ...item,
             Dday: diff,
             isUrgent: diff >= 0 && diff <= 50,
             dDayText: dateCaculate.formatDDayText(diff),
-            categoryName: item.category === 'certification' ? '자격증' : '기타',
+            dDayBadgeClass: diff === 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'), // 💡 home.ejs 배지 스타일 연동
+            categoryName,
             icon: typeIcon,
             iconBgColor: typeColor,
-            categoryBadgeClass: item.category === 'certification' ? 'badge-purple' : 'badge-gray'
+            categoryBadgeClass,
+            formattedDate
         };
     }).filter(n => n.Dday >= 0); //지난 일정은 나오지x
 }
 
-//공지사항 페이지 페이징 컨트롤러
-exports.getNoticePage = async(req, res) => {
+
+//landingController에서 홈 화면을 그릴 때 호출할 가공 데이터 제공 함수
+async function fetchHomeNotices() {
+    try {
+        const data = await fetchAllData();
+        return data;
+    } catch (error) {
+        console.error("fetchHomeNotices 에러:", error.message);
+        return [];
+    }
+}
+
+
+// 공지사항 페이지 페이징 컨트롤러
+async function getNoticePage(req, res) {
     try {
         let showNotice = await fetchAllData();
-        const urgentNotices = showNotice.filter( n => n.isUrgent == true);
+        const urgentNotices = showNotice.filter(n => n.isUrgent == true);
 
         const categoryFilter = req.query.category || '';
-        if( categoryFilter) {
+        if (categoryFilter) {
             showNotice = showNotice.filter(n => n.category === categoryFilter);
         }
 
-        const page = parseInt(req.query.page) || 1;//기본값 1페이지
-        const itemsPerPage = 10; //페이지 당 10개씩
+        const page = parseInt(req.query.page) || 1;
+        const itemsPerPage = 10; 
         const totalItems = showNotice.length;
-        const totalPages =Math.ceil(totalItems / itemsPerPage);
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-        //10개 데이터만 자르기
         const startIndex = (page - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         const paginatedNotices = showNotice.slice(startIndex, endIndex);
 
         res.render('pages/notice', {
             user: req.user || null,
-            notices : paginatedNotices,
-            urdentNotices : urgentNotices,
-            pageTitle : '공지사항',
-            currentPageNum : page, //현재 페이지 번호
-            totalPages: totalPages //전체 페이지 수 
-        })
+            notices: paginatedNotices,
+            urdentNotices: urgentNotices, 
+            pageTitle: '공지사항',
+            currentPageNum: page, 
+            totalPages: totalPages 
+        });
     } catch (error) {
-        console.error("공지사항 페이지 로드 에러" , error.message);
+        console.error("공지사항 페이지 로드 에러", error.message);
         res.status(500).send("서버 에러 발생");
     }
 }
 
-// 홈 페이지 컨트롤러
-exports.getHomePage = async (req, res) => {
-    try {
-        const showNotice = await fetchAllData();
-        
-        res.render('pages/home', {
-            user: req.user || null,
-            notices: showNotice,
-            topNotices: showNotice.slice(0, 6), // D-Day 기준 상위 6개 
-            urgentNotices: showNotice.filter(n => n.isUrgent === true),
-            pageTitle: '홈',
-            habitList: [],
-            todoList: [],
-            completedCount: 0
-        });
-
-    } catch (error) {
-        console.error("홈페이지 로드 에러:", error.message);
-        res.status(500).send("페이지를 불러오는 중 에러가 발생했습니다.");
-    }
+module.exports = {
+    getNoticePage,
+    fetchHomeNotices 
 };
+
