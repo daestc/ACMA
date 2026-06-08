@@ -32,14 +32,27 @@ const UserSchema = new mongoose.Schema({
     // 대학생 이메일 형식 유효성 검사 (예: @university.ac.kr)
     match: [/^[\w-]+(?:\.[\w-]+)*@(?:[\w-]+\.)+[a-zA-Z]{2,7}$/, '유효한 이메일 주소를 입력해주세요.'],
   },
-  // 사용자 비밀번호 (보안을 위해 해싱하여 저장해야 함)
+  // 사용자 비밀번호 (소셜 로그인 유저는 null)
   password: {
     type: String,
-    required: true, // 필수 필드
-    minlength: 8, // 최소 8자 이상
+    required: false,
+    minlength: 8,
   },
-  // 소셜 로그인
-  socialProvider: { type: String, enum: ['google', 'kakao', 'naver', null], default: null },
+  // 소셜 로그인 제공자 ('local' | 'kakao' | 'naver' | 'google')
+  provider: {
+    type: String,
+    enum: ['local', 'kakao', 'naver', 'google'],
+    default: 'local',
+  },
+  // 소셜 로그인 제공자의 고유 ID
+  providerId: {
+    type: String,
+    default: null,
+  },
+  // 소속 대학교
+  university: { type: String, default: null, trim: true },
+  // 전공
+  major: { type: String, default: null, trim: true },
   
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각

@@ -11,23 +11,57 @@
 <!-- ══ LOGIN ══════════════════════════════ -->
 <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-logo"><div class="logo-icon">A</div><span class="logo-text">AcadMe</span></div>
+      <a class="auth-logo" href="/">  <div class="logo-icon">A</div><span class="logo-text">AcadMe</span></a>
       <h2>다시 만나서 반가워요 👋</h2>
       <p class="auth-sub">학사관리 플랫폼에 로그인하세요</p>
-      <div class="form-group"><label>이메일</label><input type="email" placeholder="example@university.ac.kr"></div>
-      <div class="form-group"><label>비밀번호</label><input type="password" placeholder="비밀번호 입력"></div>
-      <!-- (추가)로그인 기능 -->
-      <button class="btn-primary" href="/home">로그인</button>
+      <% if (error) { %><p class="auth-error"><%= error %></p><% } %>
+      <form method="POST" action="/auth/login" onsubmit="saveEmail()">
+        <div class="form-group"><label>이메일</label><input type="email" id="login-email" name="email" placeholder="example@university.ac.kr" required></div>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <div style="position:relative;">
+            <input type="password" id="login-pw" name="password" placeholder="비밀번호 입력" required style="width:100%;padding-right:38px;">
+            <button type="button" onclick="togglePw('login-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);padding:0;line-height:1;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <input type="checkbox" id="save-email" style="cursor:pointer;">
+          <label for="save-email" style="font-size:13px;color:var(--text2);cursor:pointer;">이메일 저장</label>
+        </div>
+        <button type="submit" class="btn-primary">로그인</button>
+      </form>
       <div class="auth-divider">또는 간편 로그인</div>
       <div class="social-btns">
-        <button class="social-btn" onclick="goToApp()">🟡 카카오</button>
-        <button class="social-btn" onclick="goToApp()">🟢 네이버</button>
-        <button class="social-btn" onclick="goToApp()">🔵 구글</button>
+        <a class="social-btn" href="/auth/kakao">🟡 카카오</a>
+        <a class="social-btn" href="/auth/naver">🟢 네이버</a>
+        <a class="social-btn" href="/auth/google">🔵 구글</a>
       </div>
       <div class="auth-footer">계정이 없으신가요? <a href="/auth/register">회원가입</a> &nbsp;·&nbsp; <span>비밀번호 찾기</span></div>
     </div>
 
 
+<script>
+const _eyeOpen = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _eyeOff  = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+(function () {
+  const saved = localStorage.getItem('savedEmail');
+  if (saved) {
+    document.getElementById('login-email').value = saved;
+    document.getElementById('save-email').checked = true;
+  }
+})();
+function saveEmail() {
+  const email = document.getElementById('login-email').value;
+  const keep  = document.getElementById('save-email').checked;
+  keep ? localStorage.setItem('savedEmail', email) : localStorage.removeItem('savedEmail');
+}
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? _eyeOff : _eyeOpen;
+}
+</script>
 </body>
 
 </html>
