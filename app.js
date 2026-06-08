@@ -6,7 +6,7 @@ const express     = require('express');
 const path        = require('path');
 const helmet      = require('helmet');
 const session     = require('express-session');
-const { MongoStore } = require('connect-mongo');
+const MongoStore = require('connect-mongo');
 const passport    = require('./config/passport');
 const connectDB   = require('./config/database');
 
