@@ -6,6 +6,31 @@ function normalizeArray(value) {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
 }
+function parseNullableNumber(value, fallback = null) {
+  if (value === '' || value === null || value === undefined) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+function parseNullableBoolean(value, fallback = null) {
+  if (value === '' || value === null || value === undefined) return fallback;
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return fallback;
+}
+function parseStringArray(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
 // 학기 코드 파싱 (ex. "2025-1" → { semester: "2025-1", year: 2025, semesterNumber: 1 })
 function parseSemesterCode(rawSemester) {
   const semesterText = String(rawSemester || '').trim();
@@ -160,32 +185,22 @@ const saveGraduationRequirements = async (req, res) => {
     const profile = await academicService.saveUniversityProfile(user._id, {
       major: req.body?.major || user.major,
       studentId: req.body?.studentId || null,
-      grade: req.body?.grade ?? user.grade ?? 1,
+      grade: parseNullableNumber(req.body?.grade, user.grade ?? 1),
       enrollmentStatus: req.body?.enrollmentStatus || 'enrolled',
       doubleMajor: req.body?.doubleMajor || null,
       GraduationRequirements: {
-        requiredTotalCredits: Number(graduationRequirements.requiredTotalCredits) || 130,
-        requiredMajorCredits: Number(graduationRequirements.requiredMajorCredits) || 42,
-        requiredMajorElective: Number(graduationRequirements.requiredMajorElective) || 40,
-        requiredGeneralCredits: Number(graduationRequirements.requiredGeneralCredits) || 20,
-        requiredGeneralElective: Number(graduationRequirements.requiredGeneralElective) || 28,
-        requiresGraduationWork: Boolean(graduationRequirements.requiresGraduationWork),
-        requiredCertifications: Array.isArray(graduationRequirements.requiredCertifications)
-          ? graduationRequirements.requiredCertifications.map(value => String(value).trim()).filter(Boolean)
-          : [],
+        requiredTotalCredits: parseNullableNumber(graduationRequirements.requiredTotalCredits, 130),
+        requiredMajorCredits: parseNullableNumber(graduationRequirements.requiredMajorCredits, 42),
+        requiredMajorElective: parseNullableNumber(graduationRequirements.requiredMajorElective, 40),
+        requiredGeneralCredits: parseNullableNumber(graduationRequirements.requiredGeneralCredits, 20),
+        requiredGeneralElective: parseNullableNumber(graduationRequirements.requiredGeneralElective, 28),
+        requiresGraduationWork: parseNullableBoolean(graduationRequirements.requiresGraduationWork, true),
+        requiredCertifications: parseStringArray(graduationRequirements.requiredCertifications),
         requiredLanguageScore: graduationRequirements.requiredLanguageScore || null,
-        requiredInternship: graduationRequirements.requiredInternship === ''
-          ? null
-          : graduationRequirements.requiredInternship === true || graduationRequirements.requiredInternship === 'true',
-        requiredCapstonDesign: graduationRequirements.requiredCapstonDesign === ''
-          ? null
-          : graduationRequirements.requiredCapstonDesign === true || graduationRequirements.requiredCapstonDesign === 'true',
-        requiredNCProgram: graduationRequirements.requiredNCProgram === ''
-          ? null
-          : graduationRequirements.requiredNCProgram === true || graduationRequirements.requiredNCProgram === 'true',
-        requiredVolunteer: graduationRequirements.requiredVolunteer === ''
-          ? null
-          : Number(graduationRequirements.requiredVolunteer) || null,
+        requiredInternship: parseNullableBoolean(graduationRequirements.requiredInternship, null),
+        requiredCapstonDesign: parseNullableBoolean(graduationRequirements.requiredCapstonDesign, null),
+        requiredNCProgram: parseNullableBoolean(graduationRequirements.requiredNCProgram, null),
+        requiredVolunteer: parseNullableNumber(graduationRequirements.requiredVolunteer, null),
       },
     });
 

@@ -7,12 +7,16 @@
 // ── 탭 전환 ──────────────────────────────────────
 function switchAcademicTab(tab, btn) {
   ['gpa', 'credit', 'grad', 'sim'].forEach(t => {
-    document.getElementById('ac-' + t).style.display = 'none';
+    const section = document.getElementById('ac-' + t);
+    if (section) section.style.display = 'none';
   });
-  document.getElementById('ac-' + tab).style.display = 'block';
+  const activeSection = document.getElementById('ac-' + tab);
+  if (activeSection) activeSection.style.display = 'block';
 
-  btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) {
+    btn.closest('.tabs')?.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
 }
 
 // ── GPA 계산기 ────────────────────────────────────
@@ -466,12 +470,14 @@ function getGradReqPayload() {
       requiredGeneralCredits: Number(document.getElementById('gr-gen-req')?.value) || 20,
       requiredGeneralElective: Number(document.getElementById('gr-gen-el')?.value) || 28,
       requiresGraduationWork: document.getElementById('gr-grad-work')?.classList.contains('on') ?? true,
+      requiredCapstonDesign: document.getElementById('gr-capstone-design')?.classList.contains('on') ?? false,
       requiredCertifications: certs,
       requiredLanguageScore: languageType === '없음' ? null : `${languageType}${languageScore ? ` ${languageScore}` : ''}`.trim(),
-      requiredInternship: null,
-      requiredCapstonDesign: document.getElementById('gr-grad-work')?.classList.contains('on') ?? true,
-      requiredNCProgram: null,
-      requiredVolunteer: null,
+      requiredInternship: document.getElementById('gr-internship')?.value || null,
+      requiredNCProgram: document.getElementById('gr-nc-program')?.value || null,
+      requiredVolunteer: document.getElementById('gr-volunteer')?.value === ''
+        ? null
+        : Number(document.getElementById('gr-volunteer')?.value) || 0,
     },
   };
 }
@@ -532,20 +538,41 @@ async function saveGradReq() {
 }
 // 졸업요건 초기화 (기본값으로 리셋)
 function resetGradReq() {
-  document.getElementById('gr-total').value    = 130;
-  document.getElementById('gr-major-req').value = 42;
-  document.getElementById('gr-major-el').value  = 40;
-  document.getElementById('gr-gen-req').value   = 20;
-  document.getElementById('gr-gen-el').value    = 28;
-  document.getElementById('gr-grad-work').classList.add('on');
-  document.getElementById('gr-lang-type').value = 'TOEIC';
-  document.getElementById('gr-lang-score').value = '';
-  document.getElementById('gr-cert-list').innerHTML = '';
+  const total = document.getElementById('gr-total');
+  const majorReq = document.getElementById('gr-major-req');
+  const majorEl = document.getElementById('gr-major-el');
+  const genReq = document.getElementById('gr-gen-req');
+  const genEl = document.getElementById('gr-gen-el');
+  const gradWork = document.getElementById('gr-grad-work');
+  const capstoneDesign = document.getElementById('gr-capstone-design');
+  const langType = document.getElementById('gr-lang-type');
+  const langScore = document.getElementById('gr-lang-score');
+  const certList = document.getElementById('gr-cert-list');
+  const internship = document.getElementById('gr-internship');
+  const ncProgram = document.getElementById('gr-nc-program');
+  const volunteer = document.getElementById('gr-volunteer');
+
+  if (total) total.value = 130;
+  if (majorReq) majorReq.value = 42;
+  if (majorEl) majorEl.value = 40;
+  if (genReq) genReq.value = 20;
+  if (genEl) genEl.value = 28;
+  gradWork?.classList.add('on');
+  capstoneDesign?.classList.remove('on');
+  if (langType) langType.value = 'TOEIC';
+  if (langScore) langScore.value = '';
+  if (certList) certList.innerHTML = '';
+  if (internship) internship.value = '';
+  if (ncProgram) ncProgram.value = '';
+  if (volunteer) volunteer.value = '';
   updateGradPreview();
 }
 // 졸업요건 입력값 → 미리보기 업데이트
 function updateGradPreview() {
-  const total   = parseInt(document.getElementById('gr-total').value) || 130;
+  const totalInput = document.getElementById('gr-total');
+  if (!totalInput) return;
+
+  const total   = parseInt(totalInput.value) || 130;
   const current = 92;   // TODO: 실제 이수 학점으로 교체
   const pct     = Math.min(100, Math.round(current / total * 100));
   const rem     = Math.max(0, total - current);
@@ -566,6 +593,35 @@ function updateGradPreview() {
     badge.className   = 'badge ' + (pct >= 100 ? 'badge-green' : pct >= 70 ? 'badge-blue' : 'badge-amber');
     badge.textContent = pct >= 100 ? '졸업 가능' : '진행중';
   }
+
+  const summary = document.getElementById('grad-summary');
+  if (summary) {
+    const majorReq = document.getElementById('gr-major-req')?.value || 42;
+    const majorEl = document.getElementById('gr-major-el')?.value || 40;
+    const genReq = document.getElementById('gr-gen-req')?.value || 20;
+    const genEl = document.getElementById('gr-gen-el')?.value || 28;
+    const gradWork = document.getElementById('gr-grad-work')?.classList.contains('on') ? '필요' : '불필요';
+    const capstoneDesign = document.getElementById('gr-capstone-design')?.classList.contains('on') ? '필요' : '선택';
+    const languageType = document.getElementById('gr-lang-type')?.value || '없음';
+    const languageScore = document.getElementById('gr-lang-score')?.value?.trim() || '';
+    const certifications = Array.from(document.querySelectorAll('#gr-cert-list .gr-cert-chip'))
+      .map(el => String(el.childNodes[0]?.textContent || el.textContent || '').trim())
+      .filter(Boolean);
+    const internship = document.getElementById('gr-internship')?.value;
+    const ncProgram = document.getElementById('gr-nc-program')?.value;
+    const volunteer = document.getElementById('gr-volunteer')?.value?.trim();
+
+    summary.innerHTML = `
+      <div style="font-weight:700;color:var(--text);">달성률 ${pct}% · 졸업까지 ${rem}학점 남음</div>
+      <div>총 필요학점: ${total}학점</div>
+      <div>전공필수 ${majorReq}학점, 전공선택 ${majorEl}학점</div>
+      <div>교양필수 ${genReq}학점, 교양선택 ${genEl}학점</div>
+      <div>졸업작품: ${gradWork} / 캡스톤 디자인: ${capstoneDesign}</div>
+      <div>외국어 성적: ${languageType === '없음' ? '없음' : `${languageType}${languageScore ? ` ${languageScore}` : ''}`}</div>
+      <div>자격증: ${certifications.length ? certifications.join(', ') : '없음'}</div>
+      <div>인턴십: ${internship === '' ? '미지정' : internship === 'true' ? '필수' : '선택'} / 비교과: ${ncProgram === '' ? '미지정' : ncProgram === 'true' ? '필수' : '선택'} / 봉사시간: ${volunteer || '미지정'}</div>
+    `;
+  }
 }
 // 서버에서 졸업요건 가져와 입력 폼과 미리보기 업데이트
 function applyGraduationRequirements(profile) {
@@ -580,9 +636,13 @@ function applyGraduationRequirements(profile) {
   const genReq = document.getElementById('gr-gen-req');
   const genEl = document.getElementById('gr-gen-el');
   const gradWork = document.getElementById('gr-grad-work');
+  const capstoneDesign = document.getElementById('gr-capstone-design');
   const langType = document.getElementById('gr-lang-type');
   const langScore = document.getElementById('gr-lang-score');
   const certList = document.getElementById('gr-cert-list');
+  const internship = document.getElementById('gr-internship');
+  const ncProgram = document.getElementById('gr-nc-program');
+  const volunteer = document.getElementById('gr-volunteer');
 
   if (total) total.value = requirements.requiredTotalCredits ?? 130;
   if (majorReq) majorReq.value = requirements.requiredMajorCredits ?? 42;
@@ -592,6 +652,10 @@ function applyGraduationRequirements(profile) {
 
   if (gradWork) {
     gradWork.classList.toggle('on', Boolean(requirements.requiresGraduationWork));
+  }
+
+  if (capstoneDesign) {
+    capstoneDesign.classList.toggle('on', Boolean(requirements.requiredCapstonDesign));
   }
 
   if (langType || langScore) {
@@ -607,6 +671,18 @@ function applyGraduationRequirements(profile) {
       <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
         ${cert} <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
       </div>`).join('');
+  }
+
+  if (internship) {
+    internship.value = requirements.requiredInternship == null ? '' : String(requirements.requiredInternship);
+  }
+
+  if (ncProgram) {
+    ncProgram.value = requirements.requiredNCProgram == null ? '' : String(requirements.requiredNCProgram);
+  }
+
+  if (volunteer) {
+    volunteer.value = requirements.requiredVolunteer ?? '';
   }
 
   updateGradPreview();
