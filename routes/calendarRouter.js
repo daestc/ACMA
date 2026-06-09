@@ -3,6 +3,8 @@ const router = express.Router();
 const calendarController = require('../controllers/calendarController');
 
 // 로그인 여부 체크 미들웨어 (임시 — JWT/세션 연동 시 교체)
+const { requireLogin } = require('../middleware/auth');
+/*
 function requireLogin(req, res, next) {
   // TODO: JWT 검증 후 req.user 세팅
   // 현재는 더미 유저로 통과
@@ -15,7 +17,7 @@ function requireLogin(req, res, next) {
   };
   next();
 }
-
+*/
 // 캘린더 페이지
 router.get('/', requireLogin, (req, res) => {
   res.render('pages/calendar', {
