@@ -22,6 +22,9 @@ const authRouter = require('./routes/authRouter');
 const mystatusRouter = require('./routes/mystatusRouter');
 const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
+const alertRouter = require('./routes/alertRouter');
+
+
 
 //DB 연결
 connectDB();
@@ -53,14 +56,15 @@ app.use(passport.session());
 // app.get('/', (req, res)=>{
 //     res.render('index', {title : '메인페이지'});
 // });
+app.use('/', noticeRouter);
 app.use('/', landingRouter);
 app.use('/user', userRouter);
 app.use('/auth', authRouter);
 app.use('/calendar', calendarRouter);
 app.use('/career', careerRouter);
 app.use('/mystatus', mystatusRouter);
-app.use('/notice', noticeRouter);
 app.use('/study', studyRouter);
+app.use('/', alertRouter);
 
 //서버 시작
 app.listen(3000, ()=>{

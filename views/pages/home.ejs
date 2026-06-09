@@ -86,12 +86,40 @@
 
           <!-- 최근 공지 -->
           <div class="card">
-            <div class="card-header"><span class="card-title">📢 최근 공지사항</span><span class="card-action" onclick="switchPage('notice',null)">전체보기</span></div>
-            <div class="notice-item"><div class="notice-icon" style="background:var(--accent-bg);">🏆</div><div class="notice-body"><div class="notice-title">2026 동계 인턴십 채용 공고</div><div class="notice-meta"><span class="badge badge-blue">채용</span>2026.04.15</div></div><span class="badge badge-red">D-5</span></div>
-            <div class="notice-item"><div class="notice-icon" style="background:var(--amber-bg);">💰</div><div class="notice-body"><div class="notice-title">2026-1학기 성적우수 장학금 신청</div><div class="notice-meta"><span class="badge badge-amber">장학금</span>2026.04.10</div></div><span class="badge badge-amber">D-12</span></div>
-            <div class="notice-item"><div class="notice-icon" style="background:var(--green-bg);">📅</div><div class="notice-body"><div class="notice-title">2026-1 수강정정 기간 안내</div><div class="notice-meta"><span class="badge badge-green">학사</span>2026.04.08</div></div></div>
+            <div class="card-header">
+              <span class="card-title">📢 최근 공지사항</span>
+              <span class="card-action" onclick="switchPage('notice',null)">전체보기</span>
+            </div>
+            <!--공지사항-->
+            <div class="notice-body-container">
+              <% if (typeof topNotices !== 'undefined' && topNotices.length > 0) { %>
+                <% topNotices.forEach(notice => { %>
+                  <div class="notice-item" onclick="switchPage('notice', null)" style="cursor: pointer;">
+                    <div class="notice-icon" style="background: <%= notice.iconBgColor %>;">
+                      <%= notice.icon %>
+                    </div>
+                    <div class="notice-body">
+                      <div class="notice-title"><%= notice.title %></div>
+                      <div class="notice-meta">
+                        <span class="badge <%= notice.categoryBadgeClass %>"><%= notice.categoryName %></span>
+                        <%= notice.formattedDate %>
+                      </div>
+                    </div>
+                    <!--D-day-->
+                    <span class="badge <%= notice.dDayBadgeClass %>">
+                      <%= notice.dDayText %>
+                    </span>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <div class="notice-empty" style="padding: 20px; text-align: center; color:#888">
+                  최근 공지가 없습니다.
+                </div>
+              <% } %>
+            </div>
           </div>
-        </div>
+          <!--최근공지-->
+        </script>
 
         <!-- 습관 트래커 -->
         <div class="card">

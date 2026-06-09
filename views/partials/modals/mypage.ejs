@@ -118,6 +118,10 @@ function updateGlobalHeader(pageId){
   const actionsEl=document.getElementById('gh-actions');
   if(actionsEl) actionsEl.innerHTML=pageActions[pageId]||'';
 }
+function switchPage(page, params) {
+      console.log('이동 시도:', page);
+      window.location.href = '/' + page;
+}
 </script>
 <!-- ══ 비밀번호 변경 모달 ══ -->
 <div id="changepw-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.6);z-index:1100;align-items:center;justify-content:center;">
