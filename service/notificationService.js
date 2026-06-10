@@ -1,7 +1,7 @@
 // service/notificationService.js
 const Notice = require('../models/Notice');             // 공지사항 모델
-const CalendarEvent = require('../models/Calendar');    // 💡 일정 모델은 Calendar 파일에서 가져와야 합니다!
-const Notification = require('../models/Notification'); // 💡 구조분해할당{}을 빼고 단일 모델로 가져옵니다.
+const CalendarEvent = require('../models/Calendar');    
+const Notification = require('../models/Notification'); 
 
 /**
  * [1] 읽지 않은 알림 목록 가져오기 

@@ -14,6 +14,7 @@ const connectDB   = require('./config/database');
 const app = express();
 
 //라우터 import
+const noticeRouter = require('./routes/noticeRouter');
 const landingRouter = require('./routes/landingRouter');
 const userRouter = require('./routes/userRouter');
 const calendarRouter = require('./routes/calendarRouter');
@@ -21,7 +22,6 @@ const careerRouter = require('./routes/careerRouter');
 const academicRouter = require('./routes/academicRouter');
 const authRouter = require('./routes/authRouter');
 const mystatusRouter = require('./routes/mystatusRouter');
-const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
 const alertRouter = require('./routes/alertRouter');
 
@@ -57,7 +57,7 @@ app.use(passport.session());
 // app.get('/', (req, res)=>{
 //     res.render('index', {title : '메인페이지'});
 // });
-app.use('/', noticeRouter);
+app.use('/notice', noticeRouter);
 app.use('/', landingRouter);
 app.use('/user', userRouter);
 app.use('/auth', authRouter);

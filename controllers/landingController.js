@@ -1,6 +1,6 @@
 const userService = require('../services/userService');
 const noticeController = require("../controller/noticeController");
-
+const UserCertification = require('../models/Certifications_jobs');
 
 //홈페이지에 보여줄 공지사항 데이터 긁어오기
 async function fetchAllData(){
