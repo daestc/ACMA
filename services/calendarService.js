@@ -308,9 +308,9 @@ async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId 
   }
 };
 
-//////////날씨 api
+// ======================날씨 api(단기예보 이용)==========================
 async function getShortWeather() {
-  //위도,경도도 .env파일에서 미리 설정함.
+  //위도,경도도 .env파일에서 미리 설정함.(서울특별시)
   const serviceKey = process.env.KMA_SERVICE_KEY;
   const nx = process.env.KMA_NX || 60;
   const ny = process.env.KMA_NY || 127;
@@ -348,27 +348,60 @@ async function getShortWeather() {
 
   const dailyMap = {};
 
+  const grouped = {};
+
+  //해당 날짜의 12시를 기준으로 날씨를 가져옴.
+  //오늘 날짜는 불러오려는 날씨의 시간이 지났으면 다음 시간으로 바꿔서 출력
   items.forEach(item => {
     const date = item.fcstDate;
     const time = item.fcstTime;
     const category = item.category;
 
-    // 하루 대표 시간은 12시를 우선 사용
-    if (time !== '1200') return;
+  if (!['SKY', 'PTY', 'TMP'].includes(category)) return;
 
-    if (!dailyMap[date]) {
-      dailyMap[date] = {
-        date: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`,
-        sky: null,
-        pty: null,
-        temp: null,
-      };
-    }
+  if (!grouped[date]) {
+    grouped[date] = {};
+  }
 
-    if (category === 'SKY') dailyMap[date].sky = item.fcstValue;
-    if (category === 'PTY') dailyMap[date].pty = item.fcstValue;
-    if (category === 'TMP') dailyMap[date].temp = item.fcstValue;
+  if (!grouped[date][time]) {
+    grouped[date][time] = {
+      date: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`,
+      time,
+      sky: null,
+      pty: null,
+      temp: null,
+    };
+  }
+
+  if (category === 'SKY') grouped[date][time].sky = item.fcstValue;
+  if (category === 'PTY') grouped[date][time].pty = item.fcstValue;
+  if (category === 'TMP') grouped[date][time].temp = item.fcstValue;
   });
+
+  const preferredTimes = [
+    '1200',
+    '1500',
+    '0900',
+    '1800',
+    '0600',
+    '2100',
+    '0000',
+    '0300'
+  ];
+
+  const dailyWeather = Object.values(grouped).map(times => {
+    const selectedTime =
+    preferredTimes.find(time => times[time]) ||
+    Object.keys(times).sort()[0];
+
+    return times[selectedTime];
+  });
+
+  return dailyWeather.map(day => ({
+    ...day,
+    icon: getWeatherIcon(day.sky, day.pty),
+    description: getWeatherDescription(day.sky, day.pty),
+  }));
 
   return Object.values(dailyMap).map(day => ({
     ...day,
