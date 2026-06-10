@@ -121,14 +121,14 @@ const getBannerData = async (userId) => {
                 }
             });
         } catch (noticeError) {
-            console.log("⚠️ Notice 조회 일시 건너뜀:", noticeError.message);
+            console.log(" Notice 조회 일시 건너뜀:", noticeError.message);
         }
 
         // 모든 가공 데이터 결합 후 리턴
         return [...formattedTodayEvents, ...formattedNotices];
 
     } catch (globalError) {
-        console.error("❌ 서비스 최상위 크래시 예방:", globalError.message);
+        console.error(" 서비스 최상위 크래시 예방:", globalError.message);
         return [];
     }
 };

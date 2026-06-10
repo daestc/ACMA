@@ -19,7 +19,7 @@ const getAndProcessQnetData = async () => {
         const url = 'http://openapi.q-net.or.kr/api/service/rest/InquiryTestInformationNTQSVC/getJMList';
         
         const response = await axios.get(url, {
-            params: { serviceKey, jmCd: '1320', _type: 'json' },
+            params: { serviceKey, jmCd: targetJmCd, _type: 'json' },
             timeout: 30000 
         });
 
@@ -39,6 +39,7 @@ const getAndProcessQnetData = async () => {
             const round = safeStr(item.implplannm); // 예: "2026년 정기 기사 3회"
             const name = safeStr(item.jmfldnm);    // 예: "정보처리기사"
             
+            const currentJmcd = safeStr(item.jmcd) || targetJmCd;
             
             const schedules = [
                 { type: "필기 원서접수", start: toDate(item.docregstartdt), end: toDate(item.docregenddt) },
@@ -54,6 +55,7 @@ const getAndProcessQnetData = async () => {
                     allNotices.push({
                         category: 'certification',
                         source: 'q-net',
+                        jmcd: currentJmcd,
                         //  "2026년 정기 기사 3회 정보처리기사 실기 시험"
                         title: `${round} ${name} ${sched.type}`, 
                         organization: '한국산업인력공단',
