@@ -1,5 +1,5 @@
 const userService = require('../services/userService');
-const Notice = require("../models/Notice");
+const noticeController = require("../controller/noticeController");
 
 
 //홈페이지에 보여줄 공지사항 데이터 긁어오기
@@ -17,7 +17,7 @@ async function fetchAllData(){
 const getHomePage = async (req, res) => {
   try {
     //공지사항 데이터 조회
-    const showNotice = await fetchAllData();
+    const showNotice = await noticeController.fetchHomeNotices();
 
     const user = req.user;
 
@@ -40,5 +40,6 @@ const getHomePage = async (req, res) => {
     console.error(error);
   }
 };
+
 
 module.exports = {getHomePage};
