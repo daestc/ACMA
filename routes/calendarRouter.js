@@ -2,19 +2,8 @@ const express = require('express');
 const router = express.Router();
 const calendarController = require('../controllers/calendarController');
 
-// 로그인 여부 체크 미들웨어 (임시 — JWT/세션 연동 시 교체)
-function requireLogin(req, res, next) {
-  // TODO: JWT 검증 후 req.user 세팅
-  // 현재는 더미 유저로 통과
-  req.user = {
-    id:   '000000000000000000000001',         //id 추가
-    name: '김민준',
-    major: '컴퓨터공학과',
-    grade: 3,
-    email: 'minkim@korea.ac.kr',
-  };
-  next();
-}
+// 로그인 여부 체크 미들웨어
+const { requireLogin } = require('../middleware/auth');
 
 // 캘린더 페이지
 router.get('/', requireLogin, (req, res) => {
@@ -37,5 +26,8 @@ router.get('/timetables', requireLogin, calendarController.getTimetableList); //
 router.post('/timetables',requireLogin, calendarController.createTimetable); //시간표 생성
 router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
 router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
+
+//날씨 api(일정페이지에 사용)
+router.get('/weather', requireLogin, calendarController.getWeather);
 
 module.exports = router;
