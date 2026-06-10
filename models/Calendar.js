@@ -8,15 +8,11 @@ const { Schema } = mongoose;
 const calendarEventSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-
     title: { type: String, required: true, trim: true },
     description: { type: String, default: null },
-
     startDate: { type: Date, required: true},
-    endDate: { type: Date, default: null }, //추천: default: null 제거 후 required: true 추가
-                                            //종료일이 없는경우 저장시, 시작일과 같은 값을 가지게 함 단 내부적으로 처리 필요
+    endDate: { type: Date, default: null }, //추천: default: null 제거 후 required: true 추가                                 //종료일이 없는경우 저장시, 시작일과 같은 값을 가지게 함 단 내부적으로 처리 필요
     isAllDay: { type: Boolean, default: true },
-
     // 카테고리: 강의 | 시험 | 과제 | 자격증 | 공지 | 기타
     category: {
       type: String,

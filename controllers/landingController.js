@@ -2,15 +2,6 @@ const userService = require('../services/userService');
 const Notice = require("../models/Notice");
 
 
-// #더미. 나중에 session에서 가져옴
-const user = {
-  name: '가나다',
-  email: 'abc@test.com',
-  major: '컴공',
-  grade: 4,
-
-};
-
 //홈페이지에 보여줄 공지사항 데이터 긁어오기
 async function fetchAllData(){
   try {
@@ -28,13 +19,11 @@ const getHomePage = async (req, res) => {
     //공지사항 데이터 조회
     const showNotice = await fetchAllData();
 
-    // #후순위 user.email -> userId
-  
-    // todoList 가져오기
+    const user = req.user;
+
     const todoList = await userService.getTodaytodoList(user.email);
-    // habitList, completedCount 가져오기
     const {habitList, completedCount} = await userService.getHabitList(user.email);
-  
+
     res.render('pages/home', {
       user,
       todoList,
@@ -45,7 +34,7 @@ const getHomePage = async (req, res) => {
       urgentNotice: showNotice.filter(n => n.isUrgent === true),
       pageTitle: '홈'
     });
-    
+
   } catch (error) {
     console.log('홈페이지 로딩 실패');
     console.error(error);
