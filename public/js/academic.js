@@ -116,8 +116,6 @@ function buildAcademicTrendSvg(records, targetGpa) { // GPA 추이 그래프 SVG
       <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartHeight}" stroke="var(--border)" stroke-width="1"/>
       <line x1="${padding.left}" y1="${padding.top + chartHeight}" x2="${padding.left + chartWidth}" y2="${padding.top + chartHeight}" stroke="var(--border)" stroke-width="1"/>
       ${gridLines}
-      <line x1="${padding.left}" y1="${targetY}" x2="${padding.left + chartWidth}" y2="${targetY}" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="6,4"/>
-      <text x="${padding.left + chartWidth}" y="${targetY - 6}" text-anchor="end" fill="#6366f1" font-size="10" font-family="DM Sans" font-weight="700">목표 ${targetGpa.toFixed(1)}</text>
       <polygon points="${areaPoints}" fill="var(--accent)" opacity="0.07"/>
       ${validRecords.length > 1 ? `<polyline points="${points.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
       ${pointsMarkup}

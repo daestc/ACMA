@@ -34,88 +34,57 @@
 
         <!-- ① 학업 현황 요약 통계 카드 (홈에서 이동) -->
         <div class="grid-4" style="margin-bottom:16px;">
-          <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-label">현재 평점</div><div class="stat-value">3.8</div><div class="stat-sub">/ 4.5 만점</div></div>
-          <div class="stat-card green"><div class="stat-icon">📚</div><div class="stat-label">이수 학점</div><div class="stat-value">92</div><div class="stat-sub">/ 130 학점</div></div>
-          <div class="stat-card amber"><div class="stat-icon">📝</div><div class="stat-label">이번 주 공부</div><div class="stat-value">14h</div><div class="stat-sub">목표: 20h</div></div>
-          <div class="stat-card purple"><div class="stat-icon">🏅</div><div class="stat-label">취득 자격증</div><div class="stat-value">3</div><div class="stat-sub">목표: 5개</div></div>
-        </div>
-
-        <div class="grid-2" style="margin-bottom:16px;">
-          <!-- 레이더 차트 (NCS API 기반) -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">직무 역량 레이더</span>
-              <span class="badge badge-sky">NCS 기반</span>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:center;">
-              <svg width="260" height="240" viewBox="0 0 260 240">
-                <defs><radialGradient id="rg" cx="50%" cy="50%"><stop offset="0%" stop-color="#3d5af1" stop-opacity=".2"/><stop offset="100%" stop-color="#3d5af1" stop-opacity=".03"/></radialGradient></defs>
-                <polygon points="130,20 210,72 210,162 130,214 50,162 50,72" fill="none" stroke="#e3e6f0" stroke-width="1.5"/>
-                <polygon points="130,45 196,86 196,149 130,191 64,149 64,86" fill="none" stroke="#e3e6f0" stroke-width="1"/>
-                <polygon points="130,70 182,100 182,136 130,168 78,136 78,100" fill="none" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="130" y2="20" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="210" y2="72" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="210" y2="162" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="130" y2="214" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="50" y2="162" stroke="#e3e6f0" stroke-width="1"/>
-                <line x1="130" y1="117" x2="50" y2="72" stroke="#e3e6f0" stroke-width="1"/>
-                <polygon points="130,37 197,84 197,158 130,186 74,152 60,86" fill="url(#rg)" stroke="#3d5af1" stroke-width="2"/>
-                <circle cx="130" cy="37" r="4" fill="#3d5af1"/><circle cx="197" cy="84" r="4" fill="#3d5af1"/>
-                <circle cx="197" cy="158" r="4" fill="#3d5af1"/><circle cx="130" cy="186" r="4" fill="#3d5af1"/>
-                <circle cx="74" cy="152" r="4" fill="#3d5af1"/><circle cx="60" cy="86" r="4" fill="#3d5af1"/>
-                <text x="130" y="12" text-anchor="middle" fill="#5a6080" font-size="11" font-family="Noto Sans KR">전공지식</text>
-                <text x="224" y="72" text-anchor="start" fill="#5a6080" font-size="11" font-family="Noto Sans KR">문제해결</text>
-                <text x="224" y="168" text-anchor="start" fill="#5a6080" font-size="11" font-family="Noto Sans KR">커뮤니케이션</text>
-                <text x="130" y="230" text-anchor="middle" fill="#5a6080" font-size="11" font-family="Noto Sans KR">리더십</text>
-                <text x="36" y="168" text-anchor="end" fill="#5a6080" font-size="11" font-family="Noto Sans KR">창의성</text>
-                <text x="36" y="72" text-anchor="end" fill="#5a6080" font-size="11" font-family="Noto Sans KR">협업</text>
-              </svg>
-            </div>
-          </div>
-
-          <!-- 졸업 요건 -->
-          <div class="card">
-            <div class="card-header"><span class="card-title">🎓 졸업 요건</span><span class="badge badge-amber">70%</span></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span class="progress-value">32/42학점</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:76%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span class="progress-value">28/40학점</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:70%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span class="progress-value">18/20학점</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:90%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span class="progress-value">14/28학점</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:50%"></div></div></div>
-            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
-              <span class="badge badge-green">✓ 졸업작품</span>
-              <span class="badge badge-red">✗ TOEIC</span>
-              <span class="badge badge-amber">~ 정보처리기사</span>
-            </div>
-          </div>
+          <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-label">현재 평점</div><div class="stat-value" id="credit-avg">3.8</div><div class="stat-sub">/ 4.5 만점</div></div>
+          <div class="stat-card green"><div class="stat-icon">📚</div><div class="stat-label">이수 학점</div><div class="stat-value" id="credit-earned">92</div><div class="stat-sub">/ 130 학점</div></div>
+          <div class="stat-card amber"><div class="stat-icon">📝</div><div class="stat-label">이번 주 공부</div><div class="stat-value" id="study-time">14h</div><div class="stat-sub">목표: 20h</div></div>
+          <div class="stat-card purple"><div class="stat-icon">🏅</div><div class="stat-label">취득 자격증</div><div class="stat-value" id="certificates">3</div><div class="stat-sub">목표: 5개</div></div>
         </div>
 
         <!-- ② 이수 현황 (학사관리에서 이동) -->
-        <div class="grid-2" style="margin-bottom:16px;">
+        <!-- 영역별 이수 현황 + 학기별 성적 이력 -->
+          <div class="grid-2">
+            <div class="card">
+                <div class="card-title" style="margin-bottom:16px;"> 영역별 이수 현황</div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span id="pv-major-req" class="progress-value">-</span></div><div class="progress-track"><div id="pf-major-req" class="progress-fill fill-blue" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span id="pv-major-el" class="progress-value">-</span></div><div class="progress-track"><div id="pf-major-el" class="progress-fill fill-purple" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span id="pv-gen-req" class="progress-value">-</span></div><div class="progress-track"><div id="pf-gen-req" class="progress-fill fill-green" style="width:0%"></div></div></div>
+                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span id="pv-gen-el" class="progress-value">-</span></div><div class="progress-track"><div id="pf-gen-el" class="progress-fill fill-amber" style="width:0%"></div></div></div>
+                <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">총 이수 학점</span><span id="pv-total" class="progress-value">-</span></div><div class="progress-track" style="height:10px;"><div id="pf-total" class="progress-fill fill-blue" style="width:0%"></div></div></div>
+            </div>
           <div class="card">
-            <div class="card-header"><span class="card-title">📂 영역별 이수 현황</span><span style="font-size:12px;color:var(--text2);">총 92 / 130학점</span></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공필수</span><span class="progress-value">32/42</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:76%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">전공선택</span><span class="progress-value">28/40</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:70%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양필수</span><span class="progress-value">18/20</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:90%"></div></div></div>
-            <div class="progress-wrap"><div class="progress-header"><span class="progress-label">교양선택</span><span class="progress-value">14/28</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:50%"></div></div></div>
-            <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">총 이수 학점</span><span class="progress-value">92/130</span></div><div class="progress-track" style="height:10px;"><div class="progress-fill fill-blue" style="width:71%"></div></div></div>
-          </div>
-          <div class="card">
-            <div class="card-title" style="margin-bottom:14px;">📅 학기별 성적 이력</div>
-            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-              <thead><tr style="border-bottom:2px solid var(--border);">
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">학기</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">이수</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">취득</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">GPA</th>
-              </tr></thead>
-              <tbody>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 10px;">2024-1</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;"><strong style="color:var(--green);">3.92</strong></td></tr>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 10px;">2024-2</td><td style="padding:9px 10px;">21</td><td style="padding:9px 10px;">21</td><td style="padding:9px 10px;"><strong style="color:var(--accent);">3.75</strong></td></tr>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 10px;">2025-1</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;"><strong style="color:var(--green);">4.10</strong></td></tr>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 10px;">2025-2</td><td style="padding:9px 10px;">21</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;"><strong style="color:var(--amber);">3.55</strong></td></tr>
-                <tr><td style="padding:9px 10px;">2026-1</td><td style="padding:9px 10px;">18</td><td style="padding:9px 10px;">-</td><td style="padding:9px 10px;"><span class="badge badge-blue">진행중</span></td></tr>
-              </tbody>
-            </table></div>
-          </div>
+              <div class="card-title" style="margin-bottom:14px;"> 학기별 성적 이력</div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--border);">
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">학기</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">이수학점</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">취득학점</th>
+                      <th style="font-size:11px;font-weight:700;color:var(--text2);padding:8px 10px;text-align:left;">GPA</th>
+                    </tr>
+                  </thead>
+                  <tbody id="semester-gpa-history-body">
+                    <tr>
+                      <td colspan="4" style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">학기별 데이터를 불러오는 중...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:20px;">
+                <div style="text-align:center;">
+                  <div id="semester-gpa-average" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--accent);">-</div>
+                  <div style="font-size:11px;color:var(--text2);">누적 평점</div>
+                </div>
+                <div style="text-align:center;">
+                  <div id="semester-gpa-best" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--green);">-</div>
+                  <div style="font-size:11px;color:var(--text2);">최고 학기</div>
+                </div>
+                <div style="text-align:center;">
+                  <div id="semester-gpa-count" style="font-size:18px;font-weight:800;font-family:'DM Sans';color:var(--purple);">-</div>
+                  <div style="font-size:11px;color:var(--text2);">총 취득 학점</div>
+                </div>
+              </div>
+            </div>
         </div>
 
         <!-- ③ 직무 적합도 그래프 -->
