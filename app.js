@@ -15,6 +15,7 @@ const app = express();
 
 //라우터 import
 const noticeRouter = require('./routes/noticeRouter');
+const notificationRouter = require('./routes/notificationRouter');
 const landingRouter = require('./routes/landingRouter');
 const userRouter = require('./routes/userRouter');
 const calendarRouter = require('./routes/calendarRouter');
@@ -58,6 +59,7 @@ app.use(passport.session());
 //     res.render('index', {title : '메인페이지'});
 // });
 app.use('/notice', noticeRouter);
+app.use('/notification', notificationRouter);
 app.use('/', landingRouter);
 app.use('/user', userRouter);
 app.use('/auth', authRouter);

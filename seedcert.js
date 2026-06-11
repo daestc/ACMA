@@ -21,7 +21,6 @@ const getAndProcessQnetData = async () => {
         const targetModelName = modelNames.find(name => name.toLowerCase().includes('certi')) || 'Certification';
         const CertModel = mongoose.model(targetModelName);
 
-        // 🎯 자격증 마스터 테이블(613개)에서 jmcd를 다 긁어옵니다.
         const certsInDb = await CertModel.find({}, 'jmcd').lean();
         const targetJmCds = certsInDb.map(c => c.jmcd).filter(Boolean);
 
@@ -39,7 +38,7 @@ const getAndProcessQnetData = async () => {
         // 종목 코드를 순회하며 Q-Net API를 호출
         for (const jmCd of targetJmCds) {
             try {
-                console.log(`🔗 Q-Net API 요청 중... [종목코드: ${jmCd}]`);
+                console.log(` Q-Net API 요청 [종목코드: ${jmCd}]`);
                 
                 const response = await axios.get(url, {
                     params: { serviceKey, jmCd: jmCd, _type: 'json' },
@@ -60,7 +59,7 @@ const getAndProcessQnetData = async () => {
                 itemList.forEach(item => {
                     const round = safeStr(item.implplannm); 
                     const name = safeStr(item.jmfldnm);    
-                    const currentJmcd = safeStr(item.jmcd) || jmCd;
+                    const currentJmcd = safeStr(item.jmcd).trim() || safeStr(jmCd).trim();
                     
                     const schedules = [
                         { type: "필기 원서접수", start: toDate(item.docregstartdt), end: toDate(item.docregenddt) },
@@ -107,8 +106,8 @@ const getAndProcessQnetData = async () => {
 const seedData = async () => {
     await connectDB();
     
-    // 전수 조사용 초기화 
-    await Notice.deleteMany({ category: 'certification', source: 'q-net' });
+    console.log(" 기존 Notice  있던 모든 데이터를 완전히 포맷");
+    await Notice.deleteMany({}); 
 
     const processedData = await getAndProcessQnetData();
 
@@ -122,13 +121,12 @@ const seedData = async () => {
             );
             successCount++;
         }
-        console.log(` 총 ${successCount}개의 시험 일정이 저장되었습니다.`);
+        console.log(` 총 ${successCount}개의 자격증 일정 생성`);
     } else {
-        console.log(' 시드할 자격증 공고 데이터가 없습니다.');
+        console.log(' 시드할 데이터가 없습니다.');
     }
 
     mongoose.connection.close();
-    console.log('DB 연결 종료');
 };
 
 seedData();
