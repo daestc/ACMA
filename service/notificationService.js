@@ -1,11 +1,9 @@
 // service/notificationService.js
-const Notice = require('../models/Notice');             // 공지사항 모델
+const Notice = require('../models/Notice');            
 const CalendarEvent = require('../models/Calendar');    
 const Notification = require('../models/Notification'); 
 
-/**
- * [1] 읽지 않은 알림 목록 가져오기 
- */
+//읽지 않은 알림 목록 가져오기
 const getNotifications = async (userId) => {
     try {
         return await Notification.find({ userId: userId }).sort({ createdAt: -1 }); 
@@ -15,9 +13,7 @@ const getNotifications = async (userId) => {
     }
 };
 
-/**
- * [2] 알림 삭제 
- */
+//알림 삭제
 const deleteNotifications = async (userId) => {
     try {
         await Notification.deleteMany({ userId: userId });
@@ -26,9 +22,8 @@ const deleteNotifications = async (userId) => {
     }
 };
 
-/**
- * [3] 실시간 알림창 및 배너 데이터 가공/조립 함수
- */
+
+//알림창 배너 가공
 const getBannerData = async (userId) => {
     try {
         const now = new Date();

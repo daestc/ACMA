@@ -42,7 +42,7 @@ const getAndProcessQnetData = async () => {
                 
                 const response = await axios.get(url, {
                     params: { serviceKey, jmCd: jmCd, _type: 'json' },
-                    timeout: 10000 //  10초 설정
+                    timeout: 5000 //  2초 설정
                 });
 
                 const root = response.data?.response?.body?.items?.item;

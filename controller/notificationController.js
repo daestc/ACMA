@@ -45,7 +45,6 @@ const deleteNotifications = async (req, res, next) => {
 };
 
 module.exports = {
-    injectMockUser,
     getUrgentNoticesApi,
     getNotifications,
     deleteNotifications
