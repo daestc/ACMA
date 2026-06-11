@@ -28,14 +28,14 @@
           <!-- 날씨 API -->
           <div class="weather-widget">
             <div class="weather-left">
-              <div class="temp">18°C</div>
-              <div class="desc">맑음 · 한국대학교</div>
-              <div class="location">📍 서울 관악구</div>
-              <div class="weather-detail" style="margin-top:8px;">습도 42% · 바람 2m/s · 자외선 낮음</div>
+              <div class="temp" id="weather-temp">--°C</div>
+              <div class="desc" id="weather-desc">날씨 불러오는 중...</div>
+              <div class="location" id="weather-location">📍 위치 확인 중...</div>
+              <div class="weather-detail" id="weather-base" style="margin-top:8px;"></div>
             </div>
             <div class="weather-right">
-              <div class="weather-icon">☀️</div>
-              <div class="weather-detail" style="text-align:center;">오늘 최고 21°</div>
+              <div class="weather-icon" id="weather-icon">🌤️</div>
+              <div class="weather-detail" id="weather-tomorrow" style="text-align:center;"></div>
             </div>
           </div>
           <!-- 명언 API -->
@@ -165,10 +165,9 @@
   <%- include('../partials/modals/habit_edit') %>
 
 	<script src="/js/common.js"> </script>
+  <script src="/js/location.js"> </script>
+  <script src="/js/weather.js"> </script>
   <script src="/js/home.js"> </script>
-	<script>
-
-  </script>
 
 </body>
 

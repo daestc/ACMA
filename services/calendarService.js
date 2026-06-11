@@ -309,11 +309,18 @@ async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId 
 };
 
 // ======================날씨 api(단기예보 이용)==========================
-async function getShortWeather() {
-  //위도,경도도 .env파일에서 미리 설정함.(서울특별시)
+async function getShortWeather(lat, lon) {
   const serviceKey = process.env.KMA_SERVICE_KEY;
-  const nx = process.env.KMA_NX || 60;
-  const ny = process.env.KMA_NY || 127;
+
+  //위경도가 넘어오면 기상청 격자 좌표로 변환, 없으면 .env 기본 좌표(서울특별시) 사용
+  let nx = process.env.KMA_NX || 60;
+  let ny = process.env.KMA_NY || 127;
+
+  if (lat && lon) {
+    const grid = convertToGrid(Number(lat), Number(lon));
+    nx = grid.nx;
+    ny = grid.ny;
+  }
 
   if (!serviceKey) {
     throw new Error('KMA_SERVICE_KEY가 설정되지 않았습니다.');
@@ -408,6 +415,47 @@ async function getShortWeather() {
     icon: getWeatherIcon(day.sky, day.pty),
     description: getWeatherDescription(day.sky, day.pty),
   }));
+}
+
+// 위경도 → 기상청 격자 좌표(nx, ny) 변환
+// 기상청 제공 공식(Lambert Conformal Conic 투영, dfs_xy_conv) 그대로 사용
+function convertToGrid(lat, lon) {
+  const RE = 6371.00877;  // 지구 반경(km)
+  const GRID = 5.0;       // 격자 간격(km)
+  const SLAT1 = 30.0;     // 투영 위도1(degree)
+  const SLAT2 = 60.0;     // 투영 위도2(degree)
+  const OLON = 126.0;     // 기준점 경도(degree)
+  const OLAT = 38.0;      // 기준점 위도(degree)
+  const XO = 43;          // 기준점 X좌표(GRID)
+  const YO = 136;         // 기준점 Y좌표(GRID)
+
+  const DEGRAD = Math.PI / 180.0;
+
+  const re = RE / GRID;
+  const slat1 = SLAT1 * DEGRAD;
+  const slat2 = SLAT2 * DEGRAD;
+  const olon = OLON * DEGRAD;
+  const olat = OLAT * DEGRAD;
+
+  let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+  let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+  let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+  ro = re * sf / Math.pow(ro, sn);
+
+  let ra = Math.tan(Math.PI * 0.25 + lat * DEGRAD * 0.5);
+  ra = re * sf / Math.pow(ra, sn);
+
+  let theta = lon * DEGRAD - olon;
+  if (theta > Math.PI) theta -= 2.0 * Math.PI;
+  if (theta < -Math.PI) theta += 2.0 * Math.PI;
+  theta *= sn;
+
+  const nx = Math.floor(ra * Math.sin(theta) + XO + 0.5);
+  const ny = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
+
+  return { nx, ny };
 }
 
 function getKmaBaseDate(date) {

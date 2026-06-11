@@ -65,16 +65,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadCalendarData() {
-  const [eventRes, timetableRes,weatherRes] = await Promise.all([
+  const [eventRes, timetableRes, weatherList] = await Promise.all([
     fetch('/calendar/events'),
     fetch('/calendar/timetables'),
-    fetch('/calendar/weather')
+    fetchWeatherList() // weather.js 공용 함수
   ]);
 
   events = await eventRes.json();
   window.timetables = await timetableRes.json();
-
-  const weatherList = await weatherRes.json();
 
   weatherMap = {};
   weatherList.forEach(weather => {
