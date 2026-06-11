@@ -10,6 +10,8 @@ const MongoStore = require('connect-mongo');
 const passport    = require('./config/passport');
 const connectDB   = require('./config/database');
 
+const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
+
 // app 생성
 const app = express();
 
@@ -67,6 +69,11 @@ app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
 app.use('/', alertRouter);
+
+// 오류 처리 미들웨어
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 
 //서버 시작
 app.listen(3000, ()=>{
