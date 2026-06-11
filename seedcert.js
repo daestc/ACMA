@@ -2,6 +2,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const axios = require('axios');
 const Notice = require('./models/Notice'); 
+const CertificationsJobsFile = require('./models/Certifications_jobs'); 
+const User = require('./models/User'); 
 
 const connectDB = async () => {
     try {
@@ -15,87 +17,118 @@ const connectDB = async () => {
 
 const getAndProcessQnetData = async () => {
     try {
+        const modelNames = mongoose.modelNames();
+        const targetModelName = modelNames.find(name => name.toLowerCase().includes('certi')) || 'Certification';
+        const CertModel = mongoose.model(targetModelName);
+
+        // 🎯 자격증 마스터 테이블(613개)에서 jmcd를 다 긁어옵니다.
+        const certsInDb = await CertModel.find({}, 'jmcd').lean();
+        const targetJmCds = certsInDb.map(c => c.jmcd).filter(Boolean);
+
+        if (targetJmCds.length === 0) {
+            console.log(' 현재 DB에 등록된 자격증 종목 코드가 없습니다.');
+            return [];
+        } 
+
+        console.log(` 마스터 자격증 총 ${targetJmCds.length}개의  일정을 크롤링합니다. `);
+
         const serviceKey = process.env.API_Key;
         const url = 'http://openapi.q-net.or.kr/api/service/rest/InquiryTestInformationNTQSVC/getJMList';
-        
-        const response = await axios.get(url, {
-            params: { serviceKey, jmCd: targetJmCd, _type: 'json' },
-            timeout: 30000 
-        });
-
-        const root = response.data?.response?.body?.items?.item;
-        if (!root) return [];
-        
-        const safeStr = (val) => val ? String(val) : "";
-        const toDate = (dateVal) => {
-            const s = safeStr(dateVal);
-            return (s.length === 8) ? new Date(s.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')) : null;
-        };
-       
-        const itemList = Array.isArray(root) ? root : [root];
         const allNotices = [];
 
-        itemList.forEach(item => {
-            const round = safeStr(item.implplannm); // 예: "2026년 정기 기사 3회"
-            const name = safeStr(item.jmfldnm);    // 예: "정보처리기사"
-            
-            const currentJmcd = safeStr(item.jmcd) || targetJmCd;
-            
-            const schedules = [
-                { type: "필기 원서접수", start: toDate(item.docregstartdt), end: toDate(item.docregenddt) },
-                { type: "필기 시험", start: toDate(item.docexamstartdt), end: toDate(item.docexamstartdt) }, // 시작/종료 동일 처리
-                { type: "필기 결과발표", start: toDate(item.docpassdt), end: toDate(item.docpassdt) },
-                { type: "실기 원서접수", start: toDate(item.pracregstartdt), end: toDate(item.pracregenddt) },
-                { type: "실기 시험", start: toDate(item.pracexamstartdt), end: toDate(item.pracexamenddt) },
-                { type: "실기 결과발표", start: toDate(item.pracpassdt), end: toDate(item.pracpassdt) }
-            ];
+        // 종목 코드를 순회하며 Q-Net API를 호출
+        for (const jmCd of targetJmCds) {
+            try {
+                console.log(`🔗 Q-Net API 요청 중... [종목코드: ${jmCd}]`);
+                
+                const response = await axios.get(url, {
+                    params: { serviceKey, jmCd: jmCd, _type: 'json' },
+                    timeout: 10000 //  10초 설정
+                });
 
-            schedules.forEach(sched => {
-                if (sched.start) { // 날짜 데이터가 있는 경우만 생성
-                    allNotices.push({
-                        category: 'certification',
-                        source: 'q-net',
-                        jmcd: currentJmcd,
-                        //  "2026년 정기 기사 3회 정보처리기사 실기 시험"
-                        title: `${round} ${name} ${sched.type}`, 
-                        organization: '한국산업인력공단',
-                        startDate: sched.start,
-                        endDate: sched.end || sched.start,
-                        externalId: `qnet-${name}-${round}-${sched.type}`, //  중복 방지를 위해 type까지 포함
-                        isPublished: true,
-                        details: {
-                            round: round,
-                            examType: sched.type
+                const root = response.data?.response?.body?.items?.item;
+                if (!root) continue; 
+
+                const safeStr = (val) => val ? String(val) : "";
+                const toDate = (dateVal) => {
+                    const s = safeStr(dateVal);
+                    return (s.length === 8) ? new Date(s.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')) : null;
+                };
+               
+                const itemList = Array.isArray(root) ? root : [root];
+
+                itemList.forEach(item => {
+                    const round = safeStr(item.implplannm); 
+                    const name = safeStr(item.jmfldnm);    
+                    const currentJmcd = safeStr(item.jmcd) || jmCd;
+                    
+                    const schedules = [
+                        { type: "필기 원서접수", start: toDate(item.docregstartdt), end: toDate(item.docregenddt) },
+                        { type: "필기 시험", start: toDate(item.docexamstartdt), end: toDate(item.docexamstartdt) }, 
+                        { type: "필기 결과발표", start: toDate(item.docpassdt), end: toDate(item.docpassdt) },
+                        { type: "실기 원서접수", start: toDate(item.pracregstartdt), end: toDate(item.pracregenddt) },
+                        { type: "실기 시험", start: toDate(item.pracexamstartdt), end: toDate(item.pracexamenddt) },
+                        { type: "실기 결과발표", start: toDate(item.pracpassdt), end: toDate(item.pracpassdt) }
+                    ];
+
+                    schedules.forEach(sched => {
+                        if (sched.start) { 
+                            allNotices.push({
+                                category: 'certification',
+                                source: 'q-net',
+                                jmcd: currentJmcd, 
+                                title: `${round} ${name} ${sched.type}`, 
+                                organization: '한국산업인력공단',
+                                startDate: sched.start,
+                                endDate: sched.end || sched.start,
+                                externalId: `qnet-${name}-${round}-${sched.type}`, 
+                                isPublished: true,
+                                details: {
+                                    round: round,
+                                    examType: sched.type
+                                }
+                            });
                         }
                     });
-                }
-            });
-        });
+                });
+
+            } catch (apiError) {
+                console.error(` [종목코드: ${jmCd}] API 호출 실패 :`, apiError.message);
+            }
+        }
 
         return allNotices;
     } catch (error) {
-        console.error("❌ API 호출 에러:", error.message);
+        console.error("  API  에러:", error.message);
         return [];
     }
 };
 
 const seedData = async () => {
     await connectDB();
-    await Notice.deleteMany({});
+    
+    // 전수 조사용 초기화 
+    await Notice.deleteMany({ category: 'certification', source: 'q-net' });
+
     const processedData = await getAndProcessQnetData();
 
     if (processedData.length > 0) {
+        let successCount = 0;
         for (const notice of processedData) {
             await Notice.findOneAndUpdate(
                 { externalId: notice.externalId }, 
                 notice,
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' } 
             );
+            successCount++;
         }
-        console.log(`${processedData.length}개의 공고가 성공적으로 시드되었습니다.`);
+        console.log(` 총 ${successCount}개의 시험 일정이 저장되었습니다.`);
+    } else {
+        console.log(' 시드할 자격증 공고 데이터가 없습니다.');
     }
 
     mongoose.connection.close();
+    console.log('DB 연결 종료');
 };
 
 seedData();
