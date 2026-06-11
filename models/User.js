@@ -49,11 +49,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  // 학번
+  studentId: { type: String, default: null, trim: true },
   // 소속 대학교
   university: { type: String, default: null, trim: true },
   // 전공
   major: { type: String, default: null, trim: true },
-  
+  // 재학 상태
+  enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업'], default: '재학' },
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
 

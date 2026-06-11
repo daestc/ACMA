@@ -26,19 +26,13 @@
       </div>
       <div class="grid-2">
         <div>
-          <div class="settings-section">
-            <h3>개인정보</h3>
-            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">이름</label><input class="input-field" value="김민준" style="width:100%;"></div>
-            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">이메일</label><input class="input-field" value="minkim@korea.ac.kr" style="width:100%;"></div>
-            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">비밀번호</label><input class="input-field" type="password" value="••••••••" style="width:100%;"></div>
-            <button class="btn btn-accent btn-sm">저장</button>
-          </div>
-          <div class="settings-section">
-            <h3>학적 정보</h3>
-            <div class="settings-row"><div><div class="settings-label">학번</div><div class="settings-desc">2021XXXXX</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
-            <div class="settings-row"><div><div class="settings-label">대학 · 단과대학</div><div class="settings-desc">한국대학교 · 공과대학</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
-            <div class="settings-row"><div><div class="settings-label">주전공 · 복수전공</div><div class="settings-desc">컴퓨터공학과 · -</div></div><button class="btn btn-ghost btn-sm">수정</button></div>
-            <div class="settings-row"><div><div class="settings-label">재학 상태</div></div><span class="badge badge-green">재학</span></div>
+          <div class="settings-section" id="profile-settings">
+            <h3>학사정보</h3>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">학번</label><input class="input-field" value="2021XXXXX" style="width:100%;" id="studentId"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">대학</label><input class="input-field" value="한국대학교" style="width:100%;" id="university"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">주전공-복수전공</label><input class="input-field" value="컴퓨터공학과" style="width:100%;" id="major"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">재학상태</label><select class="input-field" style="width:100%;" id="enrollmentStatus"><option>재학</option><option>휴학</option><option>졸업</option></select></div>
+            <button class="btn btn-accent btn-sm" onclick="saveProfile()">저장</button>
           </div>
           <div class="settings-section">
             <h3>보안</h3>
@@ -63,66 +57,6 @@
     </div>
   </div>
 </div>
-
-<script>
-// 페이지 타이틀 매핑
-const pageTitles = {
-  home:'홈', calendar:'캘린더', mystatus:'MyStatus',
-  notice:'공지사항', academic:'학사관리', study:'공부', career:'진로정보'
-};
-// 페이지별 헤더 액션 버튼
-const pageActions = {
-  mystatus:`<button class="btn btn-accent btn-sm" onclick="openMyPageModal()">✏️ 정보 수정</button>`,
-  calendar:`<div class="tabs" style="margin-bottom:0;"><button class="tab-btn active" id="cal-tab-month" onclick="switchCalView('month')">월간</button><button class="tab-btn" id="cal-tab-week" onclick="switchCalView('week')">주간</button></div>`,
-};
-
-function showPage(id){
-  document.querySelectorAll('.auth-page,.page,.landing-page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('app-layout').style.display='none';
-  const el=document.getElementById('page-'+id);
-  if(el) el.classList.add('active');
-}
-function goToApp(){
-  document.querySelectorAll('.auth-page,.landing-page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('app-layout').style.display='flex';
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('pg-home').classList.add('active');
-  updateGlobalHeader('home');
-  const mc=document.querySelector('.main-content');if(mc)mc.scrollTop=0;
-}
-function logout(){
-  closeMyPageModal();closeSidebar();
-  document.getElementById('app-layout').style.display='none';
-  document.querySelectorAll('.auth-page,.page,.landing-page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-landing').classList.add('active');
-}
-async function serverLogout(){
-  try {
-    await fetch('/auth/logout', { method: 'POST' });
-  } catch(_) {}
-  window.location.href = '/auth/login';
-}
-function switchPage(id,navEl){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const pg=document.getElementById('pg-'+id);
-  if(pg) pg.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  if(navEl) navEl.classList.add('active');
-  updateGlobalHeader(id);
-  const mc=document.querySelector('.main-content');if(mc)mc.scrollTop=0;
-  closeSidebar();
-}
-function updateGlobalHeader(pageId){
-  const titleEl=document.getElementById('gh-title');
-  if(titleEl) titleEl.textContent=pageTitles[pageId]||'';
-  const actionsEl=document.getElementById('gh-actions');
-  if(actionsEl) actionsEl.innerHTML=pageActions[pageId]||'';
-}
-function switchPage(page, params) {
-      console.log('이동 시도:', page);
-      window.location.href = '/' + page;
-}
-</script>
 <!-- ══ 비밀번호 변경 모달 ══ -->
 <div id="changepw-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.6);z-index:1100;align-items:center;justify-content:center;">
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:420px;max-width:92vw;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
@@ -160,103 +94,6 @@ function switchPage(page, params) {
   </div>
 </div>
 
-<script>
-const _eyeOpen = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-const _eyeOff  = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-function togglePw(id, btn) {
-  const el = document.getElementById(id);
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.innerHTML = show ? _eyeOff : _eyeOpen;
-}
-const cpwState = { current: false, newPw: false, confirm: false };
-function _cpwMsg(id, msg, ok) {
-  const el = document.getElementById(id);
-  el.textContent    = msg;
-  el.style.color    = ok ? '#22c55e' : 'var(--red)';
-  el.style.display  = msg ? 'block' : 'none';
-}
-const cpwCheck = {
-  current() {
-    const val = document.getElementById('current-pw').value;
-    const ok  = val.length > 0;
-    cpwState.current = ok;
-    _cpwMsg('msg-current-pw', ok ? '' : '현재 비밀번호를 입력해주세요.', false);
-  },
-  newPw() {
-    const val = document.getElementById('new-pw').value;
-    const ok  = /[a-zA-Z]/.test(val) && /[0-9]/.test(val) && val.length >= 8;
-    cpwState.newPw = ok;
-    _cpwMsg('msg-new-pw',
-      val.length === 0 ? '' : ok ? '사용 가능한 비밀번호입니다.' : '영문+숫자 포함 8자 이상이어야 합니다.',
-      ok);
-    this.confirm();
-  },
-  confirm() {
-    const newVal     = document.getElementById('new-pw').value;
-    const confirmVal = document.getElementById('new-pw-confirm').value;
-    if (!confirmVal) { _cpwMsg('msg-new-pw-confirm', '', false); cpwState.confirm = false; return; }
-    const ok = newVal === confirmVal;
-    cpwState.confirm = ok;
-    _cpwMsg('msg-new-pw-confirm', ok ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.', ok);
-  },
-};
-async function openChangePwModal() {
-  let provider = 'local';
-  try {
-    const r = await fetch('/auth/me');
-    if (r.ok) ({ provider } = await r.json());
-  } catch (_) {}
-
-  if (provider !== 'local') {
-    alert('소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.');
-    return;
-  }
-
-  ['current-pw','new-pw','new-pw-confirm'].forEach(id => document.getElementById(id).value = '');
-  ['msg-current-pw','msg-new-pw','msg-new-pw-confirm'].forEach(id => document.getElementById(id).style.display = 'none');
-  Object.keys(cpwState).forEach(k => cpwState[k] = false);
-  document.getElementById('changepw-error').style.display   = 'none';
-  document.getElementById('changepw-success').style.display = 'none';
-  document.getElementById('changepw-overlay').style.display = 'flex';
-}
-function closeChangePwModal() {
-  document.getElementById('changepw-overlay').style.display = 'none';
-}
-async function submitChangePw() {
-  const currentPassword = document.getElementById('current-pw').value;
-  const newPassword     = document.getElementById('new-pw').value;
-  const errEl           = document.getElementById('changepw-error');
-  const okEl            = document.getElementById('changepw-success');
-
-  errEl.style.display = okEl.style.display = 'none';
-
-  cpwCheck.current(); cpwCheck.newPw(); cpwCheck.confirm();
-  if (!cpwState.current || !cpwState.newPw || !cpwState.confirm) return;
-
-  try {
-    const res  = await fetch('/auth/change-password', {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ currentPassword, newPassword }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      errEl.textContent   = data.message;
-      errEl.style.display = 'block';
-      return;
-    }
-    okEl.textContent   = data.message;
-    okEl.style.display = 'block';
-    setTimeout(closeChangePwModal, 1500);
-  } catch (_) {
-    errEl.textContent   = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-    errEl.style.display = 'block';
-  }
-}
-</script>
-
 <!-- ══ 회원 탈퇴 확인 모달 ══ -->
 <div id="withdraw-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.6);z-index:1100;align-items:center;justify-content:center;">
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:420px;max-width:92vw;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
@@ -286,52 +123,4 @@ async function submitChangePw() {
   </div>
 </div>
 
-<script>
-async function openWithdrawModal() {
-  // provider 확인
-  let provider = 'local';
-  try {
-    const r = await fetch('/auth/me');
-    if (r.ok) ({ provider } = await r.json());
-  } catch (_) {}
-
-  document.getElementById('withdraw-pw-wrap').style.display     = provider === 'local'  ? 'block' : 'none';
-  document.getElementById('withdraw-social-wrap').style.display = provider !== 'local'  ? 'block' : 'none';
-  document.getElementById('withdraw-pw').value  = '';
-  document.getElementById('withdraw-error').style.display = 'none';
-
-  const overlay = document.getElementById('withdraw-overlay');
-  overlay.style.display = 'flex';
-}
-
-function closeWithdrawModal() {
-  document.getElementById('withdraw-overlay').style.display = 'none';
-}
-
-async function submitWithdraw() {
-  const pw    = document.getElementById('withdraw-pw').value;
-  const errEl = document.getElementById('withdraw-error');
-  errEl.style.display = 'none';
-
-  try {
-    const res = await fetch('/auth/withdraw', {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ password: pw }),
-    });
-
-    const data = await res.json();
-    if (!data.ok) {
-      errEl.textContent   = data.message;
-      errEl.style.display = 'block';
-      return;
-    }
-
-    window.location.href = '/auth/login';
-  } catch (_) {
-    errEl.textContent   = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-    errEl.style.display = 'block';
-  }
-}
-</script>
-<!-- // 사이드바 토글 -->
+<script src="/js/mypage.js"></script>

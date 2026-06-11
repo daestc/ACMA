@@ -123,4 +123,19 @@ const saveIsCompleted = async (req, res) => {
   }
 }
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted};
+const updateProfile = async (req, res) => {
+  try {
+    user=await userService.getUserByEmail(user.email);
+    const {studentId, university, major, enrollmentStatus} = req.body;
+    await userService.updateProfile(user.email, { studentId, university, major, enrollmentStatus });
+
+    console.log('프로필 업데이트 완료!');
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
+
+module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile};

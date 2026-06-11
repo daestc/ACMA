@@ -175,4 +175,17 @@ async function saveIsCompleted(userEmail, changes) {
   } // for
 }
 
-module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted};
+async function updateProfile(userEmail, profileData) {
+  try {
+    const { studentId, university, major, enrollmentStatus } = profileData;
+    await User.findOneAndUpdate(
+      { email: userEmail },
+      { studentId, university, major, enrollmentStatus }
+    );
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
+module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted, updateProfile};
