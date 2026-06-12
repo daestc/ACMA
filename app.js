@@ -26,6 +26,8 @@ const mystatusRouter = require('./routes/mystatusRouter');
 const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
 const alertRouter = require('./routes/alertRouter');
+const staffRouter = require('./routes/staffRouter');
+const adminRouter = require('./routes/adminRouter');
 
 
 
@@ -69,6 +71,8 @@ app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
 app.use('/', alertRouter);
+app.use('/staff', staffRouter);
+app.use('/admin', adminRouter);
 
 // 오류 처리 미들웨어
 app.use(notFoundHandler);

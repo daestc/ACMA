@@ -49,6 +49,23 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  // 회원 역할 ('student' = 학생 | 'staff' = 대학관계자 | 'admin' = 관리자)
+  role: {
+    type: String,
+    enum: ['student', 'staff', 'admin'],
+    default: 'student',
+  },
+  // 대학관계자 승인 상태 (staff 가입 시 'pending', 관리자 승인 후 'approved')
+  staffStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: null,
+  },
+  // 대학관계자 인증 사진 경로 (승인/거절 처리 후 삭제됨)
+  verificationImage: {
+    type: String,
+    default: null,
+  },
   // 소속 대학교
   university: { type: String, default: null, trim: true },
   // 전공
