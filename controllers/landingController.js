@@ -2,49 +2,38 @@ const userService = require('../services/userService');
 const noticeController = require("../controller/noticeController");
 const careerService = require('../services/careerService');
 
-//홈페이지에 보여줄 공지사항 데이터 긁어오기
-async function fetchAllData(){
-  try {
-    // 마감일(endDate) 임박순으로 정렬해서 게시된 공지사항 가져오기
-    return await Notice.find({ isPublished: true }).sort({ endDate: 1 });
-  } catch (err) {
-    console.error("fetchAllData 에러:", err.message);
-    return [];
-  }
-}
 
-// 홈페이지에 표시할 정보 모음(todoList, 습관 트래커, Dday 알림, ㄱ공지사항 등)
+// 홈페이지에 표시할 정보 모음(todoList, 습관 트래커, Dday 알림, 공지사항 등)
 const getHomePage = async (req, res) => {
   try {
-    
     const loggedInUser = req.user || req.session?.user;
     if (!loggedInUser) {
       return res.redirect('/login'); 
     }
 
-    //자격증 리스트 긁어오기
+    //  자격증 리스트 긁어오기
     const myCerts = await careerService.getMyCertifications(loggedInUser.email).catch((err) => {
       console.error(' 자격증 함수 에러:', err.message);
       return []; 
     });
 
-    //종목 코드 가져오기
+    //  종목 코드 가져오기
     const myTargetCertJmcds = myCerts
         .filter(cert => cert.status === 'target' && cert.certificationId && cert.certificationId.jmcd)
-        .map(cert => cert.certificationId.jmcd);
+        .map(cert => String(cert.certificationId.jmcd).trim());
     
-    //전체 공지 가공 데이터
+  
     const showNotice = await noticeController.fetchHomeNotices();
 
-    const myCertNotices = showNotice.filter(notice => {
-          return notice.category === 'certification' && 
-          notice.jmcd &&
-          myTargetCertJmcds.includes(notice.jmcd); 
+    // 내 자격증 + 학사일정/장학금 공통 공지
+    const userCustomNotices = showNotice.filter(notice => {
+        if (notice.category === 'certification') {
+            return notice.jmcd && myTargetCertJmcds.includes(String(notice.jmcd).trim());
+        }
+        return true; 
     });
 
-
     const user = req.user;
-
     const todoList = await userService.getTodaytodoList(user.email);
     const {habitList, completedCount} = await userService.getHabitList(user.email);
 
@@ -53,18 +42,18 @@ const getHomePage = async (req, res) => {
       todoList,
       habitList,
       completedCount,
-      notices: showNotice,
-      topNotices: showNotice.slice(0,6), //d-day 기준 상위 6개
-      urgentNotice: showNotice.filter(n => n.isUrgent === true),
-      myCertNotices: myCertNotices,
+      notices: userCustomNotices, 
+      topNotices: userCustomNotices.slice(0, 6), //상위 6개
+      urgentNotice: userCustomNotices.filter(n => n.isUrgent === true), 
+      myCertNotices: userCustomNotices.filter(n => n.category === 'certification'), 
       pageTitle: '홈'
     });
 
   } catch (error) {
     console.log('홈페이지 로딩 실패');
     console.error(error);
+    res.status(500).send("서버 에러 발생");
   }
 };
 
-
-module.exports = {getHomePage};
+module.exports = { getHomePage };

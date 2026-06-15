@@ -93,31 +93,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentPage = 1; 
       renderNotifPage(); 
          
-      // 카운팅 배지 노출 및 숫자 바인딩
-      if (redDot) {
-        redDot.innerText = allAlerts.length;
-        redDot.style.display = 'block';
-      }
+  if (redDot) {
+    redDot.innerText = ''; 
+    
+    // 사용자가 아직 안 읽은 새 알림이 있을 때만 작은 빨간 점 켜기
+    const currentAlerts = allAlerts.map(a => a.title).join('|');
+    const lastReadAlerts = localStorage.getItem('last_read_alerts');
 
-      // 읽음 상태 대조 지문 매칭
-      const currentAlerts = allAlerts.map(a => a.title).join('|');
-      const lastReadAlerts = localStorage.getItem('last_read_alerts');
-
-      if (currentAlerts !== lastReadAlerts) {
-        if (redDot) redDot.style.backgroundColor = '#ef4444'; // 새 알림 유입 시 레드
-      } else {
-        if (redDot) redDot.style.backgroundColor = '#94a3b8'; // 이미 읽었으면 차분한 회색
-      }
-  
+    if (currentAlerts !== lastReadAlerts) {
+      redDot.style.display = 'block'; // 안 읽은 게 있으면 점 켜기
     } else {
-      if (notifListDiv) {
-        notifListDiv.innerHTML = '<p class="notif-empty" style="padding: 20px; text-align: center; color: #94a3b8;">다가오는 일정이 없어요!</p>';
-      }
-      if (redDot) redDot.style.display = 'none';
-      if (document.getElementById('notif-page-text')) {
-        document.getElementById('notif-page-text').innerText = "0/0";
-      }
+      redDot.style.display = 'none';  // 다 읽었으면 점 끄기
     }
+  }
+
+  } else {
+  //알림 없을 때 
+  if (redDot) redDot.style.display = 'none';
+}
   } catch (error) {
     console.error(" 알림 데이터를 가져오는데 실패함:", error);
     const notifListDiv = document.getElementById('dynamic-notif-list');

@@ -2,12 +2,16 @@ const mongoose = require('mongoose');
 const dateCaculate = require('../service/dateCaculateService');
 const Notice = require('../models/Notice');
 
-//공지사항 가져오기
+// 공지사항 가져오기 (기존 뼈대를 그대로 유지하면서 D-Day 지난 과거 데이터 완벽 필터링)
 async function fetchAllData() {
     const dbNotices = await Notice.find({ isPublished: true }).sort({ endDate: 1 }).lean();
     
-    return dbNotices.map(item => {
+    const mappedNotices = dbNotices.map(item => {
         const diff = dateCaculate.getRemainingDays(item.endDate);
+
+        if (diff < 0) {
+            return null;
+        }
 
         let typeIcon = '📌';
         let typeColor = 'var(--accent-bg)';
@@ -60,6 +64,7 @@ async function fetchAllData() {
             formattedDate
         };
     });
+    return mappedNotices.filter(Boolean);
 }
 
 
