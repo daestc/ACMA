@@ -1,4 +1,4 @@
-const { CalendarEvent,Timetable } = require('../models/Calendar');
+const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
 
 
 //일정 가져오기
@@ -167,6 +167,74 @@ async function deleteTimetable(userId, timetableId) {
     return deletedTimetable;
 };
 
+// 강의 목록 조회(학기,년도,강의명 검색)
+async function getLectureList(filter = {}) {
+  const query = {};
+  //년도 필터
+  if (filter.year) {
+    query.year = Number(filter.year);
+  }
+  //학기 필터
+  if (filter.semester) {
+    query.semester = filter.semester;
+  }
+  //사용자가 입력한 필드
+  if (filter.keyword) {
+    query.courseName = { $regex: filter.keyword, $options: 'i' };
+  }
+  //db검색 (오름차순)
+  return await Lecture.find(query)
+    .sort({ courseName: 1, section: 1 });
+}
+
+// 강의를 내 시간표에 추가 Lecture의 내용을 timetable에 맞추어 생성
+async function addLectureToTimetable(userId, lectureId, color = '#60A5FA') {
+  const lecture = await Lecture.findById(lectureId);
+
+  if (!lecture) {
+    throw new Error('강의를 찾을 수 없습니다.');
+  }
+
+  if (!lecture.schedules || lecture.schedules.length === 0) {
+    throw new Error('강의 시간 정보가 없습니다.');
+  }
+
+  //timetableSchema는 요일이 숫자로 구성되어있음
+  const dayMap = {
+    '일': 0,
+    '월': 1,
+    '화': 2,
+    '수': 3,
+    '목': 4,
+    '금': 5,
+    '토': 6,
+  };
+  //timetableSchema의 schedule이 dayOfWeek,startTime,endTime 로 구성되어 있음
+  const schedule = lecture.schedules.map(sch => ({
+    dayOfWeek: dayMap[sch.day],
+    startTime: sch.startTime,
+    endTime: sch.endTime,
+  }));
+
+  //시간표 겹침 검증 함수 불러오기
+  await validateTimetableOverlap(userId, schedule);
+
+  //학기 표시 규격에 맞게 변경 (년도 + 학기)
+  const semesterValue = `${lecture.year}-${lecture.semester === '1학기' ? '1' : '2'}`;
+
+  //timetableSchema 생성
+  return await Timetable.create({
+    userId,
+    semester: semesterValue,
+    title: lecture.courseName,
+    location: null,
+    type: 'lecture',
+    professorName: lecture.professor,
+    credits: lecture.credits,
+    color,
+    schedule,
+  });
+}
 
 //일정 도메인 규칙
 const EVENT_CATEGORIES = [
@@ -541,6 +609,8 @@ module.exports = {getEventsListByUser,
                 createNewTimetable,
                 updateTimetable,
                 deleteTimetable,
+                getLectureList,
+                addLectureToTimetable,
 
                 getShortWeather
             };

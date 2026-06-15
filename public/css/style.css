@@ -860,3 +860,45 @@ input,select,textarea{font-family:inherit;}
   line-height: 1;
   margin-bottom: 2px;
 }
+
+/* 강의 검색 추가 css*/
+.lecture-search-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.lecture-search-item small {
+  color: #6b7280;
+}
+
+.lecture-search-item > div {
+  min-width: 0;
+}
+
+.lecture-search-item strong {
+  display: block;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.lecture-search-item button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.lecture-search-modal-content {
+  width: min(720px, 92vw);
+}
+
+.lecture-search-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lecture-search-controls input {
+  flex: 1;
+}

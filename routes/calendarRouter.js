@@ -26,6 +26,8 @@ router.get('/timetables', requireLogin, calendarController.getTimetableList); //
 router.post('/timetables',requireLogin, calendarController.createTimetable); //시간표 생성
 router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
 router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
+router.get('/lectures', requireLogin, calendarController.getLectureList); // 강의 목록
+router.post('/timetables/lecture', requireLogin, calendarController.addLectureToTimetable);// 강의를 내 시간표에 추가
 
 //날씨 api(일정페이지에 사용)
 router.get('/weather', requireLogin, calendarController.getWeather);
