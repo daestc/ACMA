@@ -61,7 +61,7 @@ const UserSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: null,
   },
-  // 대학관계자 인증 사진 경로 (승인/거절 처리 후 삭제됨)
+  // 대학관계자 인증 사진 경로 (public/upload/...)
   verificationImage: {
     type: String,
     default: null,

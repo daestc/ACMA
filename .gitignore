@@ -188,5 +188,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/node,windows,visualstudiocode
-# 가입 증빙 이미지 업로드 (개인정보)
+# ?? ?? ??? ??? (????)
 uploads/
+public/upload/

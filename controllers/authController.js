@@ -121,7 +121,7 @@ exports.postRegister = async (req, res) => {
   if (role === 'student' && req.file) fs.unlink(req.file.path, () => {});
 
   const verificationImage = role === 'staff' && req.file
-    ? `uploads/verifications/${req.file.filename}`
+    ? `upload/${req.file.filename}`
     : null;
 
   try {

@@ -1,9 +1,15 @@
-const fs = require('fs');
 const path = require('path');
-const User = require('../models/User');
-const logger = require('../config/logger');
+const User = require('../models/User');const logger = require('../config/logger');
 
 const ROOT_DIR = path.join(__dirname, '..');
+const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+
+function verificationFilePath(relativePath) {
+  if (relativePath.startsWith('uploads/')) {
+    return path.join(ROOT_DIR, relativePath);
+  }
+  return path.join(PUBLIC_DIR, relativePath);
+}
 
 // 대학관계자 가입 승인 페이지
 exports.getStaffApprovalPage = async (req, res, next) => {
@@ -31,7 +37,7 @@ exports.getStaffApprovalPage = async (req, res, next) => {
   }
 };
 
-// ── 승인 / 거절 ───────────────────────────────────
+// 승인 / 거절 
 async function updateStaffStatus(req, res, status) {
   try {
     const target = await User.findOneAndUpdate(
@@ -42,12 +48,6 @@ async function updateStaffStatus(req, res, status) {
 
     if (!target) {
       return res.status(404).json({ ok: false, message: '대상 계정을 찾을 수 없습니다.' });
-    }
-
-    // 처리 완료된 인증 사진은 개인정보 보관 최소화를 위해 즉시 삭제
-    if (target.verificationImage) {
-      fs.unlink(path.join(ROOT_DIR, target.verificationImage), () => {});
-      await User.updateOne({ _id: target._id }, { verificationImage: null });
     }
 
     logger.info(`대학관계자 ${status === 'approved' ? '승인' : '거절'} | target=${target.email} | by=${req.user.email}`);
@@ -61,14 +61,14 @@ async function updateStaffStatus(req, res, status) {
 exports.approveStaff = (req, res) => updateStaffStatus(req, res, 'approved');
 exports.rejectStaff  = (req, res) => updateStaffStatus(req, res, 'rejected');
 
-// ── 인증 사진 열람 (관리자 전용 — public 폴더 밖이라 이 라우트로만 접근 가능) ──
+// 인증 사진 열람 (관리자 전용) 
 exports.getVerificationImage = async (req, res) => {
   try {
     const target = await User.findById(req.params.id).select('verificationImage').lean();
     if (!target?.verificationImage) {
       return res.status(404).send('인증 사진이 없습니다.');
     }
-    res.sendFile(path.join(ROOT_DIR, target.verificationImage));
+    res.sendFile(verificationFilePath(target.verificationImage));
   } catch {
     res.status(500).send('이미지를 불러올 수 없습니다.');
   }

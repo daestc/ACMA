@@ -11,8 +11,8 @@ const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
 
 // ── 관계자 인증 사진 업로드 설정 ──────────────────
-// public/ 밖(uploads/)에 저장 → 관리자 전용 라우트로만 열람 가능
-const VERIFY_DIR = path.join(__dirname, '..', 'uploads', 'verifications');
+// public/upload/에 저장 → express.static으로 /upload/... URL 제공
+const VERIFY_DIR = path.join(__dirname, '..', 'public', 'upload');
 fs.mkdirSync(VERIFY_DIR, { recursive: true });
 
 const verifyUpload = multer({
