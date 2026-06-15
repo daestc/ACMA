@@ -84,10 +84,10 @@ exports.postLecture = async (req, res) => {
   }
 };
 
-// ── CSV 일괄 등록 ─────────────────────────────────
+// CSV / XLSX 일괄 등록
 exports.postLectureCsv = async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ ok: false, message: 'CSV 파일을 업로드해주세요.' });
+    return res.status(400).json({ ok: false, message: '파일을 업로드해주세요.' });
   }
 
   try {
@@ -97,9 +97,10 @@ exports.postLectureCsv = async (req, res) => {
       semester: semester?.trim() || undefined,
       createdBy: req.user.id,
       university: req.user.university,
+      filename: req.file.originalname,
     });
 
-    logger.info(`강의 CSV 업로드 | 삽입=${result.inserted} 갱신=${result.updated} | by=${req.user.email}`);
+    logger.info(`강의 파일 업로드 | 삽입=${result.inserted} 갱신=${result.updated} | by=${req.user.email}`);
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.code === 'EMPTY_CSV') {
@@ -111,12 +112,12 @@ exports.postLectureCsv = async (req, res) => {
     if (err.code === 'NO_UNIVERSITY') {
       return res.status(400).json({ ok: false, message: err.message });
     }
-    logger.warn(`강의 CSV 업로드 실패 | by=${req.user.email} | ${err.message}`);
-    res.status(500).json({ ok: false, message: 'CSV 처리 중 오류가 발생했습니다.' });
+    logger.warn(`강의 파일 업로드 실패 | by=${req.user.email} | ${err.message}`);
+    res.status(500).json({ ok: false, message: '파일 처리 중 오류가 발생했습니다.' });
   }
 };
 
-// ── 강의 삭제 ─────────────────────────────────────
+// 강의 삭제 
 exports.deleteLecture = async (req, res) => {
   try {
     const lecture = await lectureAdminService.deleteLecture(req.params.id, req.user.university);

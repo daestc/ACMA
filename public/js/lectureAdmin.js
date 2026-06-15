@@ -1,10 +1,17 @@
-/* ================================================
+/* 
    AcadMe — lectureAdmin.js
    강의 관리 페이지 (대학관계자 전용):
-   CSV 일괄 등록, 개별 강의 등록, 강의 삭제
-   ================================================ */
+   CSV / XLSX 일괄 등록, 개별 강의 등록, 강의 삭제
+*/
 
-// ── CSV 업로드 ───────────────────────────────────
+const LECTURE_FILE_EXT = ['.csv', '.xlsx'];
+
+function isLectureFile(file) {
+  const name = file.name.toLowerCase();
+  return LECTURE_FILE_EXT.some((ext) => name.endsWith(ext));
+}
+
+// CSV / XLSX 업로드
 let csvFile = null;
 
 function handleCsvFile(input) {
@@ -18,7 +25,7 @@ function handleCsvDrop(e) {
   zone.style.borderColor = 'var(--border2)';
   zone.style.background  = 'var(--bg3)';
   const f = e.dataTransfer.files[0];
-  if (f && f.name.toLowerCase().endsWith('.csv')) setCsvFile(f);
+  if (f && isLectureFile(f)) setCsvFile(f);
 }
 
 function setCsvFile(file) {
@@ -47,7 +54,7 @@ function showCsvResult(html, isError) {
 
 async function uploadCsv() {
   if (!csvFile) {
-    showCsvResult('업로드할 CSV 파일을 먼저 선택해주세요.', true);
+    showCsvResult('업로드할 CSV 또는 XLSX 파일을 먼저 선택해주세요.', true);
     return;
   }
 
@@ -65,9 +72,9 @@ async function uploadCsv() {
     const data = await res.json();
 
     if (data.ok) {
-      let html = `✅ 처리 완료 — 신규 <strong>${data.inserted}</strong>건 / 갱신 <strong>${data.updated}</strong>건 (총 ${data.total}건)`;
+      let html = `처리 완료 — 신규 <strong>${data.inserted}</strong>건 / 갱신 <strong>${data.updated}</strong>건 (총 ${data.total}건)`;
       if (data.failedRows?.length) {
-        html += `<br>⚠️ 건너뛴 행 ${data.failedRows.length}건: ` +
+        html += `<br>건너뛴 행 ${data.failedRows.length}건: ` +
           data.failedRows.slice(0, 5).map(f => `${f.row}행`).join(', ') +
           (data.failedRows.length > 5 ? ' 외' : '');
       }
@@ -75,17 +82,17 @@ async function uploadCsv() {
       // 목록 갱신을 위해 2초 후 새로고침
       setTimeout(() => location.reload(), 2000);
     } else {
-      showCsvResult('❌ ' + (data.message || '업로드에 실패했습니다.'), true);
+      showCsvResult(data.message || '업로드에 실패했습니다.', true);
     }
   } catch {
-    showCsvResult('❌ 서버와 통신할 수 없습니다.', true);
+    showCsvResult('서버와 통신할 수 없습니다.', true);
   } finally {
     btn.disabled    = false;
-    btn.textContent = '⬆ CSV 업로드';
+    btn.textContent = '⬆ 파일 업로드';
   }
 }
 
-// ── 강의시간 행 ──────────────────────────────────
+// 강의시간 행
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 function addScheduleRow() {
@@ -115,7 +122,7 @@ function getSchedules() {
 // 기본으로 1행 추가
 document.addEventListener('DOMContentLoaded', addScheduleRow);
 
-// ── 개별 강의 등록 ───────────────────────────────
+// 개별 강의 등록
 function showLecMsg(msg, isError) {
   const box = document.getElementById('lec-msg');
   box.style.display    = 'block';
@@ -159,20 +166,20 @@ async function submitLecture() {
 
     if (data.ok) {
       const sectionLabel = body.section ? `${body.section}분반` : '분반 없음';
-      showLecMsg(`✅ "${body.courseName} ${sectionLabel}" 등록 완료`, false);
+      showLecMsg(`"${body.courseName} ${sectionLabel}" 등록 완료`, false);
       setTimeout(() => location.reload(), 1200);
     } else {
-      showLecMsg('❌ ' + (data.message || '등록에 실패했습니다.'), true);
+      showLecMsg(data.message || '등록에 실패했습니다.', true);
     }
   } catch {
-    showLecMsg('❌ 서버와 통신할 수 없습니다.', true);
+    showLecMsg('서버와 통신할 수 없습니다.', true);
   } finally {
     btn.disabled    = false;
     btn.textContent = '강의 등록';
   }
 }
 
-// ── 강의 삭제 ────────────────────────────────────
+// 강의 삭제
 async function deleteLecture(id, label, btn) {
   if (!confirm(`"${label}" 강의를 삭제하시겠습니까?`)) return;
 

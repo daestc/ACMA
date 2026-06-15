@@ -8,7 +8,8 @@ const UPLOAD_ROOT = path.join(__dirname, '../uploads');
 const ALLOWED_IMAGE_EXT  = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_IMAGE_SIZE     = 5 * 1024 * 1024; // 5MB
-const MAX_CSV_SIZE       = 5 * 1024 * 1024; // 5MB
+const MAX_LECTURE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const LECTURE_FILE_EXT      = new Set(['.csv', '.xlsx']);
 
 // 업로드 루트 디렉터리 (없으면 생성)
 function ensureDir(dir) {
@@ -49,22 +50,22 @@ function createImageMulter(subdir, fieldName) {
   }).single(fieldName);
 }
 
-// .csv 확장자만 허용
-function csvFileFilter(_req, file, cb) {
-  const isCsv = file.originalname.toLowerCase().endsWith('.csv');
-  if (isCsv) {
+// .csv, .xlsx 확장자만 허용
+function lectureFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (LECTURE_FILE_EXT.has(ext)) {
     cb(null, true);
     return;
   }
-  cb(new Error('CSV 파일만 업로드할 수 있습니다.'));
+  cb(new Error('CSV 또는 XLSX 파일만 업로드할 수 있습니다.'));
 }
 
-// 메모리 버퍼에 올려 바로 파싱하는 CSV multer
-function createCsvMulter(fieldName) {
+// 메모리 버퍼에 올려 바로 파싱하는 강의 시간표 multer
+function createLectureFileMulter(fieldName) {
   return multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: MAX_CSV_SIZE },
-    fileFilter: csvFileFilter,
+    limits: { fileSize: MAX_LECTURE_FILE_SIZE },
+    fileFilter: lectureFileFilter,
   }).single(fieldName);
 }
 
@@ -124,11 +125,11 @@ const uploadVerificationImageApi = [
 
 const lectureCsvUploadOptions = { json: true, jsonOk: true };
 
-const lectureCsvMulter = createCsvMulter('csvFile');
+const lectureCsvMulter = createLectureFileMulter('csvFile');
 
 const uploadLectureCsv = [
   runUpload(lectureCsvMulter, lectureCsvUploadOptions),
-  requireUploadedFile('CSV 파일', lectureCsvUploadOptions),
+  requireUploadedFile('강의 시간표 파일', lectureCsvUploadOptions),
 ];
 
 module.exports = {
