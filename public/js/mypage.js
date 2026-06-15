@@ -242,8 +242,29 @@ async function saveProfile() {
     alert('프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
   }
 };
+// 페이지 로드 시 사용자 프로필 정보 가져오기
+async function fetchUserProfile() {
+  try {
+    const response = await fetch('/user/profile');
+    if (!response.ok) throw new Error('프로필 정보를 가져오는데 실패했습니다.');
+    const data = await response.json();
+    const user = data.user;
+    if (!user) throw new Error('사용자 정보가 없습니다.');
+    document.getElementById('profile-avatar').textContent = user.name ? user.name.charAt(0) : '';
+    document.getElementById('profile-name').textContent = `${user.name || ''}`;
+    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''}`;
+
+    // 폼에 사용자 정보 채워넣기
+    document.getElementById('studentId').value = user.studentId || '';
+    document.getElementById('university').value = user.university || '';
+    document.getElementById('major').value = user.major || '';
+    document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    alert('프로필 정보를 가져오는데 실패했습니다. 다시 시도해주세요.');
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 페이지가 로드될 때 사용자 정보를 가져와서 폼에 채워넣는 로직을 여기에 추가할 수 있습니다.
-  // 예시: fetch('/user/getProfile').then(...).then(data => { ... });
+  fetchUserProfile();
 });

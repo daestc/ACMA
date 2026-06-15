@@ -147,4 +147,17 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile};
+const getProfile = async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.json({ success: false });
+
+    const profile = await userService.getProfile(user.email);
+    res.json({ success: true, user: profile });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
+
+module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};

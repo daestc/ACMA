@@ -24,9 +24,8 @@ router.post('/saveIsCompleted', requireLogin, userController.saveIsCompleted);
 // Mypage 학사정보 업데이트
 router.post('/updateProfile', requireLogin, userController.updateProfile);
 // user 정보 가져오기
-router.get('/profile', requireLogin, (req, res) => {
-  res.json({ user: req.user });
-});
+router.get('/profile', requireLogin, userController.getProfile);
+
 
 
 module.exports = router;
