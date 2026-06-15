@@ -96,20 +96,36 @@ function renderTimetable() {
   });
 }
 
+//시간->분으로 변환 
 function timeToMinutes(time) {
   const [hour, minute] = time.split(':').map(Number);
   return hour * 60 + minute;
 }
 
+//버튼 이벤트 연결
 document.addEventListener('DOMContentLoaded', () => {
   const openBtn = document.getElementById('open-timetable-form-btn');
   const closeBtn = document.getElementById('close-timetable-form-btn');
   const form = document.getElementById('timetable-form');
   const semesterInput = document.getElementById('tt-semester');
-  
+  const searchLectureBtn = document.getElementById('search-lecture-btn'); //검색 버튼
+  const openLectureSearchBtn = document.getElementById('open-lecture-search-btn');
+const closeLectureSearchBtn = document.getElementById('close-lecture-search-btn');
   setSemesterOptions();
 
   if (!openBtn || !closeBtn || !form) return;
+
+  if (searchLectureBtn) { //searchLectureBtn 버튼 없으면 작동 x
+    searchLectureBtn.addEventListener('click', searchLectures);
+  }
+
+  if (openLectureSearchBtn) {
+  openLectureSearchBtn.addEventListener('click', openLectureSearchModal);
+}
+
+if (closeLectureSearchBtn) {
+  closeLectureSearchBtn.addEventListener('click', closeLectureSearchModal);
+}
 
   document.getElementById('delete-timetable-btn').addEventListener('click', deleteTimetable);
   document
@@ -122,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   semesterInput.addEventListener('change', toggleLectureFields);
 });
 
+//시간표 모달
 function openTimetableModal() {
   const form = document.getElementById('timetable-form');
 
@@ -167,6 +184,7 @@ function toggleLectureFields() {
   }
 }
 
+//시간표 저장
 async function createTimetable(e) {
   e.preventDefault();
 
@@ -282,7 +300,7 @@ async function deleteTimetable() {
 
   renderTimetable();
 }
-
+//시간 추가
 function addScheduleRow(schedule = {}) {
   const list = document.getElementById('tt-schedule-list');
 
@@ -396,4 +414,106 @@ function getTimeOptions() {
   }
 
   return options;
+}
+
+//강의 검색
+async function searchLectures() {
+  //사용자가 입력한 검색 조건 
+  const keyword = document.getElementById('lecture-keyword').value.trim();
+
+  if (!keyword) {
+    alert('검색어를 입력해 주세요.');
+    return;
+  }
+  
+  const params = new URLSearchParams();
+  if (keyword) params.append('keyword', keyword);
+
+
+  //검색조건 달고 요청
+  const res = await fetch(`/calendar/lectures?${params.toString()}`);
+
+  if (!res.ok) {
+    alert('강의 목록 조회 실패');
+    return;
+  }
+
+  const lectures = await res.json();
+  renderLectureSearchList(lectures);
+}
+
+//검색 결과 출력
+function renderLectureSearchList(lectures) {
+  const list = document.getElementById('lecture-search-list');
+
+  if (!lectures || lectures.length === 0) {
+    list.innerHTML = '<p>검색된 강의가 없습니다.</p>';
+    return;
+  }
+
+  //검색된 강의 정보 표시 + 담기 버튼
+  list.innerHTML = lectures.map(lecture => `
+    <div class="lecture-search-item">
+      <div>
+        <strong>${lecture.courseName}</strong>
+        <span> ${lecture.section}분반</span><br>
+        <small>
+          ${lecture.classification} / ${lecture.credits}학점 / 
+          ${lecture.professor || '미정'}
+        </small><br>
+        <small>
+          ${lecture.schedules.map(sch =>
+            `${sch.day} ${sch.startTime}~${sch.endTime}`
+          ).join(', ')}
+        </small>
+      </div>
+
+      <button 
+        type="button" 
+        class="btn btn-sm btn-accent"
+        onclick="addLectureToMyTimetable('${lecture._id}')" //담기 버튼
+      >
+        담기
+      </button>
+    </div>
+  `).join('');
+}
+
+//담기 버튼 눌렀을때 해당 정보를 시간표에 넣음
+async function addLectureToMyTimetable(lectureId) {
+  const color = document.getElementById('tt-color')?.value || '#60A5FA';
+
+  const res = await fetch('/calendar/timetables/lecture', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      lectureId,
+      color
+    })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    alert(errorData?.error || '강의 추가 실패');
+    return;
+  }
+  //새로고침
+  const timetableRes = await fetch('/calendar/timetables');
+  window.timetables = await timetableRes.json();
+
+  renderTimetable();
+
+  alert('강의가 시간표에 추가되었습니다.');
+}
+//시간표 검색 모달 열기
+function openLectureSearchModal() {
+  document.getElementById('lecture-search-modal').style.display = 'flex';
+}
+//시간표 검색 모달 닫기
+function closeLectureSearchModal() {
+  document.getElementById('lecture-search-modal').style.display = 'none';
+  document.getElementById('lecture-keyword').value = '';
+  document.getElementById('lecture-search-list').innerHTML = '';
 }

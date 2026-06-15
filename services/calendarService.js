@@ -167,7 +167,7 @@ async function deleteTimetable(userId, timetableId) {
     return deletedTimetable;
 };
 
-// 강의 목록 조회
+// 강의 목록 조회(학기,년도,강의명 검색)
 async function getLectureList(filter = {}) {
   const query = {};
   //년도 필터
@@ -199,6 +199,7 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA') {
     throw new Error('강의 시간 정보가 없습니다.');
   }
 
+  //timetableSchema는 요일이 숫자로 구성되어있음
   const dayMap = {
     '일': 0,
     '월': 1,
@@ -208,17 +209,20 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA') {
     '금': 5,
     '토': 6,
   };
-
+  //timetableSchema의 schedule이 dayOfWeek,startTime,endTime 로 구성되어 있음
   const schedule = lecture.schedules.map(sch => ({
     dayOfWeek: dayMap[sch.day],
     startTime: sch.startTime,
     endTime: sch.endTime,
   }));
 
+  //시간표 겹침 검증 함수 불러오기
   await validateTimetableOverlap(userId, schedule);
 
+  //학기 표시 규격에 맞게 변경 (년도 + 학기)
   const semesterValue = `${lecture.year}-${lecture.semester === '1학기' ? '1' : '2'}`;
 
+  //timetableSchema 생성
   return await Timetable.create({
     userId,
     semester: semesterValue,

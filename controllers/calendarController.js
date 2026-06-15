@@ -81,6 +81,7 @@ const createTimetable = async(req,res) => {
     try {
         const userId = req.user.id;
         const newTimetable = await calendarService.createNewTimetable(userId, req.body);
+
         res.status(201).json(newTimetable); //요청 성공시 json반환 
     } catch (error) {
         res.status(400).json({
@@ -125,6 +126,41 @@ const deletedTimetable = async (req,res)=>{
     }
 };
 
+//Lecture 리스트 불러오기 (검색)
+const getLectureList = async (req,res) => {
+    try {
+        //getLectureList 서비스 호출
+        const lectures = await calendarService.getLectureList(req.query);
+        res.json(lectures);
+    } catch (error) {
+        res.status(500).json({
+            message: "강의 목록 조회 실패",
+            error : error.message
+        });
+    }
+};
+
+const addLectureToTimetable = async (req,res) => {
+    try {
+        const userId = req.user.id; //사용자 id
+        const {lectureId, color} = req.body; //사용자가 선택한 lecture의 id
+
+        //addLectureToTimetable 서비스 호출
+        const timetable = await calendarService.addLectureToTimetable(
+            userId,
+            lectureId,
+            color
+        );
+
+        res.status(201).json(timetable);
+    } catch (error) {
+        res.status(400).json({
+            message: '강의 시간표 추가 실패',
+            error: error.message
+        });
+    }
+};
+
 //날씨 컨트롤러
 const getWeather = async (req, res) => {
   try {
@@ -148,6 +184,8 @@ module.exports = {
     createTimetable,
     updatedTimetable,
     deletedTimetable,
+    getLectureList,
+    addLectureToTimetable,
 
     getWeather
 };
