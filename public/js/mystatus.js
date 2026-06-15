@@ -36,3 +36,163 @@ function switchExpTab(tab, btn) {
   btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
+
+async function fetchProgress() {
+  try {
+    const res = await fetch('/academic/progress', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.success) return;
+
+    const totals = json.totals || {};
+    const profile = json.profile || {};
+    window._ac_progress = { totals, profile };
+
+    const req = profile?.GraduationRequirements || {};
+    const map = [
+      { key: 'major_required', pv: 'pv-major-req', pf: 'pf-major-req', rightPv: 'pv-right-major-req', rightPf: 'pf-right-major-req', reqKey: 'requiredMajorCredits' },
+      { key: 'major_elective', pv: 'pv-major-el', pf: 'pf-major-el', rightPv: 'pv-right-major-el', rightPf: 'pf-right-major-el', reqKey: 'requiredMajorElective' },
+      { key: 'general_required', pv: 'pv-gen-req', pf: 'pf-gen-req', rightPv: 'pv-right-gen-req', rightPf: 'pf-right-gen-req', reqKey: 'requiredGeneralCredits' },
+      { key: 'general_elective', pv: 'pv-gen-el', pf: 'pf-gen-el', rightPv: 'pv-right-gen-el', rightPf: 'pf-right-gen-el', reqKey: 'requiredGeneralElective' },
+    ];
+
+    map.forEach(item => {
+      const earned = Number(totals[item.key] || 0);
+      const needed = Number(req[item.reqKey] || 0) || 0;
+      const pct = needed ? Math.min(100, Math.round(earned / needed * 100)) : 0;
+
+      const pv = document.getElementById(item.pv);
+      const pf = document.getElementById(item.pf);
+      const rightPv = document.getElementById(item.rightPv);
+      const rightPf = document.getElementById(item.rightPf);
+
+      if (pv) pv.textContent = needed ? `${earned}/${needed}` : `${earned}`;
+      if (pf) pf.style.width = pct + '%';
+      if (rightPv) rightPv.textContent = needed ? `${earned}/${needed}` : `${earned}`;
+      if (rightPf) rightPf.style.width = pct + '%';
+    });
+
+    // 총합
+    const totalEarned = Number(totals.totalEarned || 0);
+    const totalNeeded = Number(req.requiredTotalCredits || 0) || 0;
+    const totalPct = totalNeeded ? Math.min(100, Math.round(totalEarned / totalNeeded * 100)) : 0;
+    const pvTotal = document.getElementById('pv-total');
+    const pfTotal = document.getElementById('pf-total');
+    if (pvTotal) pvTotal.textContent = totalNeeded ? `${totalEarned}/${totalNeeded}` : `${totalEarned}`;
+    if (pfTotal) pfTotal.style.width = totalPct + '%';
+
+    // 오른쪽 요약 총취득학점 업데이트
+    const semesterGpaCount = document.getElementById('semester-gpa-count');
+    if (semesterGpaCount) semesterGpaCount.textContent = String(totalEarned);
+
+    // 그레이드 프리뷰와 시뮬레이터에서 사용
+    window._ac_currentEarnedCredits = totalEarned;
+    updateGradPreview();
+  } catch (err) {
+    console.error('fetchProgress failed', err);
+  }
+}
+
+async function fetchAcademicinfo() {
+  const creditAvg = document.getElementById('credit-avg');
+  const creditEarned = document.getElementById('credit-earned');
+  const studyTime = document.getElementById('study-time');
+  const certificates = document.getElementById('certificates');
+  try {
+    const res = await fetch('/academic/info', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.success) return;
+
+    if (creditAvg) creditAvg.textContent = json.creditAvg || '0.0';
+    if (creditEarned) creditEarned.textContent = json.creditEarned || '0';
+    if (studyTime) studyTime.textContent = json.studyTime || '0h';
+    if (certificates) certificates.textContent = json.certificates || '0';
+  } catch (err) {
+    console.error('fetchAcademicinfo failed', err);
+  }
+}
+// 학기 코드 → 정렬용 { year, semesterNumber }
+function parseSemesterOrder(semester) {
+  const match = String(semester || '').trim().match(/^(\d{4})-(\d)$/);
+  if (!match) return { year: 0, semesterNumber: 0 };
+  return { year: Number(match[1]), semesterNumber: Number(match[2]) };
+}
+
+// 학기 코드 → 표시용 텍스트 ("2024-1" → "2024-1학기")
+function formatSemesterLabel(semester) {
+  return String(semester || '').replace(/^(\d{4})-(\d)$/, '$1-$2학기');
+}
+
+// 학기별 성적 이력 불러오기
+async function fetchAcademicTrend() {
+  const tableBody = document.getElementById('semester-gpa-history-body');
+  if (!tableBody) return;
+
+  try {
+    const response = await fetch('/academic/all-gpa', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('학기별 GPA를 불러오지 못했습니다.');
+    const result = await response.json();
+    renderAcademicTrend(result.success ? result.records : []);
+  } catch (error) {
+    console.error(error);
+    tableBody.innerHTML = '<tr><td colspan="4" style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">학기별 데이터를 불러오지 못했습니다.</td></tr>';
+  }
+}
+
+// 표 렌더링
+function renderAcademicTrend(records) {
+  const tableBody = document.getElementById('semester-gpa-history-body');
+  const averageEl = document.getElementById('semester-gpa-average');
+  const bestEl = document.getElementById('semester-gpa-best');
+  const countEl = document.getElementById('semester-gpa-count');
+
+  if (!tableBody) return;
+
+  const normalizedRecords = (Array.isArray(records) ? records : [])
+    .filter(record => record && record.semester)
+    .map(record => ({ ...record, semesterGPA: Number(record.semesterGPA) }))
+    .sort((left, right) => {
+      const l = parseSemesterOrder(left.semester);
+      const r = parseSemesterOrder(right.semester);
+      return (l.year - r.year) || (l.semesterNumber - r.semesterNumber);
+    });
+
+  const validRecords = normalizedRecords.filter(record => Number.isFinite(record.semesterGPA));
+
+  if (!validRecords.length) {
+    tableBody.innerHTML = '<tr><td colspan="4" style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">학기별 성적 데이터가 없습니다.</td></tr>';
+    if (averageEl) averageEl.textContent = '-';
+    if (bestEl) bestEl.textContent = '-';
+    if (countEl) countEl.textContent = '-';
+    return;
+  }
+
+  const averageGpa = validRecords.reduce((sum, r) => sum + r.semesterGPA, 0) / validRecords.length;
+  const bestRecord = validRecords.reduce((best, cur) => (cur.semesterGPA > best.semesterGPA ? cur : best), validRecords[0]);
+  const totalCredits = validRecords.reduce((sum, r) => sum + (Number(r.earnedCredits) || 0), 0);
+
+  tableBody.innerHTML = validRecords.map((record, index) => {
+    const isBest = record.semester === bestRecord.semester;
+    return `
+      <tr style="border-bottom:1px solid var(--border);${index % 2 === 1 ? 'background:var(--bg3);' : ''}">
+        <td style="padding:10px;font-size:13px;">${formatSemesterLabel(record.semester)}</td>
+        <td style="padding:10px;font-size:13px;color:var(--text2);">${Number(record.attemptedCredits || 0)}</td>
+        <td style="padding:10px;font-size:13px;color:var(--text2);">${Number(record.earnedCredits || 0)}</td>
+        <td style="padding:10px;"><strong style="color:${isBest ? 'var(--green)' : 'var(--accent)'};font-family:'DM Sans';">${record.semesterGPA.toFixed(2)}</strong>${isBest ? ' <span class="badge badge-green" style="font-size:9px;padding:1px 6px;">최고</span>' : ''}</td>
+      </tr>`;
+  }).join('');
+
+  if (averageEl) averageEl.textContent = averageGpa.toFixed(2);
+  if (bestEl) bestEl.textContent = bestRecord.semesterGPA.toFixed(2);
+  if (countEl) countEl.textContent = String(totalCredits);
+}
+
+// 초기화
+document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetchProgress();
+  fetchAcademicinfo();
+  fetchAcademicTrend();
+});

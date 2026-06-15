@@ -175,4 +175,35 @@ async function saveIsCompleted(userEmail, changes) {
   } // for
 }
 
-module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted};
+async function updateProfile(userEmail, profileData) {
+  try {
+    const { studentId, university, major, enrollmentStatus } = profileData;
+    await User.findOneAndUpdate(
+      { email: userEmail },
+      { studentId, university, major, enrollmentStatus }
+    );
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+async function getProfile(userEmail) {
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) throw new Error('사용자를 찾지 못했습니다.');
+
+    return {
+      name: user.name,
+      email: user.email,
+      studentId: user.studentId,
+      university: user.university,
+      major: user.major,
+      enrollmentStatus: user.enrollmentStatus
+    };
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
+module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};

@@ -11,10 +11,10 @@
 
   <div class="sidebar-user">
     <div class="user-info">
-      <div class="user-avatar"><%= user ? user.name[0] : '김' %></div>
+      <div class="user-avatar"><%= user ? user.name[0] : '' %></div>
       <div>
-        <div class="user-name"><%= user ? user.name : '김민준' %></div>
-        <div class="user-role"><%= user ? user.major + ' ' + user.grade + '학년' : '컴퓨터공학과 3학년' %></div>
+        <div class="user-name"><%= user ? user.name : '' %></div>
+        <div class="user-role"><%= user ? user.major : '' %></div>
       </div>
     </div>
   </div>
@@ -32,7 +32,7 @@
         <span class="nav-icon">📢</span>공지사항
         <span class="nav-badge">3</span>
       </a>
-      <a href="/user/academic" class="nav-item <%= currentPage === 'academic' ? 'active' : '' %>"><span class="nav-icon">🎓</span>학사관리</a>
+      <a href="/academic" class="nav-item <%= currentPage === 'academic' ? 'active' : '' %>"><span class="nav-icon">🎓</span>학사관리</a>
       <a href="/study"    class="nav-item <%= currentPage === 'study'    ? 'active' : '' %>"><span class="nav-icon">📖</span>공부</a>
     </div>
     <div class="nav-section">

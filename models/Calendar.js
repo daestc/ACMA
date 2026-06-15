@@ -8,15 +8,11 @@ const { Schema } = mongoose;
 const calendarEventSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-
     title: { type: String, required: true, trim: true },
     description: { type: String, default: null },
-
     startDate: { type: Date, required: true},
-    endDate: { type: Date, default: null }, //추천: default: null 제거 후 required: true 추가
-                                            //종료일이 없는경우 저장시, 시작일과 같은 값을 가지게 함 단 내부적으로 처리 필요
+    endDate: { type: Date, default: null }, //추천: default: null 제거 후 required: true 추가                                 //종료일이 없는경우 저장시, 시작일과 같은 값을 가지게 함 단 내부적으로 처리 필요
     isAllDay: { type: Boolean, default: true },
-
     // 카테고리: 강의 | 시험 | 과제 | 자격증 | 공지 | 기타
     category: {
       type: String,
@@ -123,9 +119,35 @@ const dailyChecklistSchema = new Schema(
 
 dailyChecklistSchema.index({ userId: 1, date: 1 }, { unique: true });
 
+// 1. 강의 시간 세부 정보 스키마 (서브 도큐먼트)
+const ScheduleSchema = new mongoose.Schema({
+  day: { type: String, required: true, enum: ['월', '화', '수', '목', '금', '토', '일'] },
+  startTime: { type: String, required: true }, // "11:30" (화면 표시용)
+  endTime: { type: String, required: true },   // "13:30" (화면 표시용)
+  startMinute: { type: Number, required: true }, // 690 (쿼리/비교 연산용)
+  endMinute: { type: Number, required: true }    // 810 (쿼리/비교 연산용)
+}, { _id: false }); // 서브 도큐먼트의 자체 ID 생성을 막아 용량 절약
+
+// 2. 전체 강의(분반별) 스키마
+const LectureSchema = new mongoose.Schema({
+  classification: { type: String, required: true }, // 이수구분 (예: "교필", "전선")
+  courseName: { type: String, required: true },     // 교과명 (예: "AI시대의컴퓨팅사고")
+  section: { type: Number, required: true },        // 분반 (예: 1, 2, 3)
+  credits: { type: Number, required: true },        // 학점 (예: 2)
+  professor: { type: String, default: "미정" },     // 담당교수
+  schedules: [ScheduleSchema],                      // 강의시간 배열 (복수 시간 대응)
+  year: { type: Number, default: 2026 },            // 개설 연도 (복수 학기 관리용)
+  semester: { type: String, default: "1학기" }       // 개설 학기
+}, { timestamps: true }); // 생성/수정일 자동 기록
+
+// 복합 인덱스 설정 (성능 최적화)
+LectureSchema.index({ courseName: 1, section: 1 }, { unique: true }); // 동일 과목의 동일 분반 중복 방지
+LectureSchema.index({ "schedules.day": 1, "schedules.startMinute": 1 }); // 시간대별 조회 성능 향상
+
 
 module.exports = {
   CalendarEvent: mongoose.model('CalendarEvent', calendarEventSchema),
   Timetable: mongoose.model('Timetable', timetableSchema),
   DailyChecklist: mongoose.model('DailyChecklist', dailyChecklistSchema),
+  Lecture: mongoose.model('Lecture', LectureSchema),
 };

@@ -179,6 +179,7 @@ const EVENT_CATEGORIES = [
   'other'
 ];
 
+//도메인 규칙 함수
 function validateEventData(eventData) {
   if (!eventData.title || eventData.title.trim() === '') {
     throw new Error('일정 제목은 필수입니다.');
@@ -253,11 +254,13 @@ function validateTimetableData(timetableData) {
 
 }
 
+//시간표 분 표시
 function timeToMinutes(time) {
   const [hour, minute] = time.split(':').map(Number);
   return hour * 60 + minute;
 }
 
+//일정 시작,끝 출력
 function isScheduleOverlap(a, b) {
   if (Number(a.dayOfWeek) !== Number(b.dayOfWeek)) {
     return false;
@@ -303,6 +306,182 @@ async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId 
       }
     }
   }
+};
+
+// ======================날씨 api(단기예보 이용)==========================
+async function getShortWeather() {
+  //위도,경도도 .env파일에서 미리 설정함.(서울특별시)
+  const serviceKey = process.env.KMA_SERVICE_KEY;
+  const nx = process.env.KMA_NX || 60;
+  const ny = process.env.KMA_NY || 127;
+
+  if (!serviceKey) {
+    throw new Error('KMA_SERVICE_KEY가 설정되지 않았습니다.');
+  }
+
+  const now = new Date();
+
+  const baseDate = getKmaBaseDate(now);
+  const baseTime = getKmaBaseTime(now);
+
+  const url =
+    `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst` +
+    `?serviceKey=${encodeURIComponent(serviceKey)}` +
+    `&pageNo=1` +
+    `&numOfRows=1000` +
+    `&dataType=JSON` +
+    `&base_date=${baseDate}` +
+    `&base_time=${baseTime}` +
+    `&nx=${nx}` +
+    `&ny=${ny}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('기상청 단기예보 API 요청 실패');
+  }
+
+  const data = await response.json();
+
+  
+  const items = data.response?.body?.items?.item || [];
+
+  const dailyMap = {};
+
+  const grouped = {};
+
+  //해당 날짜의 12시를 기준으로 날씨를 가져옴.
+  //오늘 날짜는 불러오려는 날씨의 시간이 지났으면 다음 시간으로 바꿔서 출력
+  items.forEach(item => {
+    const date = item.fcstDate;
+    const time = item.fcstTime;
+    const category = item.category;
+
+  if (!['SKY', 'PTY', 'TMP'].includes(category)) return;
+
+  if (!grouped[date]) {
+    grouped[date] = {};
+  }
+
+  if (!grouped[date][time]) {
+    grouped[date][time] = {
+      date: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`,
+      time,
+      sky: null,
+      pty: null,
+      temp: null,
+    };
+  }
+
+  if (category === 'SKY') grouped[date][time].sky = item.fcstValue;
+  if (category === 'PTY') grouped[date][time].pty = item.fcstValue;
+  if (category === 'TMP') grouped[date][time].temp = item.fcstValue;
+  });
+
+  const preferredTimes = [
+    '1200',
+    '1500',
+    '0900',
+    '1800',
+    '0600',
+    '2100',
+    '0000',
+    '0300'
+  ];
+
+  const dailyWeather = Object.values(grouped).map(times => {
+    const selectedTime =
+    preferredTimes.find(time => times[time]) ||
+    Object.keys(times).sort()[0];
+
+    return times[selectedTime];
+  });
+
+  return dailyWeather.map(day => ({
+    ...day,
+    icon: getWeatherIcon(day.sky, day.pty),
+    description: getWeatherDescription(day.sky, day.pty),
+  }));
+
+  return Object.values(dailyMap).map(day => ({
+    ...day,
+    icon: getWeatherIcon(day.sky, day.pty),
+    description: getWeatherDescription(day.sky, day.pty),
+  }));
+}
+
+function getKmaBaseDate(date) {
+  const base = new Date(date);
+
+  const hour = base.getHours();
+  const minute = base.getMinutes();
+
+  // 단기예보는 발표 직후 바로 조회가 안 될 수 있어서 여유를 둠
+  if (hour < 2 || (hour === 2 && minute < 30)) {
+    base.setDate(base.getDate() - 1);
+  }
+
+  return formatKmaDate(base);
+}
+
+function getKmaBaseTime(date) {
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+
+  const current = hour * 100 + minute;
+
+  if (current >= 2300) return '2300';
+  if (current >= 2000) return '2000';
+  if (current >= 1700) return '1700';
+  if (current >= 1400) return '1400';
+  if (current >= 1100) return '1100';
+  if (current >= 800) return '0800';
+  if (current >= 500) return '0500';
+  if (current >= 230) return '0200';
+
+  return '2300';
+}
+
+function formatKmaDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}${month}${day}`;
+}
+
+function getWeatherIcon(sky, pty) {
+  // PTY: 0 없음, 1 비, 2 비/눈, 3 눈, 4 소나기
+  if (pty && pty !== '0') {
+    if (pty === '1') return '🌧️';
+    if (pty === '2') return '🌨️';
+    if (pty === '3') return '❄️';
+    if (pty === '4') return '🌦️';
+    return '☔';
+  }
+
+  // SKY: 1 맑음, 3 구름많음, 4 흐림
+  if (sky === '1') return '☀️';
+  if (sky === '3') return '⛅';
+  if (sky === '4') return '☁️';
+
+  return '🌤️';
+}
+
+function getWeatherDescription(sky, pty) {
+  if (pty && pty !== '0') {
+    if (pty === '1') return '비';
+    if (pty === '2') return '비/눈';
+    if (pty === '3') return '눈';
+    if (pty === '4') return '소나기';
+    return '강수';
+  }
+
+  if (sky === '1') return '맑음';
+  if (sky === '3') return '구름많음';
+  if (sky === '4') return '흐림';
+
+  return '날씨';
 }
 
 module.exports = {getEventsListByUser,
@@ -313,5 +492,7 @@ module.exports = {getEventsListByUser,
                 getTimetableListByUser,
                 createNewTimetable,
                 updateTimetable,
-                deleteTimetable
+                deleteTimetable,
+
+                getShortWeather
             };

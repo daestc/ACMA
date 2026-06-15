@@ -1,16 +1,12 @@
 const userService = require('../services/userService');
 
-const user = {
-  name: '가나다',
-  email: 'abc@test.com',
-  major: '컴공1'
-};
 
 // Todo 항목 추가
 const addTodo = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
-
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
     const {content, note} = req.body;
     
     // DB에 추가 + 추가한 todo의 _id 가져오기
@@ -30,6 +26,8 @@ const addTodo = async (req, res) => {
 // Todo 삭제
 const deleteTodo = async (req, res) => {
   try {
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
     const {deletetodoList} = req.body;
     // 삭제 항목이 없으면 리턴
     if(deletetodoList.length === 0) return res.json({success: false});
@@ -52,6 +50,8 @@ const deleteTodo = async (req, res) => {
 const addHabit = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
 
     const {title, category} = req.body;
     
@@ -73,6 +73,9 @@ const addHabit = async (req, res) => {
 const editHabit = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
+
     const {habitId, title, category} = req.body;
     
     // DB에 추가 + 추가한 habit의 _id 가져오기
@@ -92,6 +95,8 @@ const editHabit = async (req, res) => {
 const deleteHabit = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
     const {habitId} = req.body;
     
     // DB에 추가 + 추가한 habit의 _id 가져오기
@@ -111,6 +116,8 @@ const deleteHabit = async (req, res) => {
 const saveIsCompleted = async (req, res) => {
   try {
     // #후순위 유저 유효성 검사
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
     const changes = req.body.changes;
     
     // DB에 추가 + 추가한 habit의 _id 가져오기
@@ -123,4 +130,34 @@ const saveIsCompleted = async (req, res) => {
   }
 }
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted};
+const updateProfile = async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.json({success: false});
+
+    const {studentId, university, major, enrollmentStatus} = req.body;
+    await userService.updateProfile(user.email, { studentId, university, major, enrollmentStatus });
+
+    console.log('프로필 업데이트 완료!');
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
+
+const getProfile = async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.json({ success: false });
+
+    const profile = await userService.getProfile(user.email);
+    res.json({ success: true, user: profile });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
+
+module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};
