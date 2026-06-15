@@ -8,6 +8,21 @@ const csvParser = require('csv-parser');
 const iconv = require('iconv-lite');
 const { Lecture } = require('../models/Calendar');
 
+function normalizeUniversity(university) {
+  const value = university?.trim();
+  return value || null;
+}
+
+function requireUniversity(university) {
+  const value = normalizeUniversity(university);
+  if (!value) {
+    const err = new Error('소속 대학 정보가 없어 강의를 처리할 수 없습니다.');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
+  }
+  return value;
+}
+
 // ── 강의시간 문자열 파싱 ──────────────────────────
 // "월11:30-13:30,수14:00-15:30" → [{ day, startTime, endTime, startMinute, endMinute }]
 function parseSchedules(scheduleStr) {
@@ -82,6 +97,7 @@ function parseCsvBuffer(buffer) {
 // ── CSV 일괄 등록 (upsert) ────────────────────────
 // 같은 교과명+분반은 갱신, 없으면 삽입 (기존 데이터는 지우지 않음)
 async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university } = {}) {
+  const univ = requireUniversity(university);
   const { lectures, failedRows } = await parseCsvBuffer(buffer);
 
   if (lectures.length === 0) {
@@ -93,11 +109,11 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
   const ops = lectures.map(lec => ({
     updateOne: {
       // 같은 대학의 같은 과목+분반만 갱신 (다른 대학 강의는 건드리지 않음)
-      filter: { university: university || null, courseName: lec.courseName, section: lec.section },
+      filter: { university: univ, courseName: lec.courseName, section: lec.section },
       update: {
         $set: {
           ...lec,
-          university: university || null,
+          university: univ,
           ...(year ? { year } : {}),
           ...(semester ? { semester } : {}),
           ...(createdBy ? { createdBy } : {}),
@@ -107,7 +123,17 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
     },
   }));
 
-  const result = await Lecture.bulkWrite(ops, { ordered: false });
+  let result;
+  try {
+    result = await Lecture.bulkWrite(ops, { ordered: false });
+  } catch (err) {
+    if (err.code === 11000 || err.name === 'MongoBulkWriteError') {
+      const dup = new Error('동일한 교과명·분반 강의가 이미 등록되어 있습니다. 목록에서 확인하거나 CSV를 수정해주세요.');
+      dup.code = 'DUPLICATE_LECTURE';
+      throw dup;
+    }
+    throw err;
+  }
 
   return {
     inserted: result.upsertedCount,
@@ -119,8 +145,10 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
 
 // ── 개별 강의 등록 ────────────────────────────────
 async function createLecture({ classification, courseName, section, credits, professor, schedules, year, semester, createdBy, university }) {
+  const univ = requireUniversity(university);
+
   // 같은 대학 안에서만 과목+분반 중복 검사
-  const exists = await Lecture.findOne({ university: university || null, courseName, section }).lean();
+  const exists = await Lecture.findOne({ university: univ, courseName, section }).lean();
   if (exists) {
     const err = new Error(`이미 등록된 강의입니다. (${courseName} ${section ? section + '분반' : '분반 없음'})`);
     err.code = 'DUPLICATE_LECTURE';
@@ -128,7 +156,7 @@ async function createLecture({ classification, courseName, section, credits, pro
   }
 
   return Lecture.create({
-    university: university || null,
+    university: univ,
     classification,
     courseName,
     section,
@@ -141,9 +169,14 @@ async function createLecture({ classification, courseName, section, credits, pro
   });
 }
 
-// ── 목록 조회 (검색 + 페이징, 소속 대학 강의만) ──
+// 소속 대학 강의만 조회 (university: null 시드 데이터는 제외)
 async function getLectures({ search = '', page = 1, limit = 20, university } = {}) {
-  const filter = { university: university || null };
+  const univ = normalizeUniversity(university);
+  if (!univ) {
+    return { items: [], total: 0, page: 1, totalPages: 1 };
+  }
+
+  const filter = { university: univ };
   if (search) {
     filter.$or = [
       { courseName: { $regex: search, $options: 'i' } },
@@ -168,7 +201,8 @@ async function getLectures({ search = '', page = 1, limit = 20, university } = {
 
 // ── 삭제 (소속 대학 강의만) ───────────────────────
 async function deleteLecture(id, university) {
-  const result = await Lecture.findOneAndDelete({ _id: id, university: university || null });
+  const univ = requireUniversity(university);
+  const result = await Lecture.findOneAndDelete({ _id: id, university: univ });
   if (!result) {
     const err = new Error('존재하지 않거나 소속 대학의 강의가 아닙니다.');
     err.code = 'NOT_FOUND';

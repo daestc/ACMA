@@ -76,6 +76,9 @@ exports.postLecture = async (req, res) => {
     if (err.code === 'DUPLICATE_LECTURE') {
       return res.status(409).json({ ok: false, message: err.message });
     }
+    if (err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
     logger.warn(`강의 등록 실패 | by=${req.user.email} | ${err.message}`);
     res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
   }
@@ -100,6 +103,12 @@ exports.postLectureCsv = async (req, res) => {
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.code === 'EMPTY_CSV') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    if (err.code === 'DUPLICATE_LECTURE') {
+      return res.status(409).json({ ok: false, message: err.message });
+    }
+    if (err.code === 'NO_UNIVERSITY') {
       return res.status(400).json({ ok: false, message: err.message });
     }
     logger.warn(`강의 CSV 업로드 실패 | by=${req.user.email} | ${err.message}`);

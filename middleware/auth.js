@@ -33,12 +33,21 @@ async function requireStaff(req, res, next) {
     if (!user) return res.redirect('/auth/login?expired=1');
 
     if (user.role === 'staff' && user.staffStatus === 'approved') {
-      req.user = {
+      if (!user.university?.trim()) {
+        return res.status(403).render('pages/error', {
+          title: '소속 대학 정보 없음',
+          status: 403,
+          error: '강의 관리를 사용하려면 소속 대학 정보가 필요합니다.',
+        });
+      }
+
+      req.session.user = {
         ...req.session.user,
         role: user.role,
         staffStatus: user.staffStatus,
-        university: user.university, // 소속 대학 (강의 필터링용)
+        university: user.university,
       };
+      req.user = req.session.user;
       return next();
     }
     if (user.role === 'staff' && user.staffStatus === 'pending') {
