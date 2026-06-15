@@ -71,12 +71,12 @@ const getCareerDetails = async (req, res) => {
 // 저장 버튼용 - DB 저장
 const saveCareerDetails = async (req, res) => {
   try {
-    if (!req.user || (!req.user._id && !req.user.email)) {
+    if (!req.session.user || (!req.session.user._id && !req.session.user.email)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     const { status } = req.body;
-    const data = await careerService.saveCareerDetails(req.params.jobCode, req.user, status);
+    const data = await careerService.saveCareerDetails(req.params.jobCode, req.session.user, status);
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {
@@ -90,10 +90,10 @@ const saveCareerDetails = async (req, res) => {
 // 현재 선택한 직무 정보 가져오기
 const getMyCareer=async(req,res)=>{
   try {
-    if (!req.user || (!req.user._id && !req.user.email)) {
+    if (!req.session.user || (!req.session.user._id && !req.session.user.email)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    const data = await careerService.getMyCareer(req.user);
+    const data = await careerService.getMyCareer(req.session.user);
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {
@@ -135,11 +135,11 @@ const saveCertification = async (req, res) => {
     }
     
     // 사용자 인증 확인
-    if (!req.user || (!req.user._id && !req.user.email)) {
+    if (!req.session.user || (!req.session.user._id && !req.session.user.email)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    const userId = req.user._id || req.user.email;
+    const userId = req.session.user._id || req.session.user.email;
     const userCert = await careerService.saveCertification(jmcd, userId, status);
     if (!userCert) {
       return res.status(404).json({ error: 'Certification not found' });
@@ -167,7 +167,7 @@ const getPassRate = async (req, res) => {
 // 현재 선택한 자격증 목록 가져오기
 const getMyCertifications = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.email;
+    const userId = req.session.user._id || req.session.user.email;
     const certs = await careerService.getMyCertifications(userId);
     res.json(certs);
   } catch (error) {
@@ -184,7 +184,7 @@ const removeCertification = async (req, res) => {
       return res.status(400).json({ error: 'userCertId is required' });
     }
 
-    const userId = req.user._id || req.user.email;
+    const userId = req.session.user._id || req.session.user.email;
     const result = await careerService.deleteCertification(userCertId, userId);
     
     res.json({ success: true, message: '자격증이 삭제되었습니다.' });
@@ -203,7 +203,7 @@ const removeCertification = async (req, res) => {
 // 현재 선택한 직무 목록 가져오기
 const getMyJobs = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.email;
+    const userId = req.session.user._id || req.session.user.email;
     const jobs = await careerService.getMyJobs(userId);
     res.json(jobs);
   } catch (error) {
@@ -220,7 +220,7 @@ const removeJob = async (req, res) => {
       return res.status(400).json({ error: 'jobId is required' });
     }
 
-    const userId = req.user._id || req.user.email;
+    const userId = req.session.user._id || req.session.user.email;
     const result = await careerService.deleteJob(jobId, userId);
     
     res.json({ success: true, message: '직무가 삭제되었습니다.' });

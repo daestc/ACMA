@@ -61,7 +61,7 @@ const deletedEvent = async (req,res)=>{//일정 삭제 (isDelete true로 변경)
     }
 };
 
-//시간표 컨트롤러
+//시간표 조회 컨트롤러
 const getTimetableList = async(req,res) => { 
     try {
         const userId = req.user.id; //사용자 id
@@ -76,6 +76,7 @@ const getTimetableList = async(req,res) => {
     }
 };
 
+//시간표 생성
 const createTimetable = async(req,res) => {
     try {
         const userId = req.user.id;
@@ -89,6 +90,7 @@ const createTimetable = async(req,res) => {
     }
 };
 
+//시간표 업데이트
 const updatedTimetable = async(req,res) => {
     try {
         const userId = req.user.id;
@@ -104,6 +106,7 @@ const updatedTimetable = async(req,res) => {
     }
 };
 
+//시간표 지우기
 const deletedTimetable = async (req,res)=>{
     try {
         const userId = req.user.id;
@@ -122,6 +125,21 @@ const deletedTimetable = async (req,res)=>{
     }
 };
 
+//날씨 컨트롤러
+const getWeather = async (req, res) => {
+  try {
+    //쿼리로 위경도가 오면 해당 위치, 없으면 .env 기본 좌표(서울) 사용
+    const { lat, lon } = req.query;
+    const weatherList = await calendarService.getShortWeather(lat, lon);
+    res.json(weatherList);
+  } catch (error) {
+    res.status(500).json({
+      message: '날씨 조회 실패',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
     getEventsList,
     createEvent,
@@ -131,5 +149,7 @@ module.exports = {
     getTimetableList,
     createTimetable,
     updatedTimetable,
-    deletedTimetable
+    deletedTimetable,
+
+    getWeather
 };

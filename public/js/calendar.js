@@ -21,6 +21,9 @@ let currentDate = new Date();
 let events = [];
 let selectedDateStr = null;
 
+//날씨 api전역 함수
+let weatherMap = {};
+
 window.timetables = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -62,13 +65,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadCalendarData() {
-  const [eventRes, timetableRes] = await Promise.all([
+  const [eventRes, timetableRes, weatherList] = await Promise.all([
     fetch('/calendar/events'),
-    fetch('/calendar/timetables')
+    fetch('/calendar/timetables'),
+    fetchWeatherList() // weather.js 공용 함수
   ]);
 
   events = await eventRes.json();
   window.timetables = await timetableRes.json();
+
+  weatherMap = {};
+  weatherList.forEach(weather => {
+    weatherMap[weather.date] = weather;
+  });
 }
 
 function renderCalendar() {
@@ -93,6 +102,7 @@ function renderCalendar() {
   const firstDay = new Date(year, month, 1);
   const lastDate = new Date(year, month + 1, 0).getDate();
   const startDay = firstDay.getDay();
+  
 
   for (let i = 0; i < startDay; i++) {
     grid.innerHTML += `<div class="cal-day other-month"></div>`;
@@ -101,10 +111,21 @@ function renderCalendar() {
   for (let date = 1; date <= lastDate; date++) {
     const dateStr = formatDate(year, month + 1, date);
     const dayEvents = getEventsByDate(dateStr);
+    const weather = weatherMap[dateStr];
 
     grid.innerHTML += `
       <div class="cal-day" onclick="selectDate('${dateStr}')">
         <div class="day-num">${date}</div>
+
+        ${weather ? `
+          <div
+            class="day-weather-icon"
+            title="${weather.description} / ${weather.temp ?? '-'}℃"
+          >
+            ${weather.icon}
+          </div>
+        ` : ''}
+
         <div class="day-events">
           ${dayEvents.map(event => {
             const multiDay = isMultiDayEvent(event);

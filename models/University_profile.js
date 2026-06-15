@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
 // 학사 정보 스키마
 const UniversityProfileSchema = new mongoose.Schema({
@@ -19,7 +20,7 @@ const UniversityProfileSchema = new mongoose.Schema({
   doubleMajor: { type: String, default: null }, // 복수전공
 
   // ── 졸업 요건 (사용자 직접 입력)
-  GraduationRequirements :{
+  GraduationRequirements: {
     requiredTotalCredits:    { type: Number, default: 130 }, // 필요학점
     requiredMajorCredits:    { type: Number, default: 42  }, // 전공필수
     requiredMajorElective:   { type: Number, default: 40  }, // 전공선택
