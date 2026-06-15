@@ -1,0 +1,40 @@
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="app-sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-header-left">
+      <div class="s-logo">A</div>
+      <span class="s-logo-text">AcadMe</span>
+    </div>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-info">
+      <div class="user-avatar"><%= user ? user.name[0] : 'A' %></div>
+      <div>
+        <div class="user-name"><%= user ? user.name : '' %></div>
+        <div class="user-role"><%= user && user.university ? user.university + ' · ' : '' %>대학관계자</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">학사 관리</div>
+      <a href="/staff/lectures" class="nav-item <%= currentPage === 'lectureAdmin' ? 'active' : '' %>">
+        <span class="nav-icon">🏫</span>강의 관리
+      </a>
+      <a href="/staff/schedules" class="nav-item <%= currentPage === 'staffSchedule' ? 'active' : '' %>">
+        <span class="nav-icon">📅</span>학교 일정 등록
+      </a>
+      <a href="/staff/graduation" class="nav-item <%= currentPage === 'staffGraduation' ? 'active' : '' %>">
+        <span class="nav-icon">🎓</span>졸업요건 설정
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
+  </div>
+</aside>

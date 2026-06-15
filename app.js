@@ -10,6 +10,8 @@ const MongoStore = require('connect-mongo');
 const passport    = require('./config/passport');
 const connectDB   = require('./config/database');
 
+const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
+
 // app 생성
 const app = express();
 
@@ -24,6 +26,8 @@ const mystatusRouter = require('./routes/mystatusRouter');
 const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
 const alertRouter = require('./routes/alertRouter');
+const staffRouter = require('./routes/staffRouter');
+const adminRouter = require('./routes/adminRouter');
 
 
 
@@ -67,6 +71,13 @@ app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
 app.use('/', alertRouter);
+app.use('/staff', staffRouter);
+app.use('/admin', adminRouter);
+
+// 오류 처리 미들웨어
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 
 //서버 시작
 app.listen(3000, ()=>{

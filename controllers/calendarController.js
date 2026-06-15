@@ -128,7 +128,9 @@ const deletedTimetable = async (req,res)=>{
 //날씨 컨트롤러
 const getWeather = async (req, res) => {
   try {
-    const weatherList = await calendarService.getShortWeather();
+    //쿼리로 위경도가 오면 해당 위치, 없으면 .env 기본 좌표(서울) 사용
+    const { lat, lon } = req.query;
+    const weatherList = await calendarService.getShortWeather(lat, lon);
     res.json(weatherList);
   } catch (error) {
     res.status(500).json({

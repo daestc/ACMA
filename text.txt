@@ -1,1 +1,3 @@
 123
+관리자 이메일: admin.test@acama.ac.kr
+관리자 비밀번호: test1234

@@ -1,5 +1,9 @@
 <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
 
+<% if (user && user.role === 'staff') { %>
+  <%- include('./sidebar-staff', { currentPage, user }) %>
+<% } else { %>
+
 <aside class="sidebar" id="app-sidebar">
   <div class="sidebar-header">
     <div class="sidebar-header-left">
@@ -39,9 +43,17 @@
       <div class="nav-label">진로</div>
       <a href="/career"   class="nav-item <%= currentPage === 'career'   ? 'active' : '' %>"><span class="nav-icon">💼</span>진로정보</a>
     </div>
+    <% if (user && user.role === 'admin') { %>
+    <div class="nav-section">
+      <div class="nav-label">관리</div>
+      <a href="/admin/staff" class="nav-item <%= currentPage === 'adminStaff' ? 'active' : '' %>"><span class="nav-icon">✅</span>가입 승인</a>
+    </div>
+    <% } %>
   </nav>
 
   <div class="sidebar-footer">
     <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
   </div>
 </aside>
+
+<% } %>

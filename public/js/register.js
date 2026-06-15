@@ -3,6 +3,75 @@
    회원가입 클라이언트 유효성 검사
    ================================================ */
 
+// ── 가입 유형 선택 (대학생 / 대학관계자) ──────────
+
+function selectType(btn, role) {
+  document.querySelectorAll('.user-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('role').value = role;
+
+  const isStaff = role === 'staff';
+
+  // 대학관계자는 전공 입력 불필요 → 필드 숨김
+  document.getElementById('major-group').style.display = isStaff ? 'none' : 'block';
+  document.getElementById('major').value = '';
+  clearMsg('major-msg');
+  document.getElementById('major').classList.remove('input-error', 'input-ok');
+
+  // 관계자 인증 사진 첨부란 표시 (학생 전환 시 첨부 초기화)
+  document.getElementById('verification-group').style.display = isStaff ? 'block' : 'none';
+  if (!isStaff) {
+    document.getElementById('verificationImage').value = '';
+    resetVerificationZone();
+  }
+  clearMsg('verification-msg');
+
+  // 승인 안내 문구 표시
+  document.getElementById('staff-notice').style.display = isStaff ? 'block' : 'none';
+}
+
+// ── 인증 사진 첨부 표시 ───────────────────────────
+
+function resetVerificationZone() {
+  const label = document.getElementById('verification-filename');
+  label.textContent = '재직증명서, 교직원증 등 (jpg/png/webp, 5MB 이하)';
+  label.style.color = 'var(--text2)';
+  document.getElementById('verification-zone').style.borderColor = 'var(--border2)';
+}
+
+document.getElementById('verificationImage').addEventListener('change', function () {
+  if (this.files && this.files[0]) {
+    const f = this.files[0];
+    if (f.size > 5 * 1024 * 1024) {
+      this.value = '';
+      resetVerificationZone();
+      setMsg('verification-msg', '5MB 이하의 이미지만 업로드할 수 있습니다.', true);
+      return;
+    }
+    const label = document.getElementById('verification-filename');
+    label.textContent = '📄 ' + f.name;
+    label.style.color = 'var(--green)';
+    document.getElementById('verification-zone').style.borderColor = 'var(--green)';
+    clearMsg('verification-msg');
+  } else {
+    resetVerificationZone();
+  }
+});
+
+function validateVerification() {
+  if (!isStaffSelected()) return true;
+  const input = document.getElementById('verificationImage');
+  if (!input.files || !input.files[0]) {
+    setMsg('verification-msg', '관계자 인증 사진을 첨부해주세요.', true);
+    return false;
+  }
+  return true;
+}
+
+function isStaffSelected() {
+  return document.getElementById('role').value === 'staff';
+}
+
 // ── 헬퍼 ─────────────────────────────────────────
 
 function setMsg(id, msg, isError) {
@@ -101,6 +170,9 @@ function validateUniversity() {
 }
 
 function validateMajor() {
+  // 대학관계자는 전공 입력이 없으므로 검사 생략
+  if (isStaffSelected()) return true;
+
   const input = document.getElementById('major');
   const val   = input.value.trim();
   if (!val || val.length < 2) {
@@ -177,6 +249,7 @@ document.getElementById('registerForm').addEventListener('submit', function (e) 
   const okName       = validateName();
   const okUniversity = validateUniversity();
   const okMajor      = validateMajor();
+  const okVerify     = validateVerification();
   const okPassword   = validatePassword();
   const okConfirm    = validatePasswordConfirm();
 
@@ -189,7 +262,7 @@ document.getElementById('registerForm').addEventListener('submit', function (e) 
     setInputState(emailInput, true);
   }
 
-  if (!okName || !emailValid || !okUniversity || !okMajor || !okPassword || !okConfirm) {
+  if (!okName || !emailValid || !okUniversity || !okMajor || !okVerify || !okPassword || !okConfirm) {
     e.preventDefault();
   }
 });

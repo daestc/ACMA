@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>강의 관리</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'lectureAdmin', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '강의 관리', user: user }) %>
+
+		<div class="page-content">
+
+			<div class="grid-2" style="margin-bottom:16px;align-items:start;">
+
+				<!-- ── CSV / XLSX 일괄 등록 ── -->
+				<div class="card">
+					<div class="card-header">
+						<span class="card-title">📄 CSV / XLSX 일괄 등록</span>
+						<span class="badge badge-blue">upsert</span>
+					</div>
+
+					<div id="csv-upload-zone"
+						style="border:2px dashed var(--border2);border-radius:var(--radius);padding:26px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;background:var(--bg3);"
+						onclick="document.getElementById('csv-file-input').click()"
+						ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+						ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--bg3)'"
+						ondrop="handleCsvDrop(event)">
+						<div style="font-size:28px;margin-bottom:8px;">📁</div>
+						<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">CSV 또는 XLSX 파일을 드래그하거나 클릭해서 업로드</div>
+						<div style="font-size:11px;color:var(--text2);">헤더: 이수구분, 교과명, 분반, 학점, 담당교수, 강의시간 (최대 5MB)</div>
+						<input type="file" id="csv-file-input" accept=".csv,.xlsx" style="display:none;" onchange="handleCsvFile(this)">
+					</div>
+
+					<!-- 선택된 파일 -->
+					<div id="csv-file-info" style="display:none;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px;align-items:center;gap:10px;">
+						<span style="font-size:16px;">📄</span>
+						<span id="csv-file-name" style="flex:1;font-size:12px;font-weight:700;color:var(--green);"></span>
+						<button onclick="clearCsvFile()" style="font-size:11px;color:var(--text2);padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);">✕</button>
+					</div>
+
+					<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">개설 연도</label>
+							<input class="input-field" id="csv-year" type="number" value="2026" min="2000" max="2100" style="width:100%;">
+						</div>
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">학기</label>
+							<select class="input-field" id="csv-semester" style="width:100%;">
+								<option value="1학기">1학기</option>
+								<option value="2학기">2학기</option>
+								<option value="여름학기">여름학기</option>
+								<option value="겨울학기">겨울학기</option>
+							</select>
+						</div>
+					</div>
+
+					<button class="btn btn-accent" id="csv-upload-btn" style="width:100%;justify-content:center;" onclick="uploadCsv()">⬆ 파일 업로드</button>
+
+					<!-- 업로드 결과 -->
+					<div id="csv-result" style="display:none;margin-top:12px;font-size:12px;border-radius:var(--radius-sm);padding:10px 12px;line-height:1.7;"></div>
+				</div>
+
+				<!-- ── 개별 등록 ── -->
+				<div class="card">
+					<div class="card-header">
+						<span class="card-title">✏️ 개별 강의 등록</span>
+					</div>
+
+					<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">이수구분 *</label>
+							<select class="input-field" id="lec-classification" style="width:100%;">
+								<option value="교필">교필</option>
+								<option value="교선">교선</option>
+								<option value="전필">전필</option>
+								<option value="전선">전선</option>
+								<option value="일선">일선</option>
+							</select>
+						</div>
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">교과명 *</label>
+							<input class="input-field" id="lec-courseName" placeholder="자료구조" style="width:100%;">
+						</div>
+					</div>
+
+					<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;margin-bottom:8px;">
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">분반</label>
+							<input class="input-field" id="lec-section" type="number" min="0" placeholder="없으면 비움" style="width:100%;">
+						</div>
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">학점 *</label>
+							<input class="input-field" id="lec-credits" type="number" min="1" max="10" placeholder="3" style="width:100%;">
+						</div>
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">담당교수</label>
+							<input class="input-field" id="lec-professor" placeholder="미정" style="width:100%;">
+						</div>
+					</div>
+
+					<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">개설 연도</label>
+							<input class="input-field" id="lec-year" type="number" value="2026" min="2000" max="2100" style="width:100%;">
+						</div>
+						<div>
+							<label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;">학기</label>
+							<select class="input-field" id="lec-semester" style="width:100%;">
+								<option value="1학기">1학기</option>
+								<option value="2학기">2학기</option>
+								<option value="여름학기">여름학기</option>
+								<option value="겨울학기">겨울학기</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- 강의시간 -->
+					<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+						<label style="font-size:11px;color:var(--text3);font-weight:600;">강의시간 *</label>
+						<button class="btn btn-ghost btn-sm" onclick="addScheduleRow()">+ 시간 추가</button>
+					</div>
+					<div id="schedule-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+
+					<button class="btn btn-accent" id="lec-submit-btn" style="width:100%;justify-content:center;" onclick="submitLecture()">강의 등록</button>
+					<div id="lec-msg" style="display:none;margin-top:10px;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;"></div>
+				</div>
+
+			</div>
+
+			<!-- ── 등록된 강의 목록 ── -->
+			<div class="card">
+				<div class="card-header">
+					<span class="card-title">📚 <%= user.university || '소속 대학' %> 강의</span>
+					<span style="font-size:12px;color:var(--text2);">총 <%= total %>건</span>
+				</div>
+
+				<form method="GET" action="/staff/lectures" style="display:flex;gap:8px;margin-bottom:12px;">
+					<input class="input-field" name="search" value="<%= search %>" placeholder="교과명 또는 교수명 검색" style="flex:1;">
+					<button type="submit" class="btn btn-ghost">검색</button>
+				</form>
+
+				<% if (items.length === 0) { %>
+					<p style="font-size:13px;color:var(--text2);padding:18px 0;text-align:center;">
+						<%= search ? '검색 결과가 없습니다.' : '아직 등록한 강의가 없습니다. CSV 업로드 또는 개별 등록으로 시작하세요.' %>
+					</p>
+				<% } else { %>
+					<div style="overflow-x:auto;">
+						<table style="width:100%;border-collapse:collapse;font-size:13px;">
+							<thead>
+								<tr style="background:var(--bg3);">
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">이수구분</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">교과명</th>
+									<th style="padding:9px 12px;text-align:center;border:1px solid var(--border);color:var(--text2);">분반</th>
+									<th style="padding:9px 12px;text-align:center;border:1px solid var(--border);color:var(--text2);">학점</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">담당교수</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">강의시간</th>
+									<th style="padding:9px 12px;text-align:center;border:1px solid var(--border);color:var(--text2);">삭제</th>
+								</tr>
+							</thead>
+							<tbody>
+								<% items.forEach(lec => { %>
+									<tr>
+										<td style="padding:9px 12px;border:1px solid var(--border);"><span class="badge badge-blue"><%= lec.classification %></span></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);font-weight:600;"><%= lec.courseName %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);text-align:center;"><%= lec.section ? lec.section : '없음' %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);text-align:center;"><%= lec.credits %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);color:var(--text2);"><%= lec.professor %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);color:var(--text2);font-size:12px;">
+											<%= lec.schedules.map(s => `${s.day} ${s.startTime}-${s.endTime}`).join(', ') || '-' %>
+										</td>
+										<td style="padding:9px 12px;border:1px solid var(--border);text-align:center;">
+											<button class="btn btn-ghost btn-sm" onclick="deleteLecture('<%= lec._id %>', '<%= lec.courseName %> <%= lec.section ? lec.section + '분반' : '분반 없음' %>', this)">🗑</button>
+										</td>
+									</tr>
+								<% }) %>
+							</tbody>
+						</table>
+					</div>
+
+					<!-- 페이징 (10페이지 블록: 이전 | 1~10 | 다음) -->
+					<% if (totalPages > 1) { %>
+						<%
+							const qs = search ? '&search=' + encodeURIComponent(search) : '';
+							const pageUrl = p => `/staff/lectures?page=${p}${qs}`;
+							const blockSize  = 10;
+							const blockStart = Math.floor((page - 1) / blockSize) * blockSize + 1;
+							const blockEnd   = Math.min(blockStart + blockSize - 1, totalPages);
+						%>
+						<div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14px;flex-wrap:wrap;">
+
+							<!-- 이전 블록 -->
+							<% if (blockStart > 1) { %>
+								<a href="<%= pageUrl(blockStart - 1) %>" class="btn btn-sm btn-ghost">‹ 이전</a>
+							<% } %>
+
+							<!-- 현재 블록 페이지들 -->
+							<% for (let p = blockStart; p <= blockEnd; p++) { %>
+								<a href="<%= pageUrl(p) %>" class="btn btn-sm <%= p === page ? 'btn-accent' : 'btn-ghost' %>"><%= p %></a>
+							<% } %>
+
+							<!-- 다음 블록 -->
+							<% if (blockEnd < totalPages) { %>
+								<a href="<%= pageUrl(blockEnd + 1) %>" class="btn btn-sm btn-ghost">다음 ›</a>
+							<% } %>
+
+						</div>
+						<div style="text-align:center;font-size:11px;color:var(--text3);margin-top:8px;"><%= page %> / <%= totalPages %> 페이지</div>
+					<% } %>
+				<% } %>
+			</div>
+
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+	<script src="/js/lectureAdmin.js"></script>
+</body>
+
+</html>
