@@ -68,6 +68,11 @@
 	<%- include('../partials/modals/mypage', { user: user }) %>
 
 
+	<script>
+		window.calendarUser = {
+			university: <%- JSON.stringify(user?.university || '') %>
+		};
+	</script>
 	<script src="/js/common.js"></script>
   <script src="/js/location.js"></script>
   <script src="/js/weather.js"></script>

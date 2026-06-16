@@ -902,3 +902,77 @@ input,select,textarea{font-family:inherit;}
 .lecture-search-controls input {
   flex: 1;
 }
+
+#lecture-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.lecture-search-loading {
+  color: var(--text2);
+  font-size: 13px;
+  text-align: center;
+  padding: 16px 0;
+}
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lecture-search-no-univ-desc {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.lecture-search-univ-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.available-university-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.available-university-list li {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.available-university-list li:last-child {
+  border-bottom: none;
+}
+
+.available-university-list li.empty {
+  color: var(--text2);
+  text-align: center;
+}
+
+.available-university-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.available-university-pagination .page-info {
+  font-size: 13px;
+  color: var(--text2);
+  min-width: 64px;
+  text-align: center;
+}
+
+.timetable-event-bar {
+  border-left: 3px solid rgba(255, 255, 255, 0.85);
+}
