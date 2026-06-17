@@ -1,5 +1,5 @@
 const path = require('path');
-const User = require('../models/User');const logger = require('../config/logger');
+const User = require('../models/User'); const logger = require('../config/logger');
 
 const ROOT_DIR = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -59,7 +59,7 @@ async function updateStaffStatus(req, res, status) {
 }
 
 exports.approveStaff = (req, res) => updateStaffStatus(req, res, 'approved');
-exports.rejectStaff  = (req, res) => updateStaffStatus(req, res, 'rejected');
+exports.rejectStaff = (req, res) => updateStaffStatus(req, res, 'rejected');
 
 // 인증 사진 열람 (관리자 전용) 
 exports.getVerificationImage = async (req, res) => {

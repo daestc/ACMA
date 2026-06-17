@@ -132,12 +132,12 @@ function renderCalendar() {
 
             return `
           <div 
-            class="${multiDay ? 'multi-day-event-bar' : 'single-day-event-bar'}${event.isTimetable ? ' timetable-event-bar' : ''}"
-            title="${event.title}&#10;${event.description || ''}&#10;${formatEventDate(event)}"
+            class="${multiDay ? 'multi-day-event-bar' : 'single-day-event-bar'}${event.isTimetable ? ' timetable-event-bar' : ''}${event.isUniversityEvent ? ' university-event-bar' : ''}"
+            title="${event.isUniversityEvent ? '[학교 일정] ' : ''}${event.title}&#10;${event.description || ''}&#10;${formatEventDate(event)}"
             style="background:${event.color || '#3B82F6'}"
             onclick="event.stopPropagation(); openCalendarEventByKey('${event._id}')"
           >
-            ${event.title}
+            ${event.isUniversityEvent ? '[학교] ' : ''}${event.title}
           </div>
           `;
         }).join('')}
@@ -218,7 +218,58 @@ function openCalendarEvent(event) {
     return;
   }
 
+  if (event.isUniversityEvent) {
+    openUniversityEventDetail(event);
+    return;
+  }
+
   openEventDetail(event._id);
+}
+
+function setEventFormReadOnly(readOnly) {
+  const fieldIds = [
+    'event-title',
+    'event-description',
+    'event-start-date',
+    'event-end-date',
+    'event-start-time',
+    'event-end-time',
+    'event-all-day',
+    'event-dday',
+    'event-category',
+    'event-color',
+  ];
+
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = readOnly;
+  });
+
+  const submitBtn = document.querySelector('#event-form button[type="submit"]');
+  if (submitBtn) submitBtn.style.display = readOnly ? 'none' : '';
+}
+
+function openUniversityEventDetail(event) {
+  setEventFormReadOnly(false);
+
+  document.getElementById('event-modal-title').textContent = '학교 일정';
+  document.getElementById('event-id').value = '';
+  document.getElementById('event-title').value = event.title;
+  document.getElementById('event-description').value = event.description || '';
+  document.getElementById('event-start-date').value = toInputDate(event.startDate);
+  document.getElementById('event-end-date').value = toInputDate(event.endDate || event.startDate);
+  document.getElementById('event-category').value = event.category || 'notice';
+  document.getElementById('event-color').value = event.color || '#F59E0B';
+  document.getElementById('event-all-day').checked = true;
+  document.getElementById('event-dday').checked = false;
+  document.getElementById('event-start-time').value = '';
+  document.getElementById('event-end-time').value = '';
+
+  setEventFormReadOnly(true);
+  toggleTimeFields();
+
+  document.getElementById('delete-event-btn').style.display = 'none';
+  document.getElementById('event-modal').style.display = 'flex';
 }
 //일정 생성
 async function createEvent(e) {
@@ -315,8 +366,8 @@ function selectDate(dateStr) {
     <div class="selected-event-item" onclick="openCalendarEventByKey('${event._id}')">
       <span class="selected-event-dot" style="background:${event.color || '#3B82F6'}"></span>
       <span>
-        ${event.title}
-        ${event.isTimetable ? `<small style="display:block;color:var(--text2);margin-top:2px;">${formatEventDate(event)}</small>` : ''}
+        ${event.isUniversityEvent ? '[학교] ' : ''}${event.title}
+        ${event.isTimetable || event.isUniversityEvent ? `<small style="display:block;color:var(--text2);margin-top:2px;">${formatEventDate(event)}</small>` : ''}
       </span>
     </div>
   `).join('');
@@ -374,6 +425,8 @@ function openCalendarEventByKey(eventKey) {
 function openEventDetail(eventId) {
   const event = events.find(item => item._id === eventId);
   if (!event) return;
+
+  setEventFormReadOnly(false);
 
   document.getElementById('event-modal-title').textContent = '일정 상세 / 수정';
 
@@ -440,6 +493,7 @@ async function deleteEvent() {
 function closeEventModal() {
   document.getElementById('event-modal').style.display = 'none';
   document.getElementById('event-form').reset();
+  setEventFormReadOnly(false);
 
   document.getElementById('event-id').value = '';
   document.getElementById('event-modal-title').textContent = '일정 추가';

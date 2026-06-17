@@ -14,98 +14,234 @@
 		<%- include('../partials/topbar', { pageTitle: '졸업요건 설정', user: user }) %>
 
 		<div class="page-content">
-			<div class="card" style="max-width:720px;">
-				<div class="card-header">
-					<span class="card-title">🎓 <%= user.university %> 졸업요건</span>
-					<span class="badge badge-blue">학교 기본값</span>
+			<div class="grid-2" style="align-items:start;">
+
+				<div class="card">
+					<div class="card-header">
+						<span class="card-title">🎓 <%= user.university %> 졸업요건</span>
+						<span class="badge badge-blue">학교 기본값</span>
+					</div>
+
+					<p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+						이 설정은 해당 대학 학생의 졸업요건 기본값으로 사용됩니다.
+					</p>
+
+					<div style="display:flex;flex-direction:column;gap:12px;">
+						<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+							<div>
+								<label class="staff-label">총 이수학점</label>
+								<input class="input-field" id="gr-total" type="number" min="0" value="<%= requirements?.requiredTotalCredits ?? 130 %>" style="width:100%;">
+							</div>
+							<div>
+								<label class="staff-label">전공필수</label>
+								<input class="input-field" id="gr-major-req" type="number" min="0" value="<%= requirements?.requiredMajorCredits ?? 42 %>" style="width:100%;">
+							</div>
+							<div>
+								<label class="staff-label">전공선택</label>
+								<input class="input-field" id="gr-major-el" type="number" min="0" value="<%= requirements?.requiredMajorElective ?? 40 %>" style="width:100%;">
+							</div>
+							<div>
+								<label class="staff-label">교양필수</label>
+								<input class="input-field" id="gr-gen-req" type="number" min="0" value="<%= requirements?.requiredGeneralCredits ?? 20 %>" style="width:100%;">
+							</div>
+							<div>
+								<label class="staff-label">교양선택</label>
+								<input class="input-field" id="gr-gen-el" type="number" min="0" value="<%= requirements?.requiredGeneralElective ?? 28 %>" style="width:100%;">
+							</div>
+							<div>
+								<label class="staff-label">사회봉사 시간</label>
+								<input class="input-field" id="gr-volunteer" type="number" min="0" value="<%= requirements?.requiredVolunteer ?? '' %>" placeholder="예: 30" style="width:100%;">
+							</div>
+						</div>
+
+						<div style="display:flex;align-items:center;justify-content:space-between;">
+							<div>
+								<div style="font-size:13px;font-weight:600;">졸업작품 이수</div>
+								<div style="font-size:11px;color:var(--text2);">캡스톤디자인 또는 졸업논문</div>
+							</div>
+							<div class="toggle <%= requirements?.requiresGraduationWork !== false ? 'on' : '' %>" id="gr-grad-work" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+						</div>
+
+						<div>
+							<label class="staff-label">외국어 성적 요건</label>
+							<input class="input-field" id="gr-lang" value="<%= requirements?.requiredLanguageScore || '' %>" placeholder="예: TOEIC 700" style="width:100%;">
+						</div>
+
+						<div>
+							<label class="staff-label">필수 취득 자격증</label>
+							<div id="gr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px;"></div>
+							<div style="display:flex;gap:6px;">
+								<input class="input-field" id="gr-cert-input" placeholder="자격증명 검색 (예: 정보처리기사)" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPickerCerts('school');}">
+								<button class="btn btn-ghost btn-sm" type="button" onclick="searchPickerCerts('school')">검색</button>
+							</div>
+							<div id="gr-cert-results" class="staff-cert-results" style="display:none;"></div>
+						</div>
+
+						<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+							<div>
+								<label class="staff-label">인턴십</label>
+								<select class="input-field" id="gr-internship" style="width:100%;">
+									<option value="" <%= requirements?.requiredInternship == null ? 'selected' : '' %>>미지정</option>
+									<option value="true" <%= requirements?.requiredInternship === true ? 'selected' : '' %>>필수</option>
+									<option value="false" <%= requirements?.requiredInternship === false ? 'selected' : '' %>>선택</option>
+								</select>
+							</div>
+							<div>
+								<label class="staff-label">캡스톤</label>
+								<select class="input-field" id="gr-capstone" style="width:100%;">
+									<option value="" <%= requirements?.requiredCapstonDesign == null ? 'selected' : '' %>>미지정</option>
+									<option value="true" <%= requirements?.requiredCapstonDesign === true ? 'selected' : '' %>>필수</option>
+									<option value="false" <%= requirements?.requiredCapstonDesign === false ? 'selected' : '' %>>선택</option>
+								</select>
+							</div>
+							<div>
+								<label class="staff-label">비교과</label>
+								<select class="input-field" id="gr-nc" style="width:100%;">
+									<option value="" <%= requirements?.requiredNCProgram == null ? 'selected' : '' %>>미지정</option>
+									<option value="true" <%= requirements?.requiredNCProgram === true ? 'selected' : '' %>>필수</option>
+									<option value="false" <%= requirements?.requiredNCProgram === false ? 'selected' : '' %>>선택</option>
+								</select>
+							</div>
+						</div>
+
+						<button class="btn btn-accent" id="gr-save-btn" style="width:100%;justify-content:center;" onclick="saveGraduation()">💾 학교 기본값 저장</button>
+						<div id="gr-msg" style="display:none;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;"></div>
+					</div>
 				</div>
 
-				<p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
-					이 설정은 해당 대학 학생의 졸업요건 기본값으로 사용됩니다.
-				</p>
-
-				<div style="display:flex;flex-direction:column;gap:12px;">
-					<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-						<div>
-							<label class="staff-label">총 이수학점</label>
-							<input class="input-field" id="gr-total" type="number" min="0" value="<%= requirements?.requiredTotalCredits ?? 130 %>" style="width:100%;">
-						</div>
-						<div>
-							<label class="staff-label">전공필수</label>
-							<input class="input-field" id="gr-major-req" type="number" min="0" value="<%= requirements?.requiredMajorCredits ?? 42 %>" style="width:100%;">
-						</div>
-						<div>
-							<label class="staff-label">전공선택</label>
-							<input class="input-field" id="gr-major-el" type="number" min="0" value="<%= requirements?.requiredMajorElective ?? 40 %>" style="width:100%;">
-						</div>
-						<div>
-							<label class="staff-label">교양필수</label>
-							<input class="input-field" id="gr-gen-req" type="number" min="0" value="<%= requirements?.requiredGeneralCredits ?? 20 %>" style="width:100%;">
-						</div>
-						<div>
-							<label class="staff-label">교양선택</label>
-							<input class="input-field" id="gr-gen-el" type="number" min="0" value="<%= requirements?.requiredGeneralElective ?? 28 %>" style="width:100%;">
-						</div>
-						<div>
-							<label class="staff-label">사회봉사 시간</label>
-							<input class="input-field" id="gr-volunteer" type="number" min="0" value="<%= requirements?.requiredVolunteer ?? '' %>" placeholder="예: 30" style="width:100%;">
-						</div>
+				<div class="card">
+					<div class="card-header">
+						<span class="card-title">🏫 학과별 추가 이수 요건</span>
+						<span class="badge badge-purple" id="mgr-major-badge">학과 선택</span>
 					</div>
 
-					<div style="display:flex;align-items:center;justify-content:space-between;">
-						<div>
-							<div style="font-size:13px;font-weight:600;">졸업작품 이수</div>
-							<div style="font-size:11px;color:var(--text2);">캡스톤디자인 또는 졸업논문</div>
-						</div>
-						<div class="toggle <%= requirements?.requiresGraduationWork !== false ? 'on' : '' %>" id="gr-grad-work" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
-					</div>
+					<p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+						학과를 선택하고 academic 페이지의 추가 이수 요건을 입력하세요. 학과별 설정은 학교 기본값을 덮어씁니다.
+					</p>
 
-					<div>
-						<label class="staff-label">외국어 성적 요건</label>
-						<input class="input-field" id="gr-lang" value="<%= requirements?.requiredLanguageScore || '' %>" placeholder="예: TOEIC 700" style="width:100%;">
-					</div>
-
-					<div>
-						<label class="staff-label">필수 자격증 (쉼표로 구분)</label>
-						<input class="input-field" id="gr-certs" value="<%= (requirements?.requiredCertifications || []).join(', ') %>" placeholder="정보처리기사, 컴퓨터활용능력 1급" style="width:100%;">
-					</div>
-
-					<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+					<div style="display:flex;flex-direction:column;gap:12px;">
 						<div>
-							<label class="staff-label">인턴십</label>
-							<select class="input-field" id="gr-internship" style="width:100%;">
-								<option value="" <%= requirements?.requiredInternship == null ? 'selected' : '' %>>미지정</option>
-								<option value="true" <%= requirements?.requiredInternship === true ? 'selected' : '' %>>필수</option>
-								<option value="false" <%= requirements?.requiredInternship === false ? 'selected' : '' %>>선택</option>
-							</select>
+							<label class="staff-label">학과 선택</label>
+							<div style="display:flex;gap:8px;">
+								<select class="input-field" id="mgr-major-select" style="flex:1;" onchange="loadMajorRequirements()">
+									<option value="">학과를 선택하세요</option>
+									<% majors.forEach(major => { %>
+										<option value="<%= major %>"><%= major %></option>
+									<% }) %>
+								</select>
+								<input class="input-field" id="mgr-major-input" placeholder="새 학과명" style="flex:1;">
+								<button class="btn btn-ghost btn-sm" type="button" onclick="applyCustomMajor()">적용</button>
+							</div>
 						</div>
-						<div>
-							<label class="staff-label">캡스톤</label>
-							<select class="input-field" id="gr-capstone" style="width:100%;">
-								<option value="" <%= requirements?.requiredCapstonDesign == null ? 'selected' : '' %>>미지정</option>
-								<option value="true" <%= requirements?.requiredCapstonDesign === true ? 'selected' : '' %>>필수</option>
-								<option value="false" <%= requirements?.requiredCapstonDesign === false ? 'selected' : '' %>>선택</option>
-							</select>
-						</div>
-						<div>
-							<label class="staff-label">비교과</label>
-							<select class="input-field" id="gr-nc" style="width:100%;">
-								<option value="" <%= requirements?.requiredNCProgram == null ? 'selected' : '' %>>미지정</option>
-								<option value="true" <%= requirements?.requiredNCProgram === true ? 'selected' : '' %>>필수</option>
-								<option value="false" <%= requirements?.requiredNCProgram === false ? 'selected' : '' %>>선택</option>
-							</select>
-						</div>
-					</div>
 
-					<button class="btn btn-accent" id="gr-save-btn" style="width:100%;justify-content:center;" onclick="saveGraduation()">💾 졸업요건 저장</button>
-					<div id="gr-msg" style="display:none;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;"></div>
+						<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);">추가 이수 요건</div>
+
+						<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+							<div>
+								<label class="staff-label">졸업작품 이수</label>
+								<select class="input-field" id="mgr-grad-work" style="width:100%;">
+									<option value="">미지정 (학교 기본값)</option>
+									<option value="true">필수</option>
+									<option value="false">불필요</option>
+								</select>
+							</div>
+							<div>
+								<label class="staff-label">캡스톤 디자인</label>
+								<select class="input-field" id="mgr-capstone-design" style="width:100%;">
+									<option value="">미지정 (학교 기본값)</option>
+									<option value="true">필수</option>
+									<option value="false">불필요</option>
+								</select>
+							</div>
+						</div>
+
+						<div>
+							<label class="staff-label">외국어 성적 요건</label>
+							<div style="display:flex;gap:8px;">
+								<select class="input-field" id="mgr-lang-type" style="flex:1;">
+									<option value="">미지정</option>
+									<option>TOEIC</option>
+									<option>TOEFL</option>
+									<option>IELTS</option>
+									<option>JLPT</option>
+									<option value="없음">없음</option>
+								</select>
+								<input class="input-field" id="mgr-lang-score" placeholder="최소 점수 (예: 700)" style="flex:1;">
+							</div>
+						</div>
+
+						<div>
+							<label class="staff-label">필수 취득 자격증</label>
+							<div id="mgr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px;"></div>
+							<div style="display:flex;gap:6px;">
+								<input class="input-field" id="mgr-cert-input" placeholder="자격증명 검색 (예: 정보처리기사)" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPickerCerts('major');}">
+								<button class="btn btn-ghost btn-sm" type="button" onclick="searchPickerCerts('major')">검색</button>
+							</div>
+							<div id="mgr-cert-results" class="staff-cert-results" style="display:none;"></div>
+						</div>
+
+						<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+							<div>
+								<label class="staff-label">인턴십 의무 이수</label>
+								<select class="input-field" id="mgr-internship" style="width:100%;">
+									<option value="">미지정</option>
+									<option value="true">필수</option>
+									<option value="false">선택</option>
+								</select>
+							</div>
+							<div>
+								<label class="staff-label">비교과 프로그램</label>
+								<select class="input-field" id="mgr-nc-program" style="width:100%;">
+									<option value="">미지정</option>
+									<option value="true">필수</option>
+									<option value="false">선택</option>
+								</select>
+							</div>
+							<div style="grid-column:1 / -1;">
+								<label class="staff-label">사회봉사 시간</label>
+								<input class="input-field" id="mgr-volunteer" type="number" min="0" placeholder="예: 30" style="width:100%;">
+							</div>
+						</div>
+
+						<button class="btn btn-accent" id="mgr-save-btn" style="width:100%;justify-content:center;" onclick="saveMajorGraduation()">💾 학과별 요건 저장</button>
+						<div id="mgr-msg" style="display:none;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;"></div>
+					</div>
 				</div>
+
 			</div>
 		</div>
 	</main>
 
 	<%- include('../partials/modals/mypage', { user: user }) %>
-	<style>.staff-label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;}</style>
+	<style>
+		.staff-label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;}
+		.staff-cert-results{
+			margin-top:8px;
+			border:1px solid var(--border);
+			border-radius:var(--radius-sm);
+			background:var(--bg3);
+			max-height:180px;
+			overflow:auto;
+		}
+		.staff-cert-result-item{
+			display:flex;
+			align-items:center;
+			justify-content:space-between;
+			gap:8px;
+			width:100%;
+			padding:9px 12px;
+			border:none;
+			border-bottom:1px solid var(--border);
+			background:transparent;
+			cursor:pointer;
+		}
+		.staff-cert-result-item:last-child{border-bottom:none;}
+		.staff-cert-result-item:hover{background:var(--accent-bg);}
+		.staff-cert-result-meta{font-size:11px;color:var(--text2);}
+	</style>
+	<script>
+		window.initialSchoolCerts = <%- JSON.stringify(requirements?.requiredCertifications || []) %>;
+	</script>
 	<script src="/js/common.js"></script>
 	<script src="/js/staffGraduation.js"></script>
 </body>

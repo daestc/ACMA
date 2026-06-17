@@ -16,6 +16,13 @@ async function fetchAllData(){
 // 홈페이지에 표시할 정보 모음(todoList, 습관 트래커, Dday 알림, ㄱ공지사항 등)
 const getHomePage = async (req, res) => {
   try {
+    if (req.user?.role === 'staff') {
+      return res.redirect('/staff/home');
+    }
+    if (req.user?.role === 'admin') {
+      return res.redirect('/admin/staff');
+    }
+
     //공지사항 데이터 조회
     const showNotice = await fetchAllData();
 

@@ -71,8 +71,26 @@ function createLectureFileMulter(fieldName) {
 
 // DB 저장 실패 등 후처리 시 디스크에 남은 파일 삭제
 function removeUploadedFile(req) {
-  if (!req.file?.path) return;
-  fs.unlink(req.file.path, () => {});
+  removeUploadedFiles(req);
+}
+
+function removeUploadedFiles(req) {
+  if (Array.isArray(req.files) && req.files.length) {
+    req.files.forEach((file) => {
+      if (file?.path) fs.unlink(file.path, () => {});
+    });
+    return;
+  }
+  if (req.file?.path) fs.unlink(req.file.path, () => {});
+}
+
+// 여러 장 이미지 업로드 multer 인스턴스
+function createImageArrayMulter(subdir, fieldName, maxCount = 3) {
+  return multer({
+    storage: createImageStorage(subdir),
+    limits: { fileSize: MAX_IMAGE_SIZE, files: maxCount },
+    fileFilter: imageFileFilter,
+  }).array(fieldName, maxCount);
 }
 
 // errorMiddleware에서 응답 형식을 알 수 있도록 에러에 메타 부착
@@ -132,10 +150,19 @@ const uploadLectureCsv = [
   requireUploadedFile('강의 시간표 파일', lectureCsvUploadOptions),
 ];
 
+const suggestionUploadOptions = { json: true, jsonOk: true };
+const suggestionImagesMulter = createImageArrayMulter('suggestions', 'images', 3);
+
+const uploadSuggestionImages = [
+  runUpload(suggestionImagesMulter, suggestionUploadOptions),
+];
+
 module.exports = {
   UPLOAD_ROOT,
   removeUploadedFile,
+  removeUploadedFiles,
   uploadVerificationImage,
   uploadVerificationImageApi,
   uploadLectureCsv,
+  uploadSuggestionImages,
 };

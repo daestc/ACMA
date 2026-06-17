@@ -32,7 +32,7 @@ async function submitSchedule() {
 
     if (data.ok) {
       showMsg('일정이 등록되었습니다.', false);
-      setTimeout(() => location.reload(), 800);
+      setTimeout(() => { window.location.href = '/staff/schedules?page=1'; }, 800);
     } else {
       showMsg(data.message || '등록에 실패했습니다.', true);
     }
@@ -52,7 +52,9 @@ async function deleteSchedule(id, btn) {
     const res = await fetch(`/staff/schedules/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.ok) {
-      btn.closest('[style*="border:1px solid"]').remove();
+      const params = new URLSearchParams(window.location.search);
+      const page = params.get('page') || '1';
+      window.location.href = `/staff/schedules?page=${page}`;
     } else {
       alert(data.message || '삭제에 실패했습니다.');
       btn.disabled = false;

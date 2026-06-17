@@ -1,5 +1,8 @@
 const academicService = require('../services/academicSevice');
 const User = require('../models/User');
+const {
+  getStaffGraduationForStudent,
+} = require('../services/graduationService');
 
 // 학기별 과목 추가, 수정, 삭제
 function normalizeArray(value) {
@@ -31,7 +34,7 @@ function parseStringArray(value) {
 
   return [];
 }
-// 학기 코드 파싱 (ex. "2025-1" → { semester: "2025-1", year: 2025, semesterNumber: 1 })
+// 학기 코드 파싱 (ex. "2025-1" -> { semester: "2025-1", year: 2025, semesterNumber: 1 })
 function parseSemesterCode(rawSemester) {
   const semesterText = String(rawSemester || '').trim();
   const match = semesterText.match(/(\d{4})\s*[-/]?\s*([12])/);
@@ -159,53 +162,58 @@ const getGraduationRequirements = async (req, res) => {
   try {
     if (!req.session.user || !req.session.user.email) return res.status(401).json({ success: false });
 
-    const user = await User.findOne({ email: req.session.user.email }).select('_id major grade email name').lean();
+    const user = await User.findOne({ email: req.session.user.email })
+      .select('_id major grade email name university')
+      .lean();
     if (!user) return res.status(404).json({ success: false });
 
     const profile = await academicService.getUniversityProfile(user._id);
-    return res.json({ success: true, profile });
+    const graduation = await getStaffGraduationForStudent(
+      user.university,
+      profile?.major || user.major,
+    );
+
+    if (!graduation.available) {
+      return res.json({
+        success: true,
+        available: false,
+        reason: graduation.reason,
+        message: graduation.message,
+        profile: {
+          major: profile?.major || user.major || null,
+          university: user.university || null,
+          GraduationRequirements: null,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      available: true,
+      profile: {
+        ...(profile || {}),
+        major: graduation.major,
+        university: graduation.university,
+        GraduationRequirements: graduation.requirements,
+        hasMajorSpecific: graduation.hasMajorSpecific,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false });
   }
 };
 
-// 졸업요건 프로필 저장
+// 졸업요건 프로필 저장 (학생은 읽기 전용 — 대학관계자만 설정)
 const saveGraduationRequirements = async (req, res) => {
-  try {
-    if (!req.session.user || !req.session.user.email) return res.status(401).json({ success: false, message: 'User not authenticated' });
-
-    const user = await User.findOne({ email: req.session.user.email }).select('_id major grade email name').lean();
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const graduationRequirements = req.body?.GraduationRequirements || {};
-    const profile = await academicService.saveUniversityProfile(user._id, {
-      major: req.body?.major || user.major,
-      studentId: req.body?.studentId || null,
-      grade: parseNullableNumber(req.body?.grade, user.grade ?? 1),
-      enrollmentStatus: req.body?.enrollmentStatus || 'enrolled',
-      doubleMajor: req.body?.doubleMajor || null,
-      GraduationRequirements: {
-        requiredTotalCredits: parseNullableNumber(graduationRequirements.requiredTotalCredits, 130),
-        requiredMajorCredits: parseNullableNumber(graduationRequirements.requiredMajorCredits, 42),
-        requiredMajorElective: parseNullableNumber(graduationRequirements.requiredMajorElective, 40),
-        requiredGeneralCredits: parseNullableNumber(graduationRequirements.requiredGeneralCredits, 20),
-        requiredGeneralElective: parseNullableNumber(graduationRequirements.requiredGeneralElective, 28),
-        requiresGraduationWork: parseNullableBoolean(graduationRequirements.requiresGraduationWork, true),
-        requiredCertifications: parseStringArray(graduationRequirements.requiredCertifications),
-        requiredLanguageScore: graduationRequirements.requiredLanguageScore || null,
-        requiredInternship: parseNullableBoolean(graduationRequirements.requiredInternship, null),
-        requiredCapstonDesign: parseNullableBoolean(graduationRequirements.requiredCapstonDesign, null),
-        requiredNCProgram: parseNullableBoolean(graduationRequirements.requiredNCProgram, null),
-        requiredVolunteer: parseNullableNumber(graduationRequirements.requiredVolunteer, null),
-      },
-    });
-
-    return res.json({ success: true, profile });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Failed to save graduation requirements' });
+  if (!req.session.user || !req.session.user.email) {
+    return res.status(401).json({ success: false, message: 'User not authenticated' });
   }
+
+  return res.status(403).json({
+    success: false,
+    message: '졸업요건은 대학관계자만 설정할 수 있습니다.',
+  });
 };
 
 // 졸업 진도 프로그레스 조회
@@ -243,8 +251,19 @@ const getProgress = async (req, res) => {
     });
 
     const profile = await academicService.getUniversityProfile(user);
+    const userDoc = await User.findById(user).select('university major').lean();
+    const graduation = await getStaffGraduationForStudent(
+      userDoc?.university,
+      profile?.major || userDoc?.major,
+    );
 
-    return res.json({ success: true, totals, profile });
+    return res.json({
+      success: true,
+      totals,
+      profile,
+      graduationAvailable: graduation.available,
+      graduationRequirements: graduation.available ? graduation.requirements : null,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false });

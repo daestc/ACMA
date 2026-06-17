@@ -1,8 +1,8 @@
-/* ================================================
+/* 
    AcadMe — weather.js
    날씨 API(기상청 단기예보) 공용 모듈
    사용 페이지: home.ejs(날씨 위젯), calendar.ejs(달력 날씨 아이콘)
-   ================================================ */
+*/
 
 // 마지막 조회에 사용한 좌표 (홈 위젯 위치 표기용, null이면 기본 좌표 사용)
 let lastCoords = null;
@@ -19,7 +19,7 @@ async function fetchWeatherList() {
   return await response.json();
 }
 
-// Date → 'YYYY-MM-DD' (날씨 API의 date 형식과 동일)
+// Date -> 'YYYY-MM-DD' (날씨 API의 date 형식과 동일)
 function formatDateYMD(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -27,7 +27,7 @@ function formatDateYMD(date) {
   return `${y}-${m}-${d}`;
 }
 
-// ── 홈 날씨 위젯 렌더링 ───────────────────────────
+// 홈 날씨 위젯 렌더링 
 async function loadHomeWeather() {
   try {
     const weatherList = await fetchWeatherList();

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const { clearUserLectureTimetables } = require('./calendarService');
 
 // 사용자의 오늘 자 todoList 가져오기. userId로 변경가능
 async function getTodaytodoList(userEmail) {
@@ -176,16 +177,27 @@ async function saveIsCompleted(userEmail, changes) {
 }
 
 async function updateProfile(userEmail, profileData) {
-  try {
-    const { studentId, university, major, enrollmentStatus } = profileData;
-    await User.findOneAndUpdate(
-      { email: userEmail },
-      { studentId, university, major, enrollmentStatus }
-    );
-  } catch (error) {
-    console.error(error);
-    throw error;
+  const user = await User.findOne({ email: userEmail });
+  if (!user) {
+    throw new Error('사용자를 찾지 못했습니다.');
   }
+
+  const { studentId, university, major, enrollmentStatus } = profileData;
+  const oldUniversity = user.university?.trim() || '';
+  const newUniversity = university?.trim() || '';
+  const universityChanged = oldUniversity !== newUniversity;
+
+  let clearedLectureCount = 0;
+  if (universityChanged) {
+    clearedLectureCount = await clearUserLectureTimetables(user._id);
+  }
+
+  await User.findOneAndUpdate(
+    { email: userEmail },
+    { studentId, university: newUniversity, major, enrollmentStatus },
+  );
+
+  return { universityChanged, clearedLectureCount };
 }
 async function getProfile(userEmail) {
   try {
@@ -195,6 +207,7 @@ async function getProfile(userEmail) {
     return {
       name: user.name,
       email: user.email,
+      role: user.role,
       studentId: user.studentId,
       university: user.university,
       major: user.major,

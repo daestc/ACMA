@@ -1,18 +1,59 @@
 const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
+const UniversitySchedule = require('../models/UniversitySchedule');
 const {
   buildLectureListFilter,
   buildLectureOwnershipFilter,
+  buildStaffUniversityFilter,
   normalizeUniversity,
   LEGACY_NULL_UNIVERSITY,
 } = require('./lectureAdminService');
 
+const UNIVERSITY_EVENT_COLOR = '#F59E0B';
 
-//일정 가져오기
-async function getEventsListByUser(userId) {
-    return await CalendarEvent.find({ //사용자 id와 삭제되지 않은 일정 가져오기
-        userId : userId,
-        isDeleted: false,
-    }).sort({startDate: 1});
+function mapUniversityScheduleToEvent(schedule) {
+  return {
+    _id: `univ-${schedule._id}`,
+    title: schedule.title,
+    description: schedule.description,
+    startDate: schedule.startDate,
+    endDate: schedule.endDate || schedule.startDate,
+    isAllDay: true,
+    category: 'notice',
+    isDday: false,
+    color: UNIVERSITY_EVENT_COLOR,
+    isDeleted: false,
+    isUniversityEvent: true,
+    sourceScheduleId: schedule._id,
+  };
+}
+
+async function getUniversitySchedulesAsEvents(university) {
+  const univ = normalizeUniversity(university);
+  if (!univ) return [];
+
+  const filter = buildStaffUniversityFilter(univ);
+  if (!filter) return [];
+
+  const schedules = await UniversitySchedule.find(filter)
+    .sort({ startDate: 1 })
+    .lean();
+
+  return schedules.map(mapUniversityScheduleToEvent);
+}
+
+//일정 가져오기 (개인 일정 + 소속 대학 학교 일정)
+async function getEventsListByUser(userId, university) {
+  const [personalEvents, universityEvents] = await Promise.all([
+    CalendarEvent.find({
+      userId,
+      isDeleted: false,
+    }).sort({ startDate: 1 }).lean(),
+    getUniversitySchedulesAsEvents(university),
+  ]);
+
+  return [...personalEvents, ...universityEvents].sort(
+    (a, b) => new Date(a.startDate) - new Date(b.startDate),
+  );
 };
 
 //일정생성
@@ -172,6 +213,20 @@ async function deleteTimetable(userId, timetableId) {
 
     return deletedTimetable;
 };
+
+// 대학 변경 시 사용자가 추가한 강의 시간표 전체 비활성화
+async function clearUserLectureTimetables(userId) {
+  const result = await Timetable.updateMany(
+    {
+      userId,
+      isActive: true,
+      type: 'lecture',
+    },
+    { isActive: false },
+  );
+
+  return result.modifiedCount;
+}
 
 // 강의 목록 조회(소속 대학·학기·년도·강의명 검색)
 async function getLectureList(filter = {}) {
@@ -677,6 +732,7 @@ module.exports = {getEventsListByUser,
                 createNewTimetable,
                 updateTimetable,
                 deleteTimetable,
+                clearUserLectureTimetables,
                 getLectureList,
                 addLectureToTimetable,
                 getAvailableUniversities,
