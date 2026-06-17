@@ -93,25 +93,6 @@ async function fetchProgress() {
   }
 }
 
-async function fetchAcademicinfo() {
-  const creditAvg = document.getElementById('credit-avg');
-  const creditEarned = document.getElementById('credit-earned');
-  const studyTime = document.getElementById('study-time');
-  const certificates = document.getElementById('certificates');
-  try {
-    const res = await fetch('/academic/info', { credentials: 'same-origin' });
-    if (!res.ok) return;
-    const json = await res.json();
-    if (!json.success) return;
-
-    if (creditAvg) creditAvg.textContent = json.creditAvg || '0.0';
-    if (creditEarned) creditEarned.textContent = json.creditEarned || '0';
-    if (studyTime) studyTime.textContent = json.studyTime || '0h';
-    if (certificates) certificates.textContent = json.certificates || '0';
-  } catch (err) {
-    console.error('fetchAcademicinfo failed', err);
-  }
-}
 // 학기 코드 → 정렬용 { year, semesterNumber }
 function parseSemesterOrder(semester) {
   const match = String(semester || '').trim().match(/^(\d{4})-(\d)$/);
@@ -171,6 +152,8 @@ function renderAcademicTrend(records) {
   const averageGpa = validRecords.reduce((sum, r) => sum + r.semesterGPA, 0) / validRecords.length;
   const bestRecord = validRecords.reduce((best, cur) => (cur.semesterGPA > best.semesterGPA ? cur : best), validRecords[0]);
   const totalCredits = validRecords.reduce((sum, r) => sum + (Number(r.earnedCredits) || 0), 0);
+  document.getElementById('credit-avg').textContent = averageGpa.toFixed(2);
+  document.getElementById('credit-earned').textContent = String(totalCredits);
 
   tableBody.innerHTML = validRecords.map((record, index) => {
     const isBest = record.semester === bestRecord.semester;
@@ -197,16 +180,26 @@ async function fetchUserProfile() {
     if (!user) throw new Error('사용자 정보가 없습니다.');
     document.getElementById('profile-avatar').textContent = user.name ? user.name.charAt(0) : '';
     document.getElementById('profile-name').textContent = `${user.name || ''}`;
-    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''}`;
-
-    // 폼에 사용자 정보 채워넣기
-    document.getElementById('studentId').value = user.studentId || '';
-    document.getElementById('university').value = user.university || '';
-    document.getElementById('major').value = user.major || '';
-    document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';
+    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''} · ${user.enrollmentStatus || ''}`;
   } catch (error) {
     console.error('Error fetching profile:', error);
     alert('프로필 정보를 가져오는데 실패했습니다. 다시 시도해주세요.');
+  }
+}
+// 목표 직무와 자격증 정보 가져와서 프로필 상단에 표시하기
+async function fetchCareerAndCerts() {
+  try {
+    const response = await fetch('/career/my-career-and-certs', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('목표 직무와 자격증 정보를 가져오는데 실패했습니다.');
+    const data = await response.json();
+    if (!data.success) throw new Error('목표 직무와 자격증 정보를 가져오는데 실패했습니다.');
+    const career = data.career || {};
+    const certs = data.certifications || [];
+    document.getElementById('profile-job').textContent = career.title || '목표 직무 없음';
+    document.getElementById('profile-certification').textContent = certs.length > 0 ? certs.map(c => c.certificationId.name).join(', ') : '목표 자격증 없음';
+  } catch (error) {
+    console.error('Error fetching career and certifications:', error);
+    // 실패해도 프로필 기본 정보는 보여주도록 함
   }
 }
 
@@ -215,7 +208,7 @@ document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchProgress();
-  fetchAcademicinfo();
   fetchAcademicTrend();
   fetchUserProfile();
+  fetchCareerAndCerts();
 });
