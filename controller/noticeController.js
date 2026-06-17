@@ -81,27 +81,16 @@ function mapNoticeDoc(doc) {
     const item = doc.toObject();
     const diff = dateCaculate.getRemainingDays(item.endDate);
 
-// 공지사항 가져오기 (기존 뼈대를 그대로 유지하면서 D-Day 지난 과거 데이터 완벽 필터링)
-async function fetchAllData() {
-    const dbNotices = await Notice.find({ isPublished: true }).sort({ endDate: 1 }).lean();
-    
-    const mappedNotices = dbNotices.map(item => {
-        const diff = dateCaculate.getRemainingDays(item.endDate);
-
-        if (diff < 0) {
-            return null;
-        }
-
     let typeIcon = '📌';
     let typeColor = 'var(--accent-bg)';
 
-    if (item.title.includes('원서접수')) {
+    if (item.title?.includes('원서접수')) {
         typeIcon = '📝';
         typeColor = '#e0f2fe';
-    } else if (item.title.includes('시험')) {
+    } else if (item.title?.includes('시험')) {
         typeIcon = '✍️';
         typeColor = '#fef3c7';
-    } else if (item.title.includes('결과발표')) {
+    } else if (item.title?.includes('결과발표')) {
         typeIcon = '📢';
         typeColor = '#dcfce7';
     }
@@ -123,6 +112,19 @@ async function fetchAllData() {
         categoryBadgeClass,
         formattedDate,
     };
+}
+
+async function fetchAllData(university) {
+    const [dbNotices, universitySchedules] = await Promise.all([
+        Notice.find({ isPublished: true }).sort({ endDate: 1 }),
+        getUniversitySchedulesForNotice(university),
+    ]);
+
+    const mappedNotices = dbNotices
+        .map(mapNoticeDoc)
+        .filter((n) => n.Dday !== null && n.Dday >= 0);
+
+    return sortNoticesByDate([...mappedNotices, ...universitySchedules]);
 }
 
 function mapUniversityScheduleToNotice(schedule) {
@@ -239,8 +241,6 @@ async function fetchAllData(university) {
             categoryBadgeClass,
             formattedDate
         };
-    });
-    return mappedNotices.filter(Boolean);
 }
 
 
@@ -330,7 +330,7 @@ async function getNoticePage(req, res) {
             endPage: endPage,
             hasPrev: hasPrev,
             hasNext: hasNext,
-            categoryFilter: categoryFilter
+            categoryFilter: categoryFilter,
             currentPageNum: safePage,
             totalPages,
             categoryFilter,
