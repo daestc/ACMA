@@ -1,12 +1,59 @@
 const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
+const UniversitySchedule = require('../models/UniversitySchedule');
+const {
+  buildLectureListFilter,
+  buildLectureOwnershipFilter,
+  buildStaffUniversityFilter,
+  normalizeUniversity,
+  LEGACY_NULL_UNIVERSITY,
+} = require('./lectureAdminService');
 
+const UNIVERSITY_EVENT_COLOR = '#F59E0B';
 
-//일정 가져오기
-async function getEventsListByUser(userId) {
-    return await CalendarEvent.find({ //사용자 id와 삭제되지 않은 일정 가져오기
-        userId : userId,
-        isDeleted: false,
-    }).sort({startDate: 1});
+function mapUniversityScheduleToEvent(schedule) {
+  return {
+    _id: `univ-${schedule._id}`,
+    title: schedule.title,
+    description: schedule.description,
+    startDate: schedule.startDate,
+    endDate: schedule.endDate || schedule.startDate,
+    isAllDay: true,
+    category: 'notice',
+    isDday: false,
+    color: UNIVERSITY_EVENT_COLOR,
+    isDeleted: false,
+    isUniversityEvent: true,
+    sourceScheduleId: schedule._id,
+  };
+}
+
+async function getUniversitySchedulesAsEvents(university) {
+  const univ = normalizeUniversity(university);
+  if (!univ) return [];
+
+  const filter = buildStaffUniversityFilter(univ);
+  if (!filter) return [];
+
+  const schedules = await UniversitySchedule.find(filter)
+    .sort({ startDate: 1 })
+    .lean();
+
+  return schedules.map(mapUniversityScheduleToEvent);
+}
+
+//일정 가져오기 (개인 일정 + 소속 대학 학교 일정)
+async function getEventsListByUser(userId, university) {
+  const [personalEvents, universityEvents] = await Promise.all([
+    CalendarEvent.find({
+      userId,
+      isDeleted: false,
+    }).sort({ startDate: 1 }).lean(),
+    getUniversitySchedulesAsEvents(university),
+  ]);
+
+  return [...personalEvents, ...universityEvents].sort(
+    (a, b) => new Date(a.startDate) - new Date(b.startDate),
+  );
 };
 
 //일정생성
@@ -167,29 +214,102 @@ async function deleteTimetable(userId, timetableId) {
     return deletedTimetable;
 };
 
-// 강의 목록 조회(학기,년도,강의명 검색)
+// 대학 변경 시 사용자가 추가한 강의 시간표 전체 비활성화
+async function clearUserLectureTimetables(userId) {
+  const result = await Timetable.updateMany(
+    {
+      userId,
+      isActive: true,
+      type: 'lecture',
+    },
+    { isActive: false },
+  );
+
+  return result.modifiedCount;
+}
+
+// 강의 목록 조회(소속 대학·학기·년도·강의명 검색)
 async function getLectureList(filter = {}) {
-  const query = {};
-  //년도 필터
-  if (filter.year) {
-    query.year = Number(filter.year);
+  const univ = normalizeUniversity(filter.university);
+  if (!univ) {
+    const err = new Error('대학등록이 필요합니다');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
   }
-  //학기 필터
-  if (filter.semester) {
-    query.semester = filter.semester;
+
+  const baseQuery = buildLectureListFilter(univ, filter.keyword || '');
+  const extra = [];
+  if (filter.year) extra.push({ year: Number(filter.year) });
+  if (filter.semester) extra.push({ semester: filter.semester });
+
+  const query = extra.length
+    ? { $and: [baseQuery, ...extra] }
+    : baseQuery;
+
+  const page = Math.max(1, Number(filter.page) || 1);
+  const limit = Math.max(1, Math.min(50, Number(filter.limit) || 10));
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    Lecture.find(query)
+      .sort({ courseName: 1, section: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Lecture.countDocuments(query),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    totalPages: total ? Math.ceil(total / limit) : 0,
+    limit,
+  };
+}
+
+// 강의가 등록된 대학 목록 (페이징)
+async function getAvailableUniversities({ page = 1, limit = 10 } = {}) {
+  const raw = await Lecture.distinct('university');
+  const seen = new Set();
+  const names = [];
+
+  for (const value of raw) {
+    const name = value?.trim() || LEGACY_NULL_UNIVERSITY;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    names.push(name);
   }
-  //사용자가 입력한 필드
-  if (filter.keyword) {
-    query.courseName = { $regex: filter.keyword, $options: 'i' };
-  }
-  //db검색 (오름차순)
-  return await Lecture.find(query)
-    .sort({ courseName: 1, section: 1 });
+
+  names.sort((a, b) => a.localeCompare(b, 'ko'));
+
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
+  const total = names.length;
+  const totalPages = total ? Math.ceil(total / safeLimit) : 0;
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: names.slice(start, start + safeLimit),
+    total,
+    page: safePage,
+    totalPages,
+    limit: safeLimit,
+  };
 }
 
 // 강의를 내 시간표에 추가 Lecture의 내용을 timetable에 맞추어 생성
-async function addLectureToTimetable(userId, lectureId, color = '#60A5FA') {
-  const lecture = await Lecture.findById(lectureId);
+async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', university) {
+  const univ = normalizeUniversity(university);
+  if (!univ) {
+    const err = new Error('대학등록이 필요합니다');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
+  }
+
+  const lecture = await Lecture.findOne(
+    buildLectureOwnershipFilter(univ, { _id: lectureId }),
+  );
 
   if (!lecture) {
     throw new Error('강의를 찾을 수 없습니다.');
@@ -212,8 +332,8 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA') {
   //timetableSchema의 schedule이 dayOfWeek,startTime,endTime 로 구성되어 있음
   const schedule = lecture.schedules.map(sch => ({
     dayOfWeek: dayMap[sch.day],
-    startTime: sch.startTime,
-    endTime: sch.endTime,
+    startTime: String(sch.startTime || '').trim(),
+    endTime: String(sch.endTime || '').trim(),
   }));
 
   //시간표 겹침 검증 함수 불러오기
@@ -294,6 +414,9 @@ function validateTimetableData(timetableData) {
   }
 
   timetableData.schedule.forEach(sch => {
+    sch.startTime = String(sch.startTime || '').trim();
+    sch.endTime = String(sch.endTime || '').trim();
+
     if (sch.dayOfWeek === undefined || sch.dayOfWeek === null) {
       throw new Error('요일 정보는 필수입니다.');
     }
@@ -324,7 +447,7 @@ function validateTimetableData(timetableData) {
 
 //시간표 분 표시
 function timeToMinutes(time) {
-  const [hour, minute] = time.split(':').map(Number);
+  const [hour, minute] = String(time || '').trim().split(':').map(Number);
   return hour * 60 + minute;
 }
 
@@ -609,8 +732,10 @@ module.exports = {getEventsListByUser,
                 createNewTimetable,
                 updateTimetable,
                 deleteTimetable,
+                clearUserLectureTimetables,
                 getLectureList,
                 addLectureToTimetable,
+                getAvailableUniversities,
 
                 getShortWeather
             };

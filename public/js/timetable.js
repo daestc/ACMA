@@ -119,6 +119,16 @@ const closeLectureSearchBtn = document.getElementById('close-lecture-search-btn'
     searchLectureBtn.addEventListener('click', searchLectures);
   }
 
+  const lectureKeywordInput = document.getElementById('lecture-keyword');
+  if (lectureKeywordInput) {
+    lectureKeywordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchLectures();
+      }
+    });
+  }
+
   if (openLectureSearchBtn) {
   openLectureSearchBtn.addEventListener('click', openLectureSearchModal);
 }
@@ -239,10 +249,13 @@ async function createTimetable(e) {
 
   closeTimetableModal();
 
-  const timetableRes = await fetch('/calendar/timetables');
-  window.timetables = await timetableRes.json();
-
-  renderTimetable();
+  if (typeof window.refreshCalendarView === 'function') {
+    await window.refreshCalendarView();
+  } else {
+    const timetableRes = await fetch('/calendar/timetables');
+    window.timetables = await timetableRes.json();
+    renderTimetable();
+  }
 }
 
 function openTimetableDetail(timetableId) {
@@ -295,10 +308,13 @@ async function deleteTimetable() {
 
   closeTimetableModal();
 
-  const timetableRes = await fetch('/calendar/timetables');
-  window.timetables = await timetableRes.json();
-
-  renderTimetable();
+  if (typeof window.refreshCalendarView === 'function') {
+    await window.refreshCalendarView();
+  } else {
+    const timetableRes = await fetch('/calendar/timetables');
+    window.timetables = await timetableRes.json();
+    renderTimetable();
+  }
 }
 //시간 추가
 function addScheduleRow(schedule = {}) {
@@ -356,8 +372,8 @@ function getScheduleFromForm() {
 
   for (const row of rows) {
     const dayOfWeek = Number(row.querySelector('.tt-day').value);
-    const startTime = row.querySelector('.tt-start-time').value;
-    const endTime = row.querySelector('.tt-end-time').value;
+    const startTime = row.querySelector('.tt-start-time').value.trim();
+    const endTime = row.querySelector('.tt-end-time').value.trim();
 
     if (!startTime || !endTime) {
       alert('모든 시간 정보의 시작 시간과 종료 시간을 입력해 주세요.');
@@ -416,67 +432,185 @@ function getTimeOptions() {
   return options;
 }
 
-//강의 검색
-async function searchLectures() {
-  //사용자가 입력한 검색 조건 
+function getUserUniversity() {
+  return window.calendarUser?.university?.trim() || '';
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+let availableUniversityPage = 1;
+let lectureSearchPage = 1;
+
+async function loadLectures(page = 1) {
+  if (!getUserUniversity()) return;
+
+  const listEl = document.getElementById('lecture-search-list');
+  const pagEl = document.getElementById('lecture-search-pagination');
   const keyword = document.getElementById('lecture-keyword').value.trim();
 
-  if (!keyword) {
-    alert('검색어를 입력해 주세요.');
-    return;
-  }
-  
-  const params = new URLSearchParams();
+  listEl.innerHTML = '<p class="lecture-search-loading">불러오는 중...</p>';
+  pagEl.innerHTML = '';
+
+  const params = new URLSearchParams({ page, limit: 10 });
   if (keyword) params.append('keyword', keyword);
 
+  try {
+    const res = await fetch(`/calendar/lectures?${params.toString()}`);
 
-  //검색조건 달고 요청
-  const res = await fetch(`/calendar/lectures?${params.toString()}`);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      if (errorData?.code === 'NO_UNIVERSITY') {
+        alert(errorData.message || '대학등록이 필요합니다');
+        return;
+      }
+      listEl.innerHTML = '<p>강의 목록을 불러오지 못했습니다.</p>';
+      return;
+    }
 
-  if (!res.ok) {
-    alert('강의 목록 조회 실패');
+    const data = await res.json();
+    lectureSearchPage = data.page;
+    renderLectureSearchList(data);
+  } catch {
+    listEl.innerHTML = '<p>강의 목록을 불러오지 못했습니다.</p>';
+  }
+}
+
+function renderLecturePagination({ page, totalPages, total }) {
+  const pagEl = document.getElementById('lecture-search-pagination');
+
+  if (!total) {
+    pagEl.innerHTML = '';
     return;
   }
 
-  const lectures = await res.json();
-  renderLectureSearchList(lectures);
+  if (totalPages <= 1) {
+    pagEl.innerHTML = `<span class="page-info">총 ${total}개</span>`;
+    return;
+  }
+
+  pagEl.innerHTML = `
+    <button type="button" class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} data-lecture-page="${page - 1}">이전</button>
+    <span class="page-info">${page} / ${totalPages}</span>
+    <button type="button" class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''} data-lecture-page="${page + 1}">다음</button>
+  `;
+
+  pagEl.querySelectorAll('[data-lecture-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nextPage = Number(btn.dataset.lecturePage);
+      if (nextPage >= 1) loadLectures(nextPage);
+    });
+  });
+}
+
+async function loadAvailableUniversities(page = 1) {
+  const listEl = document.getElementById('available-university-list');
+  const pagEl = document.getElementById('available-university-pagination');
+
+  listEl.innerHTML = '<li class="empty">불러오는 중...</li>';
+  pagEl.innerHTML = '';
+
+  try {
+    const res = await fetch(`/calendar/universities?page=${page}&limit=10`);
+    if (!res.ok) {
+      listEl.innerHTML = '<li class="empty">대학 목록을 불러오지 못했습니다.</li>';
+      return;
+    }
+
+    const data = await res.json();
+    availableUniversityPage = data.page;
+    renderAvailableUniversities(data);
+  } catch {
+    listEl.innerHTML = '<li class="empty">대학 목록을 불러오지 못했습니다.</li>';
+  }
+}
+
+function renderAvailableUniversities({ items, page, totalPages, total }) {
+  const listEl = document.getElementById('available-university-list');
+  const pagEl = document.getElementById('available-university-pagination');
+
+  if (!items || items.length === 0) {
+    listEl.innerHTML = '<li class="empty">등록된 대학이 없습니다.</li>';
+    pagEl.innerHTML = '';
+    return;
+  }
+
+  listEl.innerHTML = items
+    .map(name => `<li>${escapeHtml(name)}</li>`)
+    .join('');
+
+  if (totalPages <= 1) {
+    pagEl.innerHTML = `<span class="page-info">총 ${total}개</span>`;
+    return;
+  }
+
+  pagEl.innerHTML = `
+    <button type="button" class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} data-univ-page="${page - 1}">이전</button>
+    <span class="page-info">${page} / ${totalPages}</span>
+    <button type="button" class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''} data-univ-page="${page + 1}">다음</button>
+  `;
+
+  pagEl.querySelectorAll('[data-univ-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nextPage = Number(btn.dataset.univPage);
+      if (nextPage >= 1) loadAvailableUniversities(nextPage);
+    });
+  });
+}
+
+//강의 검색
+async function searchLectures() {
+  if (!getUserUniversity()) {
+    alert('대학등록이 필요합니다');
+    return;
+  }
+
+  await loadLectures(1);
 }
 
 //검색 결과 출력
-function renderLectureSearchList(lectures) {
+function renderLectureSearchList(data) {
   const list = document.getElementById('lecture-search-list');
+  const { items, page, totalPages, total } = data;
 
-  if (!lectures || lectures.length === 0) {
-    list.innerHTML = '<p>검색된 강의가 없습니다.</p>';
+  if (!items || items.length === 0) {
+    list.innerHTML = '<p>등록된 강의가 없습니다.</p>';
+    renderLecturePagination({ page: 1, totalPages: 0, total: 0 });
     return;
   }
 
-  //검색된 강의 정보 표시 + 담기 버튼
-  list.innerHTML = lectures.map(lecture => `
+  list.innerHTML = items.map(lecture => `
     <div class="lecture-search-item">
       <div>
-        <strong>${lecture.courseName}</strong>
-        <span> ${lecture.section}분반</span><br>
+        <strong>${escapeHtml(lecture.courseName)}</strong>
+        <span> ${escapeHtml(lecture.section)}분반</span><br>
         <small>
-          ${lecture.classification} / ${lecture.credits}학점 / 
-          ${lecture.professor || '미정'}
+          ${escapeHtml(lecture.classification)} / ${lecture.credits}학점 /
+          ${escapeHtml(lecture.professor || '미정')}
         </small><br>
         <small>
-          ${lecture.schedules.map(sch =>
-            `${sch.day} ${sch.startTime}~${sch.endTime}`
+          ${(lecture.schedules || []).map(sch =>
+            `${escapeHtml(sch.day)} ${escapeHtml(sch.startTime)}~${escapeHtml(sch.endTime)}`
           ).join(', ')}
         </small>
       </div>
 
-      <button 
-        type="button" 
+      <button
+        type="button"
         class="btn btn-sm btn-accent"
-        onclick="addLectureToMyTimetable('${lecture._id}')" //담기 버튼
+        onclick="addLectureToMyTimetable('${lecture._id}')"
       >
         담기
       </button>
     </div>
   `).join('');
+
+  renderLecturePagination({ page, totalPages, total });
 }
 
 //담기 버튼 눌렀을때 해당 정보를 시간표에 넣음
@@ -499,16 +633,30 @@ async function addLectureToMyTimetable(lectureId) {
     alert(errorData?.error || '강의 추가 실패');
     return;
   }
-  //새로고침
-  const timetableRes = await fetch('/calendar/timetables');
-  window.timetables = await timetableRes.json();
 
-  renderTimetable();
+  if (typeof window.refreshCalendarView === 'function') {
+    await window.refreshCalendarView();
+  } else {
+    const timetableRes = await fetch('/calendar/timetables');
+    window.timetables = await timetableRes.json();
+    renderTimetable();
+  }
 
   alert('강의가 시간표에 추가되었습니다.');
 }
 //시간표 검색 모달 열기
 function openLectureSearchModal() {
+  const hasUniversity = !!getUserUniversity();
+  document.getElementById('lecture-search-no-univ').style.display = hasUniversity ? 'none' : 'block';
+  document.getElementById('lecture-search-enabled').style.display = hasUniversity ? '' : 'none';
+
+  if (!hasUniversity) {
+    loadAvailableUniversities(1);
+  } else {
+    document.getElementById('lecture-keyword').value = '';
+    loadLectures(1);
+  }
+
   document.getElementById('lecture-search-modal').style.display = 'flex';
 }
 //시간표 검색 모달 닫기
@@ -516,4 +664,7 @@ function closeLectureSearchModal() {
   document.getElementById('lecture-search-modal').style.display = 'none';
   document.getElementById('lecture-keyword').value = '';
   document.getElementById('lecture-search-list').innerHTML = '';
+  document.getElementById('lecture-search-pagination').innerHTML = '';
+  document.getElementById('available-university-list').innerHTML = '';
+  document.getElementById('available-university-pagination').innerHTML = '';
 }

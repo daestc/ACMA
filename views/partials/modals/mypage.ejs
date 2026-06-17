@@ -8,23 +8,53 @@
     </div>
     <!-- 모달 바디 -->
     <div style="padding:24px 28px;">
+      <% const isStaffUser = user && user.role === 'staff'; %>
+
       <!-- 프로필 헤더 -->
       <div class="profile-header" style="margin-bottom:20px;">
-        <div class="profile-avatar-lg" id="profile-avatar"><div class="avatar-edit">✏</div></div>
+        <div class="profile-avatar-lg" id="profile-avatar"><% if (!isStaffUser) { %><div class="avatar-edit">✏</div><% } %></div>
         <div style="flex:1;">
           <div class="profile-info">
             <div class="name" id="profile-name">김민재</div>
             <div class="meta" id="profile-meta"></div>
           </div>
+          <% if (!isStaffUser) { %>
           <div class="profile-stats">
             <div class="p-stat"><div class="p-stat-value">3.80</div><div class="p-stat-label">누적 GPA</div></div>
             <div class="p-stat"><div class="p-stat-value">92</div><div class="p-stat-label">이수 학점</div></div>
             <div class="p-stat"><div class="p-stat-value">6</div><div class="p-stat-label">이수 학기</div></div>
             <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">취득 자격증</div></div>
           </div>
+          <% } %>
         </div>
       </div>
-      <div class="grid-2">
+
+      <% if (isStaffUser) { %>
+      <div id="mypage-staff-body" style="max-width:480px;">
+        <div class="settings-section">
+          <h3>소속 정보</h3>
+          <div class="form-group">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">소속 대학</label>
+            <input class="input-field" id="staff-university" style="width:100%;background:var(--bg3);color:var(--text2);" readonly>
+          </div>
+          <p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5;">
+            대학관계자 계정은 소속 대학 정보를 직접 수정할 수 없습니다.
+          </p>
+        </div>
+        <div class="settings-section">
+          <h3>계정</h3>
+          <div class="settings-row">
+            <div><div class="settings-label">로그아웃</div><div class="settings-desc">현재 세션을 종료합니다</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="serverLogout()">로그아웃</button>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">계정 탈퇴</div><div class="settings-desc">모든 데이터가 삭제됩니다</div></div>
+            <button class="btn btn-sm" style="color:var(--red);border:1.5px solid #fecdd3;background:#fff1f2;" onclick="openWithdrawModal()">탈퇴</button>
+          </div>
+        </div>
+      </div>
+      <% } else { %>
+      <div id="mypage-student-body" class="grid-2">
         <div>
           <div class="settings-section" id="profile-settings">
             <h3>학사정보</h3>
@@ -54,6 +84,7 @@
           </div>
         </div>
       </div>
+      <% } %>
     </div>
   </div>
 </div>

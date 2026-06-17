@@ -12,13 +12,18 @@
     <%- include('../partials/topbar', { pageTitle: '공지사항', user: user }) %>
 
     <div class="page-content">
-      <div class="filter-row" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 1px solid #f1f5f9;">
-        <div class="chip active" onclick="filterChip(this)">전체</div>
-        <div class="chip" onclick="filterChip(this)">🏆 자격증</div>
-        <div class="chip" onclick="filterChip(this)">💰 장학금</div>
-        <div class="chip" onclick="filterChip(this)">📅 학사일정</div>
-        <div class="chip" onclick="filterChip(this)">📅 채용/인턴</div>
-        <div class="chip" onclick="filterChip(this)">📅 공모전</div>
+      <div class="filter-row" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap;">
+        <% const cat = typeof categoryFilter !== 'undefined' ? categoryFilter : ''; %>
+        <% function noticeHref(category) {
+          if (!category) return '/notice';
+          return '/notice?category=' + category;
+        } %>
+        <a href="<%= noticeHref('') %>" class="chip <%= !cat ? 'active' : '' %>" style="text-decoration:none;">전체</a>
+        <a href="<%= noticeHref('certification') %>" class="chip <%= cat === 'certification' ? 'active' : '' %>" style="text-decoration:none;">🏆 자격증</a>
+        <a href="<%= noticeHref('scholarship') %>" class="chip <%= cat === 'scholarship' ? 'active' : '' %>" style="text-decoration:none;">💰 장학금</a>
+        <a href="<%= noticeHref('academic') %>" class="chip <%= cat === 'academic' ? 'active' : '' %>" style="text-decoration:none;">📅 학사일정</a>
+        <a href="<%= noticeHref('recruit') %>" class="chip <%= cat === 'recruit' ? 'active' : '' %>" style="text-decoration:none;">📅 채용/인턴</a>
+        <a href="<%= noticeHref('activity') %>" class="chip <%= cat === 'activity' ? 'active' : '' %>" style="text-decoration:none;">📅 공모전</a>
       </div>
 
       <div class="card" style="padding: 0; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -34,7 +39,7 @@
                   <span class="badge <%= item.categoryBadgeClass %>" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 6px;"><%= item.categoryName %></span>
                   <span style="color: #94a3b8; font-size: 0.85rem;">
                     일정: <%= item.startDate ? item.startDate.toLocaleDateString() : '' %> 
-                    <% if (item.endDate && item.startDate.getTime() !== item.endDate.getTime()) { %>
+                    <% if (item.endDate && item.startDate && item.startDate.getTime() !== item.endDate.getTime()) { %>
                       ~ <%= item.endDate.toLocaleDateString() %>
                     <% } %>
                   </span>
@@ -53,22 +58,23 @@
       </div>
 
       <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+        <% const pageQuery = cat ? ('&category=' + cat) : ''; %>
         <div class="pagination-container">
           
           <% if (hasPrev) { %>
-            <a href="/notice?page=<%= startPage - 1 %>&category=<%= categoryFilter %>" class="page-btn">&lt;</a>
+            <a href="/notice?page=<%= startPage - 1 %>&category=<%= categoryFilter %><%= pageQuery %>" class="page-btn">&lt;</a>
           <% } else { %>
             <a href="#" class="page-btn disabled" onclick="return false;">&lt;</a>
           <% } %>
           
           <% for (let i = startPage; i <= endPage; i++) { %>
-            <a href="/notice?page=<%= i %>&category=<%= categoryFilter %>" class="page-btn <%= currentPageNum === i ? 'active' : '' %>">
+            <a href="/notice?page=<%= i %>&category=<%= categoryFilter %><%= pageQuery %>" class="page-btn <%= currentPageNum === i ? 'active' : '' %>">
               <%= i %>
             </a>
           <% } %>
           
           <% if (hasNext) { %>
-            <a href="/notice?page=<%= endPage + 1 %>&category=<%= categoryFilter %>" class="page-btn">&gt;</a>
+            <a href="/notice?page=<%= endPage + 1 %>&category=<%= categoryFilter %><%= pageQuery %>" class="page-btn">&gt;</a>
           <% } else { %>
             <a href="#" class="page-btn disabled" onclick="return false;">&gt;</a>
           <% } %>

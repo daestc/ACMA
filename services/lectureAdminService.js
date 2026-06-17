@@ -1,8 +1,8 @@
-/* ================================================
+/*
    강의 등록 서비스 (대학관계자 전용)
    - 개별 강의 등록 / 목록 조회 / 삭제
    - CSV 업로드 일괄 등록 (seedLeacture.js 파싱 로직 기반)
-   ================================================ */
+*/
 const { Readable } = require('stream');
 const path = require('path');
 const csvParser = require('csv-parser');
@@ -11,7 +11,7 @@ const XLSX = require('xlsx');
 const { Lecture } = require('../models/Calendar');
 
 // 시드 등으로 university가 null인 기존 데이터는 대진대학교 소속으로 취급
-const LEGACY_NULL_UNIVERSITY = '대진대학교';
+const DEFAULT_UNIVERSITY = '대진대학교';// 기본 대학 이름
 
 function normalizeUniversity(university) {
   const value = university?.trim();
@@ -30,15 +30,15 @@ function requireUniversity(university) {
 
 // DB null → 표시·필터용 대학명
 function resolveUniversityLabel(stored) {
-  return stored?.trim() || LEGACY_NULL_UNIVERSITY;
+  return stored?.trim() || DEFAULT_UNIVERSITY;
 }
 
-// 관계자 소속 대학 기준 MongoDB 필터 (레거시 null 포함 여부)
+// 관계자 소속 대학 기준 MongoDB 필터
 function buildStaffUniversityFilter(staffUniversity) {
   const univ = normalizeUniversity(staffUniversity);
   if (!univ) return null;
 
-  if (univ === LEGACY_NULL_UNIVERSITY) {
+  if (univ === DEFAULT_UNIVERSITY) {
     return { $or: [{ university: univ }, { university: null }] };
   }
   return { university: univ };
@@ -81,7 +81,7 @@ function formatLectureForOutput(lecture) {
   };
 }
 
-// ── 강의시간 문자열 파싱 ──────────────────────────
+// 강의시간 문자열 파싱 
 // "월11:30-13:30,수14:00-15:30" → [{ day, startTime, endTime, startMinute, endMinute }]
 function parseSchedules(scheduleStr) {
   if (!scheduleStr) return [];
@@ -94,14 +94,16 @@ function parseSchedules(scheduleStr) {
     const timeRange = s.substring(1).split('-');
     if (timeRange.length !== 2) return null;
 
-    const [startHour, startMin] = timeRange[0].split(':').map(Number);
-    const [endHour, endMin]     = timeRange[1].split(':').map(Number);
+    const startTime = timeRange[0].trim();
+    const endTime = timeRange[1].trim();
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
     if ([startHour, startMin, endHour, endMin].some(Number.isNaN)) return null;
 
     return {
       day,
-      startTime: timeRange[0],
-      endTime: timeRange[1],
+      startTime,
+      endTime,
       startMinute: startHour * 60 + startMin,
       endMinute: endHour * 60 + endMin,
     };
@@ -141,8 +143,7 @@ function collectLecturesFromRows(rows) {
   return { lectures: Array.from(lectureMap.values()), failedRows };
 }
 
-// ── CSV / XLSX 버퍼 → 강의 배열 ──────────────────
-// 한글 CSV 인코딩 대응: UTF-8 기본, 깨진 문자가 감지되면 EUC-KR로 재해석
+// 강의 배열 
 function decodeCsvBuffer(buffer) {
   let text = buffer.toString('utf8');
   if (text.includes('\uFFFD')) {
@@ -198,7 +199,7 @@ function parseLectureFile(buffer, filename = '') {
   return parseCsvBuffer(buffer);
 }
 
-// ── CSV 일괄 등록 (upsert) ────────────────────────
+// CSV 일괄 등록 (upsert) 
 // 같은 교과명+분반은 갱신, 없으면 삽입 (기존 데이터는 지우지 않음)
 async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university, filename } = {}) {
   const univ = requireUniversity(university);
@@ -249,7 +250,7 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
   };
 }
 
-// ── 개별 강의 등록 ────────────────────────────────
+// 개별 강의 등록 
 async function createLecture({ classification, courseName, section, credits, professor, schedules, year, semester, createdBy, university }) {
   const univ = requireUniversity(university);
 
@@ -303,7 +304,7 @@ async function getLectures({ search = '', page = 1, limit = 20, university } = {
   };
 }
 
-// ── 삭제 (소속 대학 강의만) ───────────────────────
+// 삭제 (소속 대학 강의만) 
 async function deleteLecture(id, university) {
   const univ = requireUniversity(university);
   const result = await Lecture.findOneAndDelete(
@@ -317,4 +318,15 @@ async function deleteLecture(id, university) {
   return result;
 }
 
-module.exports = { parseSchedules, bulkUpsertFromCsv, createLecture, getLectures, deleteLecture };
+module.exports = {
+  parseSchedules,
+  bulkUpsertFromCsv,
+  createLecture,
+  getLectures,
+  deleteLecture,
+  buildLectureListFilter,
+  buildLectureOwnershipFilter,
+  buildStaffUniversityFilter,
+  normalizeUniversity,
+  DEFAULT_UNIVERSITY,
+};

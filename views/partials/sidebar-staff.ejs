@@ -21,7 +21,13 @@
 
   <nav class="sidebar-nav">
     <div class="nav-section">
-      <div class="nav-label">학사 관리</div>
+      <div class="nav-label">메인</div>
+      <a href="/staff/home" class="nav-item <%= currentPage === 'staffHome' ? 'active' : '' %>">
+        <span class="nav-icon">🏠</span>홈
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">학사관리</div>
       <a href="/staff/lectures" class="nav-item <%= currentPage === 'lectureAdmin' ? 'active' : '' %>">
         <span class="nav-icon">🏫</span>강의 관리
       </a>
@@ -30,6 +36,12 @@
       </a>
       <a href="/staff/graduation" class="nav-item <%= currentPage === 'staffGraduation' ? 'active' : '' %>">
         <span class="nav-icon">🎓</span>졸업요건 설정
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">학생관리</div>
+      <a href="/staff/suggestions" class="nav-item <%= currentPage === 'staffSuggestions' ? 'active' : '' %>">
+        <span class="nav-icon">💬</span>학생 건의
       </a>
     </div>
   </nav>

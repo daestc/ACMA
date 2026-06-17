@@ -5,7 +5,7 @@ const logger      = require('../config/logger');
 
 // 역할별 로그인 후 이동 경로(학생이면 home, 대학관계자이면 staff/lectures, 관리자이면 admin/staff)
 function homeByRole(role) {
-  if (role === 'staff') return '/staff/lectures';
+  if (role === 'staff') return '/staff/home';
   if (role === 'admin') return '/admin/staff';
   return '/home';
 }
@@ -13,7 +13,7 @@ function homeByRole(role) {
 // ── 페이지 ────────────────────────────────────────────────
 
 exports.getLogin = (req, res) => {
-  if (req.session.user) return res.redirect('/home');
+  if (req.session.user) return res.redirect(homeByRole(req.session.user.role));
   const error = req.query.expired === '1'
     ? '세션이 만료되었습니다. 다시 로그인해주세요.'
     : req.session.authError || null;
@@ -22,7 +22,7 @@ exports.getLogin = (req, res) => {
 };
 
 exports.getRegister = (req, res) => {
-  if (req.session.user) return res.redirect('/home');
+  if (req.session.user) return res.redirect(homeByRole(req.session.user.role));
   res.render('pages/register', { title: '회원가입', error: null });
 };
 
@@ -271,7 +271,7 @@ exports.oauthCallback = (provider) => {
           } else {
             logger.info(`${provider} 로그인 성공 | userId=${user._id} | ip=${ip}`);
           }
-          res.redirect('/home');
+          res.redirect(homeByRole(user.role || 'student'));
         });
       });
     })(req, res, next);

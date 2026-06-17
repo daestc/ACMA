@@ -29,6 +29,7 @@ const studyRouter = require('./routes/studyRouter');
 const alertRouter = require('./routes/alertRouter');
 const staffRouter = require('./routes/staffRouter');
 const adminRouter = require('./routes/adminRouter');
+const suggestionRouter = require('./routes/suggestionRouter');
 
 
 
@@ -42,6 +43,7 @@ app.set('views', path.join(__dirname, "views"));
 // 미들웨어
 app.use(helmet({ contentSecurityPolicy: false })); // CSP는 EJS 인라인 스크립트와 충돌하므로 비활성
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -72,6 +74,7 @@ app.use('/career', careerRouter);
 app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
+app.use('/suggestions', suggestionRouter);
 app.use('/', alertRouter);
 app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);

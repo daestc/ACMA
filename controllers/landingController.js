@@ -6,6 +6,13 @@ const careerService = require('../services/careerService');
 // 홈페이지에 표시할 정보 모음(todoList, 습관 트래커, Dday 알림, 공지사항 등)
 const getHomePage = async (req, res) => {
   try {
+    if (req.user?.role === 'staff') {
+      return res.redirect('/staff/home');
+    }
+    if (req.user?.role === 'admin') {
+      return res.redirect('/admin/staff');
+    }
+
     const loggedInUser = req.user || req.session?.user;
     if (!loggedInUser) {
       return res.redirect('/login'); 

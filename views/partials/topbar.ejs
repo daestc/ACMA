@@ -5,7 +5,12 @@
         <span></span><span></span><span></span>
       </div>
     </button>
-    <div class="gh-logo" onclick="location.href='/home'" style="cursor: pointer;">
+    <% const homeHref = (typeof user !== 'undefined' && user && user.role === 'staff')
+      ? '/staff/home'
+      : (typeof user !== 'undefined' && user && user.role === 'admin')
+        ? '/admin/staff'
+        : '/home'; %>
+    <div class="gh-logo" onclick="location.href='<%= homeHref %>'" style="cursor: pointer;">
       <div class="gh-logo-icon">A</div>
       <span class="gh-logo-text">AcadMe</span>
     </div>

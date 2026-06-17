@@ -1,20 +1,42 @@
 const staffService = require('../services/staffService');
 const logger = require('../config/logger');
 
-exports.getSchedulePage = async (req, res, next) => {
+const getHomePage = async (req, res, next) => {
   try {
-    const schedules = await staffService.getSchedules(req.user.university);
-    res.render('pages/staffSchedule', {
+    const dashboard = await staffService.getStaffDashboard(req.user.university);
+    res.render('pages/staffHome', {
       user: req.user,
-      pageTitle: '학교 일정 등록',
-      schedules,
+      pageTitle: '홈',
+      currentPage: 'staffHome',
+      dashboard,
     });
   } catch (err) {
     next(err);
   }
 };
 
-exports.postSchedule = async (req, res) => {
+const getSchedulePage = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const { schedules, total, page: currentPageNum, totalPages } = await staffService.getSchedules(
+      req.user.university,
+      { page },
+    );
+
+    res.render('pages/staffSchedule', {
+      user: req.user,
+      pageTitle: '학교 일정 등록',
+      schedules,
+      totalSchedules: total,
+      currentPageNum,
+      totalPages,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const postSchedule = async (req, res) => {
   try {
     const schedule = await staffService.createSchedule({
       university: req.user.university,
@@ -34,7 +56,7 @@ exports.postSchedule = async (req, res) => {
   }
 };
 
-exports.deleteSchedule = async (req, res) => {
+const deleteSchedule = async (req, res) => {
   try {
     await staffService.deleteSchedule(req.params.id, req.user.university);
     res.json({ ok: true });
@@ -46,13 +68,17 @@ exports.deleteSchedule = async (req, res) => {
   }
 };
 
-exports.getGraduationPage = async (req, res, next) => {
+const getGraduationPage = async (req, res, next) => {
   try {
-    const graduation = await staffService.getGraduationRequirements(req.user.university);
+    const [graduation, majors] = await Promise.all([
+      staffService.getGraduationRequirements(req.user.university),
+      staffService.getMajorList(req.user.university),
+    ]);
     res.render('pages/staffGraduation', {
       user: req.user,
       pageTitle: '졸업요건 설정',
       requirements: graduation?.requirements || null,
+      majors,
     });
   } catch (err) {
     next(err);
@@ -69,7 +95,7 @@ function parseBool(value) {
   return value === true || value === 'true';
 }
 
-exports.saveGraduation = async (req, res) => {
+const saveGraduation = async (req, res) => {
   try {
     const body = req.body || {};
     const requirements = {
@@ -105,4 +131,94 @@ exports.saveGraduation = async (req, res) => {
     }
     res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
   }
+};
+
+function parseAdditionalRequirements(body = {}) {
+  const certs = Array.isArray(body.requiredCertifications)
+    ? body.requiredCertifications.filter(Boolean)
+    : String(body.requiredCertifications || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  return {
+    requiresGraduationWork: parseBool(body.requiresGraduationWork),
+    requiredCapstonDesign: parseBool(body.requiredCapstonDesign),
+    requiredCertifications: certs,
+    requiredLanguageScore: body.requiredLanguageScore?.trim() || null,
+    requiredInternship: parseBool(body.requiredInternship),
+    requiredNCProgram: parseBool(body.requiredNCProgram),
+    requiredVolunteer: body.requiredVolunteer === '' || body.requiredVolunteer == null
+      ? null
+      : parseNum(body.requiredVolunteer, null),
+  };
+}
+
+const getMajorList = async (req, res) => {
+  try {
+    const majors = await staffService.getMajorList(req.user.university);
+    res.json({ ok: true, majors });
+  } catch (err) {
+    if (err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+const getMajorGraduation = async (req, res) => {
+  try {
+    const major = decodeURIComponent(req.params.major || '');
+    const additionalRequirements = await staffService.getMajorAdditionalRequirements(
+      req.user.university,
+      major,
+    );
+    res.json({ ok: true, major, additionalRequirements });
+  } catch (err) {
+    if (err.code === 'VALIDATION' || err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+const saveMajorGraduation = async (req, res) => {
+  try {
+    const major = req.body?.major?.trim();
+    if (!major) {
+      return res.status(400).json({ ok: false, message: '학과를 선택해주세요.' });
+    }
+
+    const additionalRequirements = parseAdditionalRequirements(req.body);
+    const saved = await staffService.saveMajorAdditionalRequirements(
+      req.user.university,
+      major,
+      additionalRequirements,
+      req.user.id,
+    );
+
+    logger.info(`학과별 졸업요건 저장 | univ=${req.user.university} | major=${major} | by=${req.user.email}`);
+    res.json({
+      ok: true,
+      major,
+      additionalRequirements: saved?.additionalRequirements || additionalRequirements,
+    });
+  } catch (err) {
+    if (err.code === 'VALIDATION' || err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+module.exports = {
+  getHomePage,
+  getSchedulePage,
+  postSchedule,
+  deleteSchedule,
+  getGraduationPage,
+  saveGraduation,
+  getMajorList,
+  getMajorGraduation,
+  saveMajorGraduation,
 };
