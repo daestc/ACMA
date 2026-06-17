@@ -36,6 +36,33 @@ exports.getStaffApprovalPage = async (req, res, next) => {
     next(err);
   }
 };
+// 관리자 통계 페이지
+exports.getAdminStatistics = async (req, res, next) => {
+  try {
+    const [totalStudents, totalStaff, universities] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'staff' }),
+      User.aggregate([
+        { $match: { role: 'student', university: { $ne: null } } },
+        { $group: { _id: '$university', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $project: { _id: 0, name: '$_id', studentCount: '$count' } }
+      ])
+    ]);
+    res.render('pages/adminStatistics', {
+      user: req.user,
+      pageTitle: '통계',
+      stats: {
+        totalStudents,
+        totalStaff,
+        totalUniversities: universities.length,
+        universities,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // 승인 / 거절 
 async function updateStaffStatus(req, res, status) {

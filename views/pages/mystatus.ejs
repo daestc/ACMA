@@ -22,13 +22,12 @@
 
         <!-- 사람인 포트폴리오 배너 -->
         <div class="portfolio-banner">
-          <div class="portfolio-name">김민준</div>
-          <div class="portfolio-meta">한국대학교 컴퓨터공학과 3학년 · GPA 3.80 / 4.5 · 이수 92학점</div>
+          <div class="portfolio-name" id="profile-name">...</div>
+          <div class="portfolio-meta" id="profile-meta">...</div>
           <div class="portfolio-tags">
-            <span class="portfolio-tag">백엔드 개발자 목표</span>
-            <span class="portfolio-tag">정보처리기사 취득</span>
-            <span class="portfolio-tag">SQLD 취득</span>
-            <span class="portfolio-tag">TOEIC 준비중</span>
+            <span class="portfolio-tag" id="profile-major">...</span>
+            <span class="portfolio-tag" id="profile-year">...</span>
+            <span class="portfolio-tag" id="profile-status">...</span>
           </div>
         </div>
 
@@ -86,96 +85,7 @@
               </div>
             </div>
         </div>
-
-        <!-- ③ 직무 적합도 그래프 -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span class="card-title">💼 직무 적합도 분석 — 백엔드 개발자</span>
-            <span class="badge badge-blue">내 프로필 기반</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;">
-            <!-- 도넛 차트 + 총점 -->
-            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-              <div style="position:relative;width:160px;height:160px;">
-                <svg width="160" height="160" viewBox="0 0 160 160">
-                  <circle cx="80" cy="80" r="60" fill="none" stroke="#e5e8f0" stroke-width="18"/>
-                  <!-- 78% arc: 2πr * 0.78 ≈ 293.8, 총 둘레 2π*60≈376.9 -->
-                  <circle cx="80" cy="80" r="60" fill="none" stroke="#3d5af1" stroke-width="18"
-                    stroke-dasharray="293 377" stroke-dashoffset="94" stroke-linecap="round"
-                    style="transform:rotate(-90deg);transform-origin:80px 80px;transition:stroke-dasharray 1s ease;"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                  <div style="font-size:30px;font-weight:800;font-family:'DM Sans';color:var(--accent);">78%</div>
-                  <div style="font-size:11px;color:var(--text2);font-weight:600;">종합 적합도</div>
-                </div>
-              </div>
-              <div style="text-align:center;">
-                <div style="font-size:13px;font-weight:700;color:var(--text);">백엔드 개발자</div>
-                <div style="font-size:11px;color:var(--text2);margin-top:2px;">정보통신 · 소프트웨어 개발</div>
-              </div>
-            </div>
-            <!-- 항목별 수평 바 차트 -->
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">항목별 세부 점수</div>
-              <!-- 자격증 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">🏅 보유 자격증 일치율</span>
-                  <span style="color:var(--green);font-weight:700;">95%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:95%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 전공 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">🎓 전공 관련성</span>
-                  <span style="color:var(--accent);font-weight:700;">88%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:88%;background:linear-gradient(90deg,var(--accent),#7b96ff);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- GPA -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">📊 GPA 달성률</span>
-                  <span style="color:var(--accent);font-weight:700;">84%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:84%;background:linear-gradient(90deg,var(--accent),#7b96ff);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 역량 점수 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">⚡ 직무 역량 점수</span>
-                  <span style="color:var(--purple);font-weight:700;">72%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:72%;background:linear-gradient(90deg,var(--purple),#a78bfa);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 이수 학점 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">📚 이수 학점 달성률</span>
-                  <span style="color:var(--amber);font-weight:700;">71%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:71%;background:linear-gradient(90deg,var(--amber),#fbbf24);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 부족한 항목 안내 -->
-              <div style="margin-top:6px;padding:10px 12px;background:var(--amber-bg);border-radius:var(--radius-sm);border:1px solid #fde68a;">
-                <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:3px;">⚠ 보완 추천</div>
-                <div style="font-size:11px;color:var(--text2);">TOEIC 취득 · AWS SAA 준비 · 이수 학점 38학점 추가 필요</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        <div class="grid-2" style="margin-bottom:16px;"></div>
         <div class="grid-2" style="margin-bottom:16px;">
           <!-- 자격증 / 대외활동 / 어학성적 탭 -->
           <div class="card">

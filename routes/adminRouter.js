@@ -6,6 +6,8 @@ const router = express.Router();
 
 // /admin 하위 전체에 관리자 권한 적용
 router.use(requireAdmin);
+// 관리자 통계 페이지
+router.get('/adminStatistics', controller.getAdminStatistics);
 
 router.get('/staff', controller.getStaffApprovalPage);
 router.get('/staff/:id/verification', controller.getVerificationImage);
