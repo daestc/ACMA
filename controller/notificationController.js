@@ -1,45 +1,77 @@
-//알림 배너 
-const notificationService = require('../service/notificationService')
+// controller/notificationController.js
+const { fetchHomeNotices } = require('./noticeController'); // 🎯 아까 우리가 고친 싱싱한 공지 수집 함수 가져오기
+const dateCaculate = require('../service/dateCaculateService');
 
-// 로그인한 유저 정보에 대한 더미데이터 
-const injectMockUser = (req, res, next) => {
-    req.user = {
-        _id: '65f1a2b3c4d5e6f7a8b9c0d1', 
-        name: '홍길동 ',
-        major: '컴퓨터공학과',
-        grade: 4
-    };
-    next(); 
-};
-
-//알림 목록 가져오기
-const getNotifications = async (req, res, next) =>{
-
+//  실시간 긴급 알림 목록 반환 (D-Day 당일 ~ 7일 전 전용 + 페이징)
+async function getNotifications(req, res) {
     try {
-        // 로그인한 회원이 가지고 있는 알림들 가져오기
-        const userId = req.user._id;
+     
+        const allFreshNotices = await fetchHomeNotices();
+        const loggedInUser = req.user || req.session?.user;
+        let myUrgentNotices = allFreshNotices;
 
-        // 데이터 가공본 호출
-       const liveAlerts = await notificationService.getBannerData(userId);
-       
-        // 로그인한 회원(웹소켓서버와 연결된 소켓)에게 알림들을 json 형식으로 전달
-        res.json({
+        if (loggedInUser) {
+            const mongoose = require('mongoose');
+            const UserCertModel = mongoose.model('UserCertification');
+            const currentUserId = loggedInUser._id || loggedInUser.id || loggedInUser.userDoc?._id;
+
+            // 유저가 설정한 target 자격증 긁어오기
+            const myCerts = await UserCertModel.find({ 
+                $or: [{ userId: currentUserId }, { user: currentUserId }],
+                status: 'target' 
+            }).populate('certificationId', 'jmcd').lean();
+
+            const myTargetJmCds = myCerts
+                .filter(c => c.certificationId && c.certificationId.jmcd)
+                .map(c => String(c.certificationId.jmcd).trim());
+
+            // 유저 타겟 자격증 공지거나, 학사/장학금 같은 공통 공지만 남기기
+            myUrgentNotices = myUrgentNotices.filter(n => {
+                if (n.category === 'certification') {
+                    const finalJmcd = n.jmcd || n.jmCd;
+                    if (finalJmcd) {
+                        return myTargetJmCds.includes(String(finalJmcd).trim());
+                    }
+                    return false;
+                }
+                return true; 
+            });
+        }
+
+        // d-day랑 d-7만 내보내기
+        myUrgentNotices = myUrgentNotices.filter(n => n.isUrgent === true);
+
+        //페이징 처리
+        const page = parseInt(req.query.page) || 1;
+        const limit = 5; // 알림창은 콤팩트하게 5개씩만!
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+
+        const paginatedAlerts = myUrgentNotices.slice(startIndex, endIndex);
+        
+        // 다음 페이지가 더 존재하는지 여부 
+        const hasMore = endIndex < myUrgentNotices.length;
+
+        return res.json({
             success: true,
-            liveAlerts: liveAlerts
+            alerts: paginatedAlerts,
+            hasMore: hasMore,
+            totalCount: myUrgentNotices.length 
         });
+
     } catch (error) {
-        next(error);
-    }
-}
-// 알림 전체 삭제
-const deleteNotifications = async (req, res, next) =>{
-    try {
-        const userId = req.user._id;
-        await notificationService.deleteNotifications(userId);
-        res.json({message : '알림이 전부 삭제되었습니다'});
-    } catch (error) {
-        next(error);   
+        console.error(" 알림 API 조회 에러:", error);
+        return res.status(500).json({ success: false, message: "알림 조회 중 에러 발생" });
     }
 }
 
-module.exports = {injectMockUser, getNotifications, deleteNotifications};
+// 알림창 끄기/삭제 처리용 (형식 유지)
+async function deleteNotifications(req, res) {
+    return res.json({ success: true });
+}
+
+module.exports = {
+    getNotifications,
+    deleteNotifications,
+    getUrgentNoticesApi: getNotifications 
+};

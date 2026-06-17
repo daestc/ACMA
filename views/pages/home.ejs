@@ -2,8 +2,8 @@
 <html lang="ko">
 
 <head>
-	<%- include('../partials/head') %>
-	<title>홈</title>
+  <%- include('../partials/head') %>
+  <title>홈</title>
   <script>
     // 페이지 랜딩시 받은 habitList
     let habits = <%- JSON.stringify(habitList) %>;
@@ -12,16 +12,12 @@
 
 <body>
 
-	<!-- 사이드바 -->
-	<%- include('../partials/sidebar', { currentPage: 'home', user: user }) %>
+  <%- include('../partials/sidebar', { currentPage: 'home', user: user }) %>
 
-	<main class="main-content">
+  <main class="main-content">
 
-		<!-- 상단 헤더 -->
-		<%- include('../partials/topbar', { pageTitle: '홈', user: user }) %>
+    <%- include('../partials/topbar', { pageTitle: '홈', user: user }) %>
 
-		<div class="page-content">
-    <!-- ══ HOME ══ -->
     <div class="page-content">
         <!-- 날씨 + 명언 #후순위 -->
         <div class="grid-2" style="margin-bottom:16px;">
@@ -45,123 +41,123 @@
           </div>
         </div>
 
-        <!-- D-Day 나중에 Notice, Calendar 데이터 추가 #후순위 -->
-        <div class="dday-row">
-          <div class="dday-card blue"><div class="dday-label">자격증 시험</div><div class="dday-title">정보처리기사</div><div class="dday-count">D-12</div></div>
-          <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
-          <div class="dday-card red"><div class="dday-label">기말고사</div><div class="dday-title">2학기 기말</div><div class="dday-count">D-20</div></div>
-          <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
+      <div class="dday-row">
+        <div class="dday-card blue"><div class="dday-label">자격증 시험</div><div class="dday-title">정보처리기사</div><div class="dday-count">D-12</div></div>
+        <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
+        <div class="dday-card red"><div class="dday-label">기말고사</div><div class="dday-title">2학기 기말</div><div class="dday-count">D-20</div></div>
+        <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 오늘의 강의 & 할 일</span>
+          </div>
+          <div class="tabs" style="margin-bottom:14px;">
+            <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
+            <button class="tab-btn" onclick="switchHomeTodo('todo',this)">할 일</button>
+          </div>
+          <div id="ht-lecture">
+            <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">자료구조 (09:00 ~ 10:30)</span><span class="check-time">완료</span></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">알고리즘 (13:00 ~ 14:30)</span><span class="check-time">진행중</span></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
+          </div>
+          <div id="ht-todo" style="display:none;">
+            <% if(!todoList || todoList.length === 0) { %>
+              <div class="check-item todo-exam"><span class="check-text">오늘의 할 일을 추가하세요</span></div>
+            <% } else { %>
+              <% todoList.forEach(todo => { %>
+                <div class="check-item" data-id="<%= todo._id %>">
+                  <div class="check-box" onclick="toggleCheck(this)"></div>
+                  <span class="check-text"><%= todo.title %></span>
+                  <span class="check-time"><%= todo.note %></span>
+                </div>
+              <% }) %>
+            <% } %>
+            <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">편집</span>
+          </div>
         </div>
 
-        <div class="grid-2" style="margin-bottom:16px;">
-          <!-- 강의 탭 todo-list -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">📋 오늘의 강의 & 할 일</span>
-            </div>
-            <div class="tabs" style="margin-bottom:14px;">
-              <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
-              <button class="tab-btn" onclick="switchHomeTodo('todo',this)">할 일</button>
-            </div>
-            <div id="ht-lecture">
-              <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">자료구조 (09:00 ~ 10:30)</span><span class="check-time">완료</span></div>
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">알고리즘 (13:00 ~ 14:30)</span><span class="check-time">진행중</span></div>
-              <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
-            </div>
-            <div id="ht-todo" style="display:none;">
-              <% if(!todoList || todoList.length === 0) { %>
-                <div class="check-item todo-exam"><span class="check-text">오늘의 할 일을 추가하세요</span></div>
-              <% } else { %>
-                <% todoList.forEach(todo => { %>
-                  <div class="check-item" data-id="<%= todo._id %>">
-                    <div class="check-box" onclick="toggleCheck(this)"></div>
-                    <span class="check-text"><%= todo.title %></span>
-                    <span class="check-time"><%= todo.note %></span>
-                  </div>
-                <% }) %>
-              <% } %>
-              <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">편집</span>
-            </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📢 최근 공지사항</span>
+            <span class="card-action" onclick="switchPage('notice',null)">전체보기</span>
           </div>
-
-          <!-- 최근 공지 -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">📢 최근 공지사항</span>
-              <span class="card-action" onclick="switchPage('notice',null)">전체보기</span>
-            </div>
-            <!--공지사항-->
-            <div class="notice-body-container">
-              <% if (typeof topNotices !== 'undefined' && topNotices.length > 0) { %>
-                <% topNotices.forEach(notice => { %>
-                  <div class="notice-item" onclick="switchPage('notice', null)" style="cursor: pointer;">
-                    <div class="notice-icon" style="background: <%= notice.iconBgColor %>;">
+          
+          <div class="notice-body-container">
+            <% if (typeof topNotices !== 'undefined' && topNotices.length > 0) { %>
+              <% topNotices.forEach(notice => { %>
+                
+                <div class="home-notice-item" onclick="switchPage('notice', null)">
+                  
+                  <div class="home-notice-left">
+                    <div class="home-notice-icon-box" style="background: <%= notice.iconBgColor %>;">
                       <%= notice.icon %>
                     </div>
-                    <div class="notice-body">
-                      <div class="notice-title"><%= notice.title %></div>
-                      <div class="notice-meta">
-                        <span class="badge <%= notice.categoryBadgeClass %>"><%= notice.categoryName %></span>
+                    <div class="home-notice-content">
+                      <div class="home-notice-title"><%= notice.title %></div>
+                      <div class="home-notice-meta">
+                        <span class="badge <%= notice.categoryBadgeClass %> home-notice-category-badge">
+                          <%= notice.categoryName %>
+                        </span>
                         <%= notice.formattedDate %>
                       </div>
                     </div>
-                    <!--D-day-->
-                    <span class="badge <%= notice.dDayBadgeClass %>">
+                  </div>
+
+                  <div class="home-notice-right">
+                    <span class="home-notice-dday-badge <%= notice.dDayBadgeClass %>">
                       <%= notice.dDayText %>
                     </span>
                   </div>
-                <% }) %>
-              <% } else { %>
-                <div class="notice-empty" style="padding: 20px; text-align: center; color:#888">
-                  최근 공지가 없습니다.
-                </div>
-              <% } %>
-            </div>
-          </div>
-          <!--최근공지-->
-        </script>
 
-        <!-- 습관 트래커 -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🌱 오늘의 습관 트래커</span>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;"><% completedCount %> / <%= habitList.length %> 완료</span>
-              <button class="btn btn-ghost btn-sm" onclick="openHabitModal()">✏️ 수정</button>
-            </div>
-          </div>
-          <!-- 진행률 바 -->
-          <div style="margin-bottom:14px;">
-            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
-              <div id="habit-progress-bar" style="height:100%;width:60%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:3px;transition:width .4s ease;"></div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;" id="habit-list">
-            <!-- 습관 항목들 — 할 일(todo)과 달리 매일 반복하는 루틴 -->
-            <% habitList.forEach(habit => { %>
-              <div class="habit-item" data-id="<%= habit._id %>" data-done="<%= habit.isCompleted %>" onclick="toggleHabit(this)">
-                <% if(habit.isCompleted) { %>
-                  <div class="habit-check done">✓</div>
-                  <div class="habit-body">
-                    <div class="habit-name done"><%= habit.title %></div>
-                <% } else { %>
-                  <div class="habit-check"></div>
-                  <div class="habit-body">
-                    <div class="habit-name"><%= habit.title %></div>
-                <% } %>
-                  <div class="habit-sub"><%= habit.category %> · 매일</div>
                 </div>
+
+              <% }) %>
+            <% } else { %>
+              <div class="notice-empty" style="padding: 30px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
+                최근 공지가 없습니다.
               </div>
-            <% }); %>
-            </div>
+            <% } %>
+          </div>
         </div>
-		</div>
+      </div> <div class="card">
+        <div class="card-header">
+          <span class="card-title">🌱 오늘의 습관 트래커</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="habit-summary" style="font-size:12px;color:var(--text2);font-weight:600;"><%= completedCount %> / <%= habitList.length %> 완료</span>
+            <button class="btn btn-ghost btn-sm" onclick="openHabitModal()">✏️ 수정</button>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+            <div id="habit-progress-bar" style="height:100%;width:60%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:3px;transition:width .4s ease;"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;" id="habit-list">
+          <% habitList.forEach(habit => { %>
+            <div class="habit-item" data-id="<%= habit._id %>" data-done="<%= habit.isCompleted %>" onclick="toggleHabit(this)">
+              <% if(habit.isCompleted) { %>
+                <div class="habit-check done">✓</div>
+                <div class="habit-body">
+                  <div class="habit-name done"><%= habit.title %></div>
+              <% } else { %>
+                <div class="habit-check"></div>
+                <div class="habit-body">
+                  <div class="habit-name"><%= habit.title %></div>
+              <% } %>
+                <div class="habit-sub"><%= habit.category %> · 매일</div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    </div>
 
-	</main>
+  </main>
 
-	<!-- 모달 -->
-	<%- include('../partials/modals/mypage', { user: user }) %>
-	<%- include('../partials/modals/todo_add', { user: user }) %>
+  <%- include('../partials/modals/mypage', { user: user }) %>
+  <%- include('../partials/modals/todo_add', { user: user }) %>
   <%- include('../partials/modals/habit_edit') %>
 
 	<script src="/js/common.js"> </script>

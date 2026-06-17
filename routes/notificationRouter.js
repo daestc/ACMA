@@ -1,9 +1,9 @@
-// routes/alertRouter.js
+// routes/notificationRouter.js
 const express = require('express');
 const router = express.Router();
-const notificationController = require('../controller/notificationController'); // 단수형 controller 반영 완료
+const notificationController = require('../controller/notificationController');
 
-
+// 알림 목록 조회 및 삭제 
 router.get('/list', notificationController.getNotifications);
 router.delete('/clear', notificationController.deleteNotifications);
 

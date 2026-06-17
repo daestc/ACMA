@@ -1,11 +1,9 @@
 // service/notificationService.js
-const Notice = require('../models/Notice');             // 공지사항 모델
-const CalendarEvent = require('../models/Calendar');    // 💡 일정 모델은 Calendar 파일에서 가져와야 합니다!
-const Notification = require('../models/Notification'); // 💡 구조분해할당{}을 빼고 단일 모델로 가져옵니다.
+const Notice = require('../models/Notice');            
+const CalendarEvent = require('../models/Calendar');    
+const Notification = require('../models/Notification'); 
 
-/**
- * [1] 읽지 않은 알림 목록 가져오기 
- */
+//읽지 않은 알림 목록 가져오기
 const getNotifications = async (userId) => {
     try {
         return await Notification.find({ userId: userId }).sort({ createdAt: -1 }); 
@@ -15,9 +13,7 @@ const getNotifications = async (userId) => {
     }
 };
 
-/**
- * [2] 알림 삭제 
- */
+//알림 삭제
 const deleteNotifications = async (userId) => {
     try {
         await Notification.deleteMany({ userId: userId });
@@ -26,9 +22,8 @@ const deleteNotifications = async (userId) => {
     }
 };
 
-/**
- * [3] 실시간 알림창 및 배너 데이터 가공/조립 함수
- */
+
+//알림창 배너 가공
 const getBannerData = async (userId) => {
     try {
         const now = new Date();
@@ -121,14 +116,14 @@ const getBannerData = async (userId) => {
                 }
             });
         } catch (noticeError) {
-            console.log("⚠️ Notice 조회 일시 건너뜀:", noticeError.message);
+            console.log(" Notice 조회 일시 건너뜀:", noticeError.message);
         }
 
         // 모든 가공 데이터 결합 후 리턴
         return [...formattedTodayEvents, ...formattedNotices];
 
     } catch (globalError) {
-        console.error("❌ 서비스 최상위 크래시 예방:", globalError.message);
+        console.error(" 서비스 최상위 크래시 예방:", globalError.message);
         return [];
     }
 };

@@ -467,6 +467,106 @@ input,select,textarea{font-family:inherit;}
 .notif-panel #notif-more-btn:hover {
     background: #e2e8f0;
 }
+/* ==========================================================================
+   9. 메인 홈 화면 - 최근 공지사항 스타일 리팩토링
+   ========================================================================== */
+
+/* 공지사항 아이템 가로 정렬 및 레이아웃 */
+.home-notice-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    gap: 12px;
+    transition: background 0.2s ease;
+}
+
+.home-notice-item:hover {
+    background-color: #f8fafc; /* 마우스 올렸을 때 부드러운 하이라이트 효과 */
+}
+
+/* 왼쪽 아이콘 + 텍스트 정렬 정제 */
+.home-notice-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 동적 아이콘 박스 기본 스타일 */
+.home-notice-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+/* 텍스트 배치 및 말줄임표 설정 */
+.home-notice-content {
+    min-width: 0;
+}
+
+.home-notice-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.home-notice-meta {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.home-notice-category-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* 우측 D-Day 라운드 배지 공통 스타일 */
+.home-notice-dday-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.825rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* 백엔드 dDayBadgeClass 테마와 연동될 조건부 색상 매칭 */
+.home-notice-dday-badge.red {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.home-notice-dday-badge.amber {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.home-notice-dday-badge.blue {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.home-notice-dday-badge.gray {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
 /* ── CALENDAR ─────────────────────────── */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .cal-nav{display:flex;gap:8px;align-items:center;}
@@ -902,3 +1002,53 @@ input,select,textarea{font-family:inherit;}
 .lecture-search-controls input {
   flex: 1;
 }
+    .notice-item { 
+      cursor: default !important; 
+      border-bottom: 1px solid #f1f5f9; 
+      transition: all 0.2s ease; 
+      display: flex; 
+      align-items: center; 
+      padding: 20px;
+    }
+    .notice-item:hover { background-color: #f8fafc; }
+
+    .chip { 
+      cursor: pointer; 
+      padding: 8px 12px; 
+      font-size: 0.95rem; 
+      color: #94a3b8; 
+      font-weight: 500;
+      transition: all 0.2s; 
+    }
+    .chip.active { 
+      color: #1e293b !important; 
+      font-weight: 700 !important; 
+    }
+
+    .badge-purple { background-color: #f3e8ff; color: #7e22ce; }
+
+    #app-sidebar {
+      position: fixed; left: -280px; top: 0; width: 280px; height: 100vh;
+      background: white; transition: left 0.3s ease-in-out; z-index: 2000;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+    #app-sidebar.open { left: 0 !important; }
+
+    .sidebar-backdrop {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4); z-index: 1999;
+    }
+    .sidebar-backdrop.active { display: block !important; }
+    .notice-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 6px; }
+
+    /* 페이징 디자인 스타일 */
+    .pagination-container {
+      display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 30px; margin-bottom: 20px;
+    }
+    .page-btn {
+      text-decoration: none; color: #64748b; padding: 8px 14px; border-radius: 8px;
+      background: white; border: 1px solid #e2e8f0; font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+    }
+    .page-btn:hover { background: #f1f5f9; color: #1e293b; }
+    .page-btn.active { background: #1e293b; color: white; border-color: #1e293b; font-weight: 700; }
+    .page-btn.disabled { color: #cbd5e1; background: #f8fafc; pointer-events: none; border-color: #e2e8f0; }

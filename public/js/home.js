@@ -24,6 +24,9 @@ document.addEventListener('visibilitychange', function() {
     pendingChanges = {}; // 저장 후 변경사항 초기화
   }
 });
+let urgentNotices = []; 
+
+
 
 // ── 강의 일정 / 할 일 탭 전환 ────────────────────
 function switchHomeTodo(tab, btn) {
@@ -550,5 +553,6 @@ async function deleteHabit(id) {
   renderHabitEditList();
   updateHabitSummary();
 }
+
 
 

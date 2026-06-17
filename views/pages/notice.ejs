@@ -3,58 +3,6 @@
 <head>
   <%- include('../partials/head') %>
   <title><%= pageTitle %></title>
-  <style>
-    .notice-item { 
-      cursor: default !important; 
-      border-bottom: 1px solid #f1f5f9; 
-      transition: all 0.2s ease; 
-      display: flex; 
-      align-items: center; 
-      padding: 20px;
-    }
-    .notice-item:hover { background-color: #f8fafc; }
-
-    .chip { 
-      cursor: pointer; 
-      padding: 8px 12px; 
-      font-size: 0.95rem; 
-      color: #94a3b8; 
-      font-weight: 500;
-      transition: all 0.2s; 
-    }
-    .chip.active { 
-      color: #1e293b !important; 
-      font-weight: 700 !important; 
-    }
-
-    .badge-purple { background-color: #f3e8ff; color: #7e22ce; }
-
-    #app-sidebar {
-      position: fixed; left: -280px; top: 0; width: 280px; height: 100vh;
-      background: white; transition: left 0.3s ease-in-out; z-index: 2000;
-      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    }
-    #app-sidebar.open { left: 0 !important; }
-
-    .sidebar-backdrop {
-      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.4); z-index: 1999;
-    }
-    .sidebar-backdrop.active { display: block !important; }
-    .notice-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 6px; }
-
-    /* 페이징 디자인 스타일 */
-    .pagination-container {
-      display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 30px; margin-bottom: 20px;
-    }
-    .page-btn {
-      text-decoration: none; color: #64748b; padding: 8px 14px; border-radius: 8px;
-      background: white; border: 1px solid #e2e8f0; font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
-    }
-    .page-btn:hover { background: #f1f5f9; color: #1e293b; }
-    .page-btn.active { background: #1e293b; color: white; border-color: #1e293b; font-weight: 700; }
-    .page-btn.disabled { color: #cbd5e1; background: #f8fafc; pointer-events: none; border-color: #e2e8f0; }
-  </style>
 </head>
 <body>
   <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
@@ -106,55 +54,30 @@
 
       <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
         <div class="pagination-container">
-          <a href="/notice?page=<%= currentPageNum - 1 %>" class="page-btn <%= currentPageNum === 1 ? 'disabled' : '' %>">이전</a>
           
-          <% for (let i = 1; i <= totalPages; i++) { %>
-            <a href="/notice?page=<%= i %>" class="page-btn <%= currentPageNum === i ? 'active' : '' %>"><%= i %></a>
+          <% if (hasPrev) { %>
+            <a href="/notice?page=<%= startPage - 1 %>&category=<%= categoryFilter %>" class="page-btn">&lt;</a>
+          <% } else { %>
+            <a href="#" class="page-btn disabled" onclick="return false;">&lt;</a>
           <% } %>
           
-          <a href="/notice?page=<%= currentPageNum + 1 %>" class="page-btn <%= currentPageNum === totalPages ? 'disabled' : '' %>">다음</a>
+          <% for (let i = startPage; i <= endPage; i++) { %>
+            <a href="/notice?page=<%= i %>&category=<%= categoryFilter %>" class="page-btn <%= currentPageNum === i ? 'active' : '' %>">
+              <%= i %>
+            </a>
+          <% } %>
+          
+          <% if (hasNext) { %>
+            <a href="/notice?page=<%= endPage + 1 %>&category=<%= categoryFilter %>" class="page-btn">&gt;</a>
+          <% } else { %>
+            <a href="#" class="page-btn disabled" onclick="return false;">&gt;</a>
+          <% } %>
+
         </div>
       <% } %>
 
     </div>
   </main>
-
-  <script>
-    window.toggleSidebar = function() {
-      const sidebar = document.getElementById('app-sidebar');
-      const backdrop = document.getElementById('sidebar-backdrop');
-      if (sidebar && backdrop) {
-        sidebar.classList.toggle('open');
-        backdrop.classList.toggle('active');
-      }
-    };
-
-    window.closeSidebar = function() {
-      const sidebar = document.getElementById('app-sidebar');
-      const backdrop = document.getElementById('sidebar-backdrop');
-      if (sidebar && backdrop) {
-        sidebar.classList.remove('open');
-        backdrop.classList.remove('active');
-      }
-    };
-
-    function filterChip(clickedChip) {
-      const chips = document.querySelectorAll('.chip'); 
-      chips.forEach(chip => chip.classList.remove('active'));
-      clickedChip.classList.add('active');
-
-      const selected = clickedChip.innerText.replace(/[^\uAC00-\uD7AF]/gi, "").trim();
-      const items = document.querySelectorAll('.notice-item');
-
-      items.forEach(item => {
-        const itemCat = item.getAttribute('data-category');
-        if (selected === '전체' || itemCat === selected) {
-          item.style.display = 'flex';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
-  </script>
+  <script src="/js/notice.js"></script>
 </body>
 </html>
