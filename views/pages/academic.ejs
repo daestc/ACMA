@@ -22,7 +22,7 @@
         <div class="tabs">
           <button class="tab-btn active" onclick="switchAcademicTab('gpa',this)">학점 등록</button>
           <button class="tab-btn" onclick="switchAcademicTab('credit',this)">이수 현황</button>
-          <button class="tab-btn" onclick="switchAcademicTab('grad',this)">졸업요건 설정</button>
+          <button class="tab-btn" onclick="switchAcademicTab('grad',this)">졸업요건</button>
           <button class="tab-btn" onclick="switchAcademicTab('sim',this)">목표 시뮬레이터</button>
         </div>
 
@@ -176,35 +176,46 @@
 
           </div>
 
-            <!-- ── 졸업요건 설정 ── -->
+            <!-- ── 졸업요건 (읽기 전용) ── -->
             <div id="ac-grad" style="display:none;">
-              <div class="card" ">
-                <div class="card-header">
-                  <span class="card-title"> 졸업요건 설정</span>
-                  <span class="badge badge-blue">컴퓨터공학과</span>
+              <div id="gr-empty-state" class="card" style="display:none;">
+                <div style="padding:36px 20px;text-align:center;">
+                  <div style="font-size:36px;margin-bottom:12px;">📭</div>
+                  <div style="font-size:16px;font-weight:700;margin-bottom:8px;">정보 없음</div>
+                  <div id="gr-empty-message" style="font-size:13px;color:var(--text2);line-height:1.6;"></div>
                 </div>
+              </div>
+
+              <div id="gr-readonly-content" class="card" style="display:none;">
+                <div class="card-header">
+                  <span class="card-title">졸업요건</span>
+                  <span class="badge badge-blue" id="gr-major-badge">-</span>
+                </div>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+                  대학관계자가 등록한 졸업요건입니다. 학생은 조회만 가능합니다.
+                </p>
                 <div style="display:flex;flex-direction:column;gap:12px;">
                   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:1px solid var(--border);">이수 학점 요건</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">총 졸업 필요 학점</label>
-                      <input class="input-field" id="gr-total" type="number" value="130" min="0" style="width:100%;" oninput="updateGradPreview()">
+                      <input class="input-field" id="gr-total" type="number" min="0" style="width:100%;" readonly disabled>
                     </div>
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">전공필수</label>
-                      <input class="input-field" id="gr-major-req" type="number" value="42" min="0" style="width:100%;" oninput="updateGradPreview()">
+                      <input class="input-field" id="gr-major-req" type="number" min="0" style="width:100%;" readonly disabled>
                     </div>
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">전공선택</label>
-                      <input class="input-field" id="gr-major-el" type="number" value="40" min="0" style="width:100%;" oninput="updateGradPreview()">
+                      <input class="input-field" id="gr-major-el" type="number" min="0" style="width:100%;" readonly disabled>
                     </div>
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">교양필수</label>
-                      <input class="input-field" id="gr-gen-req" type="number" value="20" min="0" style="width:100%;" oninput="updateGradPreview()">
+                      <input class="input-field" id="gr-gen-req" type="number" min="0" style="width:100%;" readonly disabled>
                     </div>
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">교양선택</label>
-                      <input class="input-field" id="gr-gen-el" type="number" value="28" min="0" style="width:100%;" oninput="updateGradPreview()">
+                      <input class="input-field" id="gr-gen-el" type="number" min="0" style="width:100%;" readonly disabled>
                     </div>
                   </div>
 
@@ -215,7 +226,7 @@
                       <div style="font-size:13px;font-weight:600;">졸업작품 이수 필요</div>
                       <div style="font-size:11px;color:var(--text2);">캡스톤디자인 또는 졸업논문</div>
                     </div>
-                    <div class="toggle on" id="gr-grad-work" onclick="this.classList.toggle('on');updateGradPreview()"><div class="toggle-knob"></div></div>
+                    <div class="toggle" id="gr-grad-work"><div class="toggle-knob"></div></div>
                   </div>
 
                   <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -223,36 +234,29 @@
                       <div style="font-size:13px;font-weight:600;">캡스톤 디자인 이수 필요</div>
                       <div style="font-size:11px;color:var(--text2);">졸업요건에 캡스톤이 포함되는지 여부</div>
                     </div>
-                    <div class="toggle" id="gr-capstone-design" onclick="this.classList.toggle('on');updateGradPreview()"><div class="toggle-knob"></div></div>
+                    <div class="toggle" id="gr-capstone-design"><div class="toggle-knob"></div></div>
                   </div>
 
                   <div>
                     <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">외국어 성적 요건</label>
                     <div style="display:flex;gap:8px;">
-                      <select class="select-field" id="gr-lang-type" style="flex:1;">
+                      <select class="select-field" id="gr-lang-type" style="flex:1;" disabled>
                         <option>TOEIC</option><option>TOEFL</option><option>IELTS</option><option>JLPT</option><option>없음</option>
                       </select>
-                      <input class="input-field" id="gr-lang-score" placeholder="최소 점수 (예: 700)" style="flex:1;">
+                      <input class="input-field" id="gr-lang-score" placeholder="최소 점수" style="flex:1;" readonly disabled>
                     </div>
                   </div>
 
                   <div>
                     <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">필수 취득 자격증</label>
-                    <div id="gr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-                      <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
-                        정보처리기사 <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
-                      </div>
-                    </div>
-                    <div style="display:flex;gap:6px;">
-                      <input class="input-field" id="gr-cert-input" placeholder="자격증명 입력" style="flex:1;" onkeydown="if(event.key==='Enter')addGradCert()">
-                      <button class="btn btn-ghost btn-sm" onclick="addGradCert()">+ 추가</button>
-                    </div>
+                    <div id="gr-cert-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;min-height:28px;"></div>
+                    <div id="gr-cert-empty" style="font-size:12px;color:var(--text2);display:none;">없음</div>
                   </div>
 
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">인턴십 의무 이수</label>
-                      <select class="select-field" id="gr-internship" style="width:100%;">
+                      <select class="select-field" id="gr-internship" style="width:100%;" disabled>
                         <option value="">미지정</option>
                         <option value="true">필수</option>
                         <option value="false">선택</option>
@@ -260,7 +264,7 @@
                     </div>
                     <div>
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">비교과 프로그램</label>
-                      <select class="select-field" id="gr-nc-program" style="width:100%;">
+                      <select class="select-field" id="gr-nc-program" style="width:100%;" disabled>
                         <option value="">미지정</option>
                         <option value="true">필수</option>
                         <option value="false">선택</option>
@@ -268,15 +272,11 @@
                     </div>
                     <div style="grid-column:1 / -1;">
                       <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">사회봉사 시간</label>
-                      <input class="input-field" id="gr-volunteer" type="number" min="0" placeholder="예: 30" style="width:100%;">
+                      <input class="input-field" id="gr-volunteer" type="number" min="0" placeholder="-" style="width:100%;" readonly disabled>
                     </div>
                   </div>
 
-                  <div style="display:flex;gap:8px;margin-top:4px;">
-                    <button class="btn btn-accent" style="flex:1;" onclick="saveGradReq()">💾 저장</button>
-                    <button class="btn btn-ghost btn-sm" onclick="resetGradReq()">초기화</button>
-                  </div>
-                  <div id="gr-save-status" style="font-size:11px;color:var(--text2);margin-top:2px;"></div>
+                  <div id="grad-summary" style="margin-top:4px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);line-height:1.7;"></div>
                 </div>
               </div>
             </div>

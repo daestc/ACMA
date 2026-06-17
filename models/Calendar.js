@@ -130,6 +130,7 @@ const ScheduleSchema = new mongoose.Schema({
 
 // 2. 전체 강의(분반별) 스키마
 const LectureSchema = new mongoose.Schema({
+  university: { type: String, default: null },      // 개설 대학 (등록한 관계자의 소속 대학)
   classification: { type: String, required: true }, // 이수구분 (예: "교필", "전선")
   courseName: { type: String, required: true },     // 교과명 (예: "AI시대의컴퓨팅사고")
   section: { type: Number, required: true },        // 분반 (예: 1, 2, 3)
@@ -137,11 +138,13 @@ const LectureSchema = new mongoose.Schema({
   professor: { type: String, default: "미정" },     // 담당교수
   schedules: [ScheduleSchema],                      // 강의시간 배열 (복수 시간 대응)
   year: { type: Number, default: 2026 },            // 개설 연도 (복수 학기 관리용)
-  semester: { type: String, default: "1학기" }       // 개설 학기
+  semester: { type: String, default: "1학기" },      // 개설 학기
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null } // 등록한 대학관계자
 }, { timestamps: true }); // 생성/수정일 자동 기록
 
 // 복합 인덱스 설정 (성능 최적화)
-LectureSchema.index({ courseName: 1, section: 1 }, { unique: true }); // 동일 과목의 동일 분반 중복 방지
+// 같은 대학 안에서만 과목+분반 중복 방지 (대학이 다르면 같은 과목명/분반 허용)
+LectureSchema.index({ university: 1, courseName: 1, section: 1 }, { unique: true });
 LectureSchema.index({ "schedules.day": 1, "schedules.startMinute": 1 }); // 시간대별 조회 성능 향상
 
 

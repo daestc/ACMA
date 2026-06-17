@@ -13,15 +13,21 @@
     <div class="auth-card">
       <a class="auth-logo" href="/"><div class="logo-icon">A</div><span class="logo-text">AcadMe</span></a>
       <h2>회원가입</h2>
-      <p class="auth-sub">어떤 유형의 학생인가요?</p>
+      <p class="auth-sub">가입 유형을 선택해주세요</p>
       <div class="user-type-select">
-        <div class="user-type-btn active" onclick="selectType(this)"><div class="icon">🎓</div><div class="label">대학생</div></div>
-        <div class="user-type-btn" onclick="selectType(this)"><div class="icon">📚</div><div class="label">초·중·고</div></div>
+        <div class="user-type-btn active" onclick="selectType(this, 'student')"><div class="icon">🎓</div><div class="label">대학생</div></div>
+        <div class="user-type-btn" onclick="selectType(this, 'staff')"><div class="icon">🏫</div><div class="label">대학관계자</div></div>
       </div>
+
+      <!-- 대학관계자 안내 -->
+      <p id="staff-notice" style="display:none;font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.6;">
+        🏫 대학관계자 계정은 가입 후 <strong>관리자 승인</strong>이 완료되어야 강의 등록 기능을 사용할 수 있습니다.
+      </p>
 
       <% if (error) { %><p class="auth-error"><%= error %></p><% } %>
 
-      <form id="registerForm" method="POST" action="/auth/register" novalidate>
+      <form id="registerForm" method="POST" action="/auth/register" enctype="multipart/form-data" novalidate>
+        <input type="hidden" id="role" name="role" value="student">
 
         <div class="form-group">
           <label>이름</label>
@@ -41,10 +47,23 @@
           <span class="field-msg" id="university-msg"></span>
         </div>
 
-        <div class="form-group">
+        <!-- 전공 (대학관계자 선택 시 숨김) -->
+        <div class="form-group" id="major-group">
           <label>전공</label>
           <input type="text" id="major" name="major" placeholder="컴퓨터공학과">
           <span class="field-msg" id="major-msg"></span>
+        </div>
+
+        <!-- 관계자 인증 사진 (대학관계자 선택 시에만 표시) -->
+        <div class="form-group" id="verification-group" style="display:none;">
+          <label>관계자 인증 사진</label>
+          <label for="verificationImage" id="verification-zone"
+            style="display:flex;align-items:center;gap:10px;border:2px dashed var(--border2);border-radius:8px;padding:12px 14px;cursor:pointer;background:var(--bg3);transition:all .2s;">
+            <span style="font-size:20px;">📷</span>
+            <span id="verification-filename" style="font-size:12px;color:var(--text2);">재직증명서, 교직원증 등 (jpg/png/webp, 5MB 이하)</span>
+          </label>
+          <input type="file" id="verificationImage" name="verificationImage" accept="image/jpeg,image/png,image/webp" style="display:none;">
+          <span class="field-msg" id="verification-msg"></span>
         </div>
 
         <div class="form-group">

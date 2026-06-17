@@ -49,8 +49,25 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
-  // 학번
-  studentId: { type: String, default: null, trim: true },
+  // 회원 역할 ('student' = 학생 | 'staff' = 대학관계자 | 'admin' = 관리자)
+  role: {
+    type: String,
+    enum: ['student', 'staff', 'admin'],
+    default: 'student',
+  },
+  // 대학관계자 승인 상태 (staff 가입 시 'pending', 관리자 승인 후 'approved')
+  staffStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: null,
+  },
+  // 대학관계자 인증 사진 경로 (public/upload/...)
+  verificationImage: {
+    type: String,
+    default: null,
+  },
+  // 학생 정보
+  studentId: { type: String, default: null, trim: true }, // 학번
   // 소속 대학교
   university: { type: String, default: null, trim: true },
   // 전공
@@ -59,7 +76,7 @@ const UserSchema = new mongoose.Schema({
   enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업'], default: '재학' },
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
-
+  
   // AI 기반 직무 적합도 점수
   careerAptitude: {
     certificationRatio: { type: Number, min: 0, max: 100 }, // 보유 자격증 일치율

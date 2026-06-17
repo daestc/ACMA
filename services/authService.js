@@ -23,7 +23,9 @@ async function loginUser(email, password) {
 }
 
 // ── 회원가입 ──────────────────────────────────────────────
-async function registerUser({ name, email, university, major, password }) {
+// role: 'student'(기본) | 'staff'(대학관계자 — 관리자 승인 전까지 pending 상태)
+// verificationImage: 관계자 인증 사진 경로 (staff만)
+async function registerUser({ name, email, university, major, password, role = 'student', verificationImage = null }) {
   const exists = await User.findOne({ email });
   if (exists) {
     const err = new Error('이미 사용 중인 이메일입니다.');
@@ -31,14 +33,18 @@ async function registerUser({ name, email, university, major, password }) {
     throw err;
   }
 
-  const hashed = await bcrypt.hash(password, 12);
-  const user   = await User.create({
+  const isStaff = role === 'staff';
+  const hashed  = await bcrypt.hash(password, 12);
+  const user    = await User.create({
     name: name.trim(),
     email,
     university: university?.trim() || null,
     major:      major?.trim()      || null,
     password:   hashed,
     provider:   'local',
+    role:        isStaff ? 'staff'   : 'student',
+    staffStatus: isStaff ? 'pending' : null,
+    verificationImage: isStaff ? verificationImage : null,
   });
 
   return user;

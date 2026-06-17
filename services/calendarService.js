@@ -1,12 +1,59 @@
-const { CalendarEvent,Timetable } = require('../models/Calendar');
+const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
+const UniversitySchedule = require('../models/UniversitySchedule');
+const {
+  buildLectureListFilter,
+  buildLectureOwnershipFilter,
+  buildStaffUniversityFilter,
+  normalizeUniversity,
+  LEGACY_NULL_UNIVERSITY,
+} = require('./lectureAdminService');
 
+const UNIVERSITY_EVENT_COLOR = '#F59E0B';
 
-//일정 가져오기
-async function getEventsListByUser(userId) {
-    return await CalendarEvent.find({ //사용자 id와 삭제되지 않은 일정 가져오기
-        userId : userId,
-        isDeleted: false,
-    }).sort({startDate: 1});
+function mapUniversityScheduleToEvent(schedule) {
+  return {
+    _id: `univ-${schedule._id}`,
+    title: schedule.title,
+    description: schedule.description,
+    startDate: schedule.startDate,
+    endDate: schedule.endDate || schedule.startDate,
+    isAllDay: true,
+    category: 'notice',
+    isDday: false,
+    color: UNIVERSITY_EVENT_COLOR,
+    isDeleted: false,
+    isUniversityEvent: true,
+    sourceScheduleId: schedule._id,
+  };
+}
+
+async function getUniversitySchedulesAsEvents(university) {
+  const univ = normalizeUniversity(university);
+  if (!univ) return [];
+
+  const filter = buildStaffUniversityFilter(univ);
+  if (!filter) return [];
+
+  const schedules = await UniversitySchedule.find(filter)
+    .sort({ startDate: 1 })
+    .lean();
+
+  return schedules.map(mapUniversityScheduleToEvent);
+}
+
+//일정 가져오기 (개인 일정 + 소속 대학 학교 일정)
+async function getEventsListByUser(userId, university) {
+  const [personalEvents, universityEvents] = await Promise.all([
+    CalendarEvent.find({
+      userId,
+      isDeleted: false,
+    }).sort({ startDate: 1 }).lean(),
+    getUniversitySchedulesAsEvents(university),
+  ]);
+
+  return [...personalEvents, ...universityEvents].sort(
+    (a, b) => new Date(a.startDate) - new Date(b.startDate),
+  );
 };
 
 //일정생성
@@ -167,6 +214,147 @@ async function deleteTimetable(userId, timetableId) {
     return deletedTimetable;
 };
 
+// 대학 변경 시 사용자가 추가한 강의 시간표 전체 비활성화
+async function clearUserLectureTimetables(userId) {
+  const result = await Timetable.updateMany(
+    {
+      userId,
+      isActive: true,
+      type: 'lecture',
+    },
+    { isActive: false },
+  );
+
+  return result.modifiedCount;
+}
+
+// 강의 목록 조회(소속 대학·학기·년도·강의명 검색)
+async function getLectureList(filter = {}) {
+  const univ = normalizeUniversity(filter.university);
+  if (!univ) {
+    const err = new Error('대학등록이 필요합니다');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
+  }
+
+  const baseQuery = buildLectureListFilter(univ, filter.keyword || '');
+  const extra = [];
+  if (filter.year) extra.push({ year: Number(filter.year) });
+  if (filter.semester) extra.push({ semester: filter.semester });
+
+  const query = extra.length
+    ? { $and: [baseQuery, ...extra] }
+    : baseQuery;
+
+  const page = Math.max(1, Number(filter.page) || 1);
+  const limit = Math.max(1, Math.min(50, Number(filter.limit) || 10));
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    Lecture.find(query)
+      .sort({ courseName: 1, section: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Lecture.countDocuments(query),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    totalPages: total ? Math.ceil(total / limit) : 0,
+    limit,
+  };
+}
+
+// 강의가 등록된 대학 목록 (페이징)
+async function getAvailableUniversities({ page = 1, limit = 10 } = {}) {
+  const raw = await Lecture.distinct('university');
+  const seen = new Set();
+  const names = [];
+
+  for (const value of raw) {
+    const name = value?.trim() || LEGACY_NULL_UNIVERSITY;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    names.push(name);
+  }
+
+  names.sort((a, b) => a.localeCompare(b, 'ko'));
+
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
+  const total = names.length;
+  const totalPages = total ? Math.ceil(total / safeLimit) : 0;
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: names.slice(start, start + safeLimit),
+    total,
+    page: safePage,
+    totalPages,
+    limit: safeLimit,
+  };
+}
+
+// 강의를 내 시간표에 추가 Lecture의 내용을 timetable에 맞추어 생성
+async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', university) {
+  const univ = normalizeUniversity(university);
+  if (!univ) {
+    const err = new Error('대학등록이 필요합니다');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
+  }
+
+  const lecture = await Lecture.findOne(
+    buildLectureOwnershipFilter(univ, { _id: lectureId }),
+  );
+
+  if (!lecture) {
+    throw new Error('강의를 찾을 수 없습니다.');
+  }
+
+  if (!lecture.schedules || lecture.schedules.length === 0) {
+    throw new Error('강의 시간 정보가 없습니다.');
+  }
+
+  //timetableSchema는 요일이 숫자로 구성되어있음
+  const dayMap = {
+    '일': 0,
+    '월': 1,
+    '화': 2,
+    '수': 3,
+    '목': 4,
+    '금': 5,
+    '토': 6,
+  };
+  //timetableSchema의 schedule이 dayOfWeek,startTime,endTime 로 구성되어 있음
+  const schedule = lecture.schedules.map(sch => ({
+    dayOfWeek: dayMap[sch.day],
+    startTime: String(sch.startTime || '').trim(),
+    endTime: String(sch.endTime || '').trim(),
+  }));
+
+  //시간표 겹침 검증 함수 불러오기
+  await validateTimetableOverlap(userId, schedule);
+
+  //학기 표시 규격에 맞게 변경 (년도 + 학기)
+  const semesterValue = `${lecture.year}-${lecture.semester === '1학기' ? '1' : '2'}`;
+
+  //timetableSchema 생성
+  return await Timetable.create({
+    userId,
+    semester: semesterValue,
+    title: lecture.courseName,
+    location: null,
+    type: 'lecture',
+    professorName: lecture.professor,
+    credits: lecture.credits,
+    color,
+    schedule,
+  });
+}
 
 //일정 도메인 규칙
 const EVENT_CATEGORIES = [
@@ -226,6 +414,9 @@ function validateTimetableData(timetableData) {
   }
 
   timetableData.schedule.forEach(sch => {
+    sch.startTime = String(sch.startTime || '').trim();
+    sch.endTime = String(sch.endTime || '').trim();
+
     if (sch.dayOfWeek === undefined || sch.dayOfWeek === null) {
       throw new Error('요일 정보는 필수입니다.');
     }
@@ -256,7 +447,7 @@ function validateTimetableData(timetableData) {
 
 //시간표 분 표시
 function timeToMinutes(time) {
-  const [hour, minute] = time.split(':').map(Number);
+  const [hour, minute] = String(time || '').trim().split(':').map(Number);
   return hour * 60 + minute;
 }
 
@@ -309,11 +500,18 @@ async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId 
 };
 
 // ======================날씨 api(단기예보 이용)==========================
-async function getShortWeather() {
-  //위도,경도도 .env파일에서 미리 설정함.(서울특별시)
+async function getShortWeather(lat, lon) {
   const serviceKey = process.env.KMA_SERVICE_KEY;
-  const nx = process.env.KMA_NX || 60;
-  const ny = process.env.KMA_NY || 127;
+
+  //위경도가 넘어오면 기상청 격자 좌표로 변환, 없으면 .env 기본 좌표(서울특별시) 사용
+  let nx = process.env.KMA_NX || 60;
+  let ny = process.env.KMA_NY || 127;
+
+  if (lat && lon) {
+    const grid = convertToGrid(Number(lat), Number(lon));
+    nx = grid.nx;
+    ny = grid.ny;
+  }
 
   if (!serviceKey) {
     throw new Error('KMA_SERVICE_KEY가 설정되지 않았습니다.');
@@ -410,6 +608,47 @@ async function getShortWeather() {
   }));
 }
 
+// 위경도 → 기상청 격자 좌표(nx, ny) 변환
+// 기상청 제공 공식(Lambert Conformal Conic 투영, dfs_xy_conv) 그대로 사용
+function convertToGrid(lat, lon) {
+  const RE = 6371.00877;  // 지구 반경(km)
+  const GRID = 5.0;       // 격자 간격(km)
+  const SLAT1 = 30.0;     // 투영 위도1(degree)
+  const SLAT2 = 60.0;     // 투영 위도2(degree)
+  const OLON = 126.0;     // 기준점 경도(degree)
+  const OLAT = 38.0;      // 기준점 위도(degree)
+  const XO = 43;          // 기준점 X좌표(GRID)
+  const YO = 136;         // 기준점 Y좌표(GRID)
+
+  const DEGRAD = Math.PI / 180.0;
+
+  const re = RE / GRID;
+  const slat1 = SLAT1 * DEGRAD;
+  const slat2 = SLAT2 * DEGRAD;
+  const olon = OLON * DEGRAD;
+  const olat = OLAT * DEGRAD;
+
+  let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+  let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+  let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+  ro = re * sf / Math.pow(ro, sn);
+
+  let ra = Math.tan(Math.PI * 0.25 + lat * DEGRAD * 0.5);
+  ra = re * sf / Math.pow(ra, sn);
+
+  let theta = lon * DEGRAD - olon;
+  if (theta > Math.PI) theta -= 2.0 * Math.PI;
+  if (theta < -Math.PI) theta += 2.0 * Math.PI;
+  theta *= sn;
+
+  const nx = Math.floor(ra * Math.sin(theta) + XO + 0.5);
+  const ny = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
+
+  return { nx, ny };
+}
+
 function getKmaBaseDate(date) {
   const base = new Date(date);
 
@@ -493,6 +732,10 @@ module.exports = {getEventsListByUser,
                 createNewTimetable,
                 updateTimetable,
                 deleteTimetable,
+                clearUserLectureTimetables,
+                getLectureList,
+                addLectureToTimetable,
+                getAvailableUniversities,
 
                 getShortWeather
             };

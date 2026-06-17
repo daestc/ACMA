@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>가입 승인</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'adminStaff', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '가입 승인', user: user }) %>
+
+		<div class="page-content">
+
+			<!-- 승인 대기 목록 -->
+			<div class="card" style="margin-bottom:16px;">
+				<div class="card-header">
+					<span class="card-title">🏫 대학관계자 가입 신청</span>
+					<span class="badge badge-amber"><%= pendingStaff.length %>건 대기</span>
+				</div>
+
+				<% if (pendingStaff.length === 0) { %>
+					<p style="font-size:13px;color:var(--text2);padding:18px 0;text-align:center;">대기 중인 가입 신청이 없습니다.</p>
+				<% } else { %>
+					<div style="overflow-x:auto;">
+						<table style="width:100%;border-collapse:collapse;font-size:13px;">
+							<thead>
+								<tr style="background:var(--bg3);">
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">이름</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">이메일</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">대학교</th>
+									<th style="padding:9px 12px;text-align:left;border:1px solid var(--border);color:var(--text2);">신청일</th>
+									<th style="padding:9px 12px;text-align:center;border:1px solid var(--border);color:var(--text2);">증빙</th>
+									<th style="padding:9px 12px;text-align:center;border:1px solid var(--border);color:var(--text2);">처리</th>
+								</tr>
+							</thead>
+							<tbody>
+								<% pendingStaff.forEach(s => { %>
+									<tr>
+										<td style="padding:9px 12px;border:1px solid var(--border);font-weight:600;"><%= s.name %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);color:var(--text2);"><%= s.email %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);"><%= s.university || '-' %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);color:var(--text2);"><%= new Date(s.createdAt).toLocaleDateString('ko-KR') %></td>
+										<td style="padding:9px 12px;border:1px solid var(--border);text-align:center;">
+											<% if (s.verificationImage) { %>
+												<a href="/admin/staff/<%= s._id %>/verification" target="_blank" class="btn btn-ghost btn-sm">📷 보기</a>
+											<% } else { %>
+												<span style="font-size:12px;color:var(--text3);">없음</span>
+											<% } %>
+										</td>
+										<td style="padding:9px 12px;border:1px solid var(--border);text-align:center;white-space:nowrap;">
+											<button class="btn btn-accent btn-sm" onclick="processStaff('<%= s._id %>', 'approve', this)">✓ 승인</button>
+											<button class="btn btn-ghost btn-sm" onclick="processStaff('<%= s._id %>', 'reject', this)">✕ 거절</button>
+										</td>
+									</tr>
+								<% }) %>
+							</tbody>
+						</table>
+					</div>
+				<% } %>
+			</div>
+
+			<!-- 처리 내역 -->
+			<div class="card">
+				<div class="card-header">
+					<span class="card-title">처리 내역</span>
+					<span style="font-size:12px;color:var(--text2);">최근 30건</span>
+				</div>
+
+				<% if (processedStaff.length === 0) { %>
+					<p style="font-size:13px;color:var(--text2);padding:18px 0;text-align:center;">처리된 내역이 없습니다.</p>
+				<% } else { %>
+					<div style="display:flex;flex-direction:column;">
+						<% processedStaff.forEach(s => { %>
+							<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px;">
+								<span style="font-weight:600;min-width:70px;"><%= s.name %></span>
+								<span style="color:var(--text2);flex:1;"><%= s.email %> · <%= s.university || '-' %></span>
+								<% if (s.staffStatus === 'approved') { %>
+									<span class="badge badge-green">승인됨</span>
+								<% } else { %>
+									<span class="badge badge-amber">거절됨</span>
+								<% } %>
+							</div>
+						<% }) %>
+					</div>
+				<% } %>
+			</div>
+
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+	<script>
+		async function processStaff(id, action, btn) {
+			const label = action === 'approve' ? '승인' : '거절';
+			if (!confirm(`이 가입 신청을 ${label}하시겠습니까?`)) return;
+
+			btn.disabled = true;
+			try {
+				const res = await fetch(`/admin/staff/${id}/${action}`, { method: 'POST' });
+				const data = await res.json();
+				if (data.ok) {
+					location.reload();
+				} else {
+					alert(data.message || '처리에 실패했습니다.');
+					btn.disabled = false;
+				}
+			} catch {
+				alert('서버와 통신할 수 없습니다.');
+				btn.disabled = false;
+			}
+		}
+	</script>
+</body>
+
+</html>
