@@ -1123,3 +1123,111 @@ input,select,textarea{font-family:inherit;}
 .timetable-event-bar {
   border-left: 3px solid rgba(255, 255, 255, 0.85);
 }
+
+/* 수상경력 추가 모달 */
+.award-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 20, 45, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.award-modal[hidden] { display: none; }
+
+.award-modal-content {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: min(420px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+
+.award-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.award-modal-header h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+}
+.award-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text2);
+  transition: all .2s;
+}
+.award-modal-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+.award-modal-form {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.award-field {
+  display: flex;
+  flex-direction: column;
+}
+.award-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.award-required { color: var(--red); }
+.award-field input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  transition: all .2s;
+  outline: none;
+}
+.award-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(61, 90, 241, .1);
+  background: var(--bg2);
+}
+
+.award-error {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: var(--red-bg);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--red);
+}
+.award-error[hidden] { display: none; }
+
+.award-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

@@ -236,15 +236,15 @@ const removeJob = async (req, res) => {
   }
 };
 
-//선택한 목표 직무와 목표 자격증 프로필 상단에 표시하기
+//선택한 목표 직무와 모든 자격증 프로필 상단에 표시하기
 const getMyCareerAndCertifications = async (req, res) => {
   try {
     const userId = req.session.user._id || req.session.user.email;
-    const { targetJob, targetCerts } = await careerService.getMyCareerAndCertifications(userId);
+    const { targetJob, certs } = await careerService.getMyCareerAndCertifications(userId);
     res.json({
       success: true,
       career: targetJob,
-      certifications: targetCerts,
+      certifications: certs,
     });
   } catch (error) {
     console.error('Error fetching career and certifications:', error);

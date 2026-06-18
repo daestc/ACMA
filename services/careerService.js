@@ -487,7 +487,7 @@ async function getMyJobs(userId) {
   }
 };
 
-//선택한 목표 직무와 목표 자격증 가져오기
+//선택한 목표 직무와 모든 자격증 가져오기
 async function getMyCareerAndCertifications(userId) {
   try {
     const [jobs, certs] = await Promise.all([
@@ -495,8 +495,7 @@ async function getMyCareerAndCertifications(userId) {
       getMyCertifications(userId)
     ]);
     const targetJob = jobs.find(job => job.status === 'target') || null;
-    const targetCerts = certs.filter(cert => cert.status === 'target');
-    return { targetJob, targetCerts };
+    return { targetJob, certs };
   } catch (error) {    console.error('Error fetching career and certifications:', error);
     throw new Error('Failed to fetch career and certifications');
   }

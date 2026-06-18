@@ -186,7 +186,7 @@ async function fetchUserProfile() {
     alert('프로필 정보를 가져오는데 실패했습니다. 다시 시도해주세요.');
   }
 }
-// 목표 직무와 자격증 정보 가져와서 프로필 상단에 표시하기
+// 목표 직무와 자격증 정보 가져와서 프로필 상단에 표시하기/ 자격증 목록 표시
 async function fetchCareerAndCerts() {
   try {
     const response = await fetch('/career/my-career-and-certs', { credentials: 'same-origin' });
@@ -197,11 +197,26 @@ async function fetchCareerAndCerts() {
     const certs = data.certifications || [];
     document.getElementById('profile-job').textContent = career.title || '목표 직무 없음';
     document.getElementById('profile-certification').textContent = certs.length > 0 ? certs.map(c => c.certificationId.name).join(', ') : '목표 자격증 없음';
+    document.getElementById('st-cert').innerHTML = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><button type="button" class="btn btn-accent btn-sm" id="cert-open-btn">+ 추가</button></div>`;
+    document.getElementById('st-cert').innerHTML += certs.length > 0 ? certs.map(c => 
+      `<div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">${c.certificationId.name}</div>
+      <span class="badge badge-green">${
+        c.status === 'acquired' ? '취득' : 
+        c.status === 'wish' ? '관심' : '목표'}</span>
+      <span style="font-size:11px;color:var(--text2);margin-left:4px;">${
+        c.status === 'acquired' && c.earnedDate ? new Date(c.earnedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' }) :
+        c.targetDate ? `목표 ${new Date(c.targetDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}` : ''}</span></div>`).join('') : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 자격증이 없습니다.</div>';
+    document.addEventListener('click', (event) => {
+      if (event.target && event.target.id === 'cert-open-btn') {
+        const url = '/career';
+        window.location.href = url;
+      } 
+    });
   } catch (error) {
     console.error('Error fetching career and certifications:', error);
     // 실패해도 프로필 기본 정보는 보여주도록 함
   }
-}
+};
 
 // 초기화
 document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
@@ -212,3 +227,4 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchUserProfile();
   fetchCareerAndCerts();
 });
+
