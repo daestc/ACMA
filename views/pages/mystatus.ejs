@@ -98,7 +98,7 @@
               <div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">정보처리기사</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2025.06</span></div>
             </div>
             <div id="st-activity" style="display:none;">
-              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn" onclick="openAwardModal()">+ 수상경력 추가</button></div>
               <div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div><div class="activity-body"><div class="activity-title">교내 해커톤 최우수상</div><div class="activity-meta">한국대학교 · 2025.11 · 교내</div></div></div>
             </div>
             <div id="st-lang" style="display:none;">
@@ -180,6 +180,7 @@
 
 	<!-- 모달 -->
 	<%- include('../partials/modals/mypage', { user: user }) %>
+  <%- include('../partials/modals/awardInput') %>
 
 	<script src="/js/common.js"></script>
 	<script src="/js/mystatus.js"></script>

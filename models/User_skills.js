@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Schema = mongoose;
 
 // 사용자 보유 스펙 스키마
 const UserSkillSchema = new mongoose.Schema({
@@ -14,10 +15,6 @@ const UserSkillSchema = new mongoose.Schema({
       }
     }
   ],
-
-  // 보유 자격증
-  userId: { type: Schema.Types.ObjectId, ref: 'UserCertification'},
-
   // 보유 어학점수
   userLanguage: [
     {
@@ -53,7 +50,7 @@ const UserSkillSchema = new mongoose.Schema({
       host: { type: String, default: null }, // 주최 기관
       location: { type: String, default: null }, // 장소
       startDate: { type: Date, default: null}, // 시작일
-      endDate: { type: Date, default: startDate}, // 종료일
+      endDate: { type: Date, default: null}, // 종료일
       note: { type: String, default: null }, // 활동 설명
     }
   ]

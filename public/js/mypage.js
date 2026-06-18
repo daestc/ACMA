@@ -264,7 +264,6 @@ async function fetchUserProfile() {
       avatarEl.textContent = user.name ? user.name.charAt(0) : '';
       if (editBtn) avatarEl.appendChild(editBtn);
     }
-    console.log('Fetched user profile:', user.name);
     document.getElementById('profile-name').textContent = `${user.name || ''}`;
 
     if (user.role === 'staff') {

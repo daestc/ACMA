@@ -218,8 +218,31 @@ async function fetchCareerAndCerts() {
   }
 };
 
+//수상경력 정보 가져와서 목록에 표시
+async function fetchAwards() {
+  try {
+    const response = await fetch('/user/my-awards', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('수상경력 정보를 가져오는데 실패했습니다.');
+    const data = await response.json();
+    if (!data.success) throw new Error('수상경력 정보를 가져오는데 실패했습니다.');
+    const awards = data.awards || [];
+    const awardsContainer = document.getElementById('st-activity');
+    if (!awardsContainer) return;
+    awardsContainer.innerHTML = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn" onclick="openAwardModal()">+ 수상경력 추가</button></div>`;
+    awardsContainer.innerHTML += awards.length > 0 ? awards.map(a => 
+      `<div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div>
+      <div class="activity-body"><div class="activity-title">${a.title}</div>
+      <div class="activity-meta">${a.organization} · ${new Date(a.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })} · ${a.type}</div></div></div>`).join('') : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 수상경력이 없습니다.</div>';
+  } catch (error) {
+    console.error('Error fetching awards:', error);
+    // 실패해도 프로필 기본 정보는 보여주도록 함
+  }
+};
+
+
 // 초기화
 document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
+document.addEventListener('DOMContentLoaded', fetchAwards);
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchProgress();

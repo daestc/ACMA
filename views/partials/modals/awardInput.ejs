@@ -3,7 +3,7 @@
   <div class="award-modal-content" role="dialog" aria-modal="true" aria-labelledby="award-modal-title">
     <div class="award-modal-header">
       <h3 id="award-modal-title">수상경력 추가</h3>
-      <button type="button" class="award-modal-close" id="award-modal-close" aria-label="닫기">&times;</button>
+      <button type="button" class="award-modal-close" id="award-modal-close" aria-label="닫기" onclick="closeAwardModal()">&times;</button>
     </div>
 
     <div class="award-modal-form">
@@ -30,7 +30,7 @@
       <p class="award-error" id="award-error" hidden></p>
 
       <div class="award-modal-footer">
-        <button type="button" class="btn btn-ghost" id="award-cancel">취소</button>
+        <button type="button" class="btn btn-ghost" id="award-cancel" onclick="closeAwardModal()">취소</button>
         <button type="button" class="btn btn-accent" id="award-submit">저장</button>
       </div>
     </div>

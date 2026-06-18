@@ -181,5 +181,17 @@ const getProfile = async (req, res) => {
     res.json({ success: false });
   }
 };
+// 수상경력 정보 가져오기
+const getMyAwards = async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.json({ success: false });
+    const awards = await userService.getMyAwards(user.email);
+    res.json({ success: true, awards });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};
+module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile, getMyAwards};
