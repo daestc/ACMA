@@ -112,6 +112,46 @@ const editCourse = async (req, res) => {
     res.json({ success: false });
   }
 }
+const updateBulkGrades = async (req, res) => {
+  try {
+    // 1. 옵셔널 체이닝(?.)을 사용한 안전한 세션 참조 및 401 상태 코드 적용
+    const user = req.session?.user?.id;
+    if (!user) {
+      return res.status(401).json({ success: false, message: '로그인이 필요하거나 세션이 만료되었습니다.' });
+    }
+
+    const semesterInfo = parseSemesterCode(req.body.semester);
+    if (!semesterInfo) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 학기 정보입니다.' });
+    }
+
+    const subjectsData = req.body.subjects;
+    if (!Array.isArray(subjectsData) || !subjectsData.length) {
+      return res.status(400).json({ success: false, message: '업데이트할 과목 데이터가 필요합니다.' });
+    }
+
+    // 데이터 정제 로직 (아주 좋습니다!)
+    const updateData = subjectsData.map(s => ({
+      subjectName: String(s.subjectName || '').trim(),
+      subjectType: String(s.subjectType || '').trim(),
+      grade: String(s.grade || '').trim(),
+    })).filter(s => s.subjectName);
+
+    // 2. 서비스 함수에 "객체 형태"로 인자 전달 (이름 매핑 주의)
+    await academicService.updateBulkGrades({
+      userId: user,
+      semester: semesterInfo.semester, // parseSemesterCode의 반환값 구조에 맞게 사용 (예: '2026-1')
+      updates: updateData
+    });
+
+    return res.json({ success: true });
+
+  } catch (error) {
+    console.error('Bulk Grade Update Error:', error);
+    return res.status(500).json({ success: false, message: '성적 업데이트 처리 중 서버 에러가 발생했습니다.' });
+  }
+}
+
 //gpa 계산기 강의 삭제
 const deleteCourse = async (req, res) => {
   try {
@@ -279,4 +319,5 @@ module.exports = {
   getGraduationRequirements,
   saveGraduationRequirements,
   getProgress,
+  updateBulkGrades
 };

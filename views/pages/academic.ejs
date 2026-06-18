@@ -33,7 +33,6 @@
               <div class="card-header">
                 <span class="card-title">학기 과목 입력</span>
                 <select class="select-field" name="semester" style="font-size:12px;padding:5px 10px;">
-                  <option value="2026-2">2026-2학기</option>
                   <option value="2026-1">2026-1학기</option>
                   <option value="2025-2">2025-2학기</option>
                   <option value="2025-1">2025-1학기</option>
@@ -45,62 +44,61 @@
               </div>
               <div id="subject-list">
                 <div class="subject-row">
-                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
-                  <select class="select-field" name="subjectType" style="min-width:120px;">
+                  <!-- 읽기 전용으로 변경 -->
+                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;" disabled>
+                  <select class="select-field" name="subjectType" style="min-width:120px;" disabled>
                     <option value="major_required">전필</option>
                     <option value="major_elective">전선</option>
                     <option value="general_required">교필</option>
                     <option value="general_elective">교선</option>
                     <option value="free">일선</option>
                   </select>
-                  <select class="select-field" name="credits">
+                  <select class="select-field" name="credits" disabled>
                     <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
                   </select>
-                  <select class="select-field" name="grade" onchange="calcGPA()">
+                  <select class="select-field" name="grade" onchange="calcGPA()" disabled>
                     <option value="A+">A+</option><option value="A">A</option><option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
                   </select>
                 </div>
                 <div class="subject-row">
-                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
-                  <select class="select-field" name="subjectType" style="min-width:120px;">
+                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;" disabled>
+                  <select class="select-field" name="subjectType" style="min-width:120px;" disabled>
                     <option value="major_required">전필</option>
                     <option value="major_elective">전선</option>
                     <option value="general_required">교필</option>
                     <option value="general_elective">교선</option>
                     <option value="free">일선</option>
                   </select>
-                  <select class="select-field" name="credits">
+                  <select class="select-field" name="credits" disabled>
                     <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
                   </select>
-                  <select class="select-field" name="grade" onchange="calcGPA()">
+                  <select class="select-field" name="grade" onchange="calcGPA()" disabled>
                     <option value="B+">B+</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option>
                   </select>
                 </div>
                 <div class="subject-row">
-                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
-                  <select class="select-field" name="subjectType" style="min-width:120px;">
+                  <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;" disabled>
+                  <select class="select-field" name="subjectType" style="min-width:120px;" disabled>
                     <option value="major_required">전필</option>
                     <option value="major_elective">전선</option>
                     <option value="general_required">교필</option>
                     <option value="general_elective">교선</option>
                     <option value="free">일선</option>
                   </select>
-                  <select class="select-field" name="credits">
+                  <select class="select-field" name="credits" disabled>
                     <option value="2">2학점</option><option value="3">3학점</option><option value="1">1학점</option>
                   </select>
-                  <select class="select-field" name="grade" onchange="calcGPA()">
+                  <select class="select-field" name="grade" onchange="calcGPA()" disabled>
                     <option value="A">A</option><option value="A+">A+</option><option value="B+">B+</option><option value="B">B</option>
                   </select>
                 </div>
               </div>
-              <button type="button" class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;" onclick="addSubjectRow()">+ 과목 추가</button>
               <button type="button" class="btn btn-accent" style="margin-top:8px;width:100%;" onclick="saveAcademicData()">저장</button>
             </div>
             <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
               <div class="gpa-display">
                 <div class="gpa-label">이번 학기 예상 평점</div>
                 <div><span class="gpa-value" id="gpa-result">3.83</span><span class="gpa-max"> / 4.5</span></div>
-                <div class="gpa-label" style="margin-top:8px;">누적 평점 예상: <strong style="color:var(--accent);font-family:'DM Sans';">3.81</strong></div>
               </div>
             </div>
           </div>
