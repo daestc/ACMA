@@ -93,25 +93,6 @@ async function fetchProgress() {
   }
 }
 
-async function fetchAcademicinfo() {
-  const creditAvg = document.getElementById('credit-avg');
-  const creditEarned = document.getElementById('credit-earned');
-  const studyTime = document.getElementById('study-time');
-  const certificates = document.getElementById('certificates');
-  try {
-    const res = await fetch('/academic/info', { credentials: 'same-origin' });
-    if (!res.ok) return;
-    const json = await res.json();
-    if (!json.success) return;
-
-    if (creditAvg) creditAvg.textContent = json.creditAvg || '0.0';
-    if (creditEarned) creditEarned.textContent = json.creditEarned || '0';
-    if (studyTime) studyTime.textContent = json.studyTime || '0h';
-    if (certificates) certificates.textContent = json.certificates || '0';
-  } catch (err) {
-    console.error('fetchAcademicinfo failed', err);
-  }
-}
 // 학기 코드 → 정렬용 { year, semesterNumber }
 function parseSemesterOrder(semester) {
   const match = String(semester || '').trim().match(/^(\d{4})-(\d)$/);
@@ -171,6 +152,8 @@ function renderAcademicTrend(records) {
   const averageGpa = validRecords.reduce((sum, r) => sum + r.semesterGPA, 0) / validRecords.length;
   const bestRecord = validRecords.reduce((best, cur) => (cur.semesterGPA > best.semesterGPA ? cur : best), validRecords[0]);
   const totalCredits = validRecords.reduce((sum, r) => sum + (Number(r.earnedCredits) || 0), 0);
+  document.getElementById('credit-avg').textContent = averageGpa.toFixed(2);
+  document.getElementById('credit-earned').textContent = String(totalCredits);
 
   tableBody.innerHTML = validRecords.map((record, index) => {
     const isBest = record.semester === bestRecord.semester;
@@ -197,25 +180,162 @@ async function fetchUserProfile() {
     if (!user) throw new Error('사용자 정보가 없습니다.');
     document.getElementById('profile-avatar').textContent = user.name ? user.name.charAt(0) : '';
     document.getElementById('profile-name').textContent = `${user.name || ''}`;
-    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''}`;
-
-    // 폼에 사용자 정보 채워넣기
-    document.getElementById('studentId').value = user.studentId || '';
-    document.getElementById('university').value = user.university || '';
-    document.getElementById('major').value = user.major || '';
-    document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';
+    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''} · ${user.enrollmentStatus || ''}`;
   } catch (error) {
     console.error('Error fetching profile:', error);
     alert('프로필 정보를 가져오는데 실패했습니다. 다시 시도해주세요.');
   }
 }
+// 목표 직무와 자격증 정보 가져와서 프로필 상단에 표시하기/ 자격증 목록 표시
+async function fetchCareerAndCerts() {
+  try {
+    const response = await fetch('/career/my-career-and-certs', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('목표 직무와 자격증 정보를 가져오는데 실패했습니다.');
+    const data = await response.json();
+    if (!data.success) throw new Error('목표 직무와 자격증 정보를 가져오는데 실패했습니다.');
+    const career = data.career || {};
+    const certs = data.certifications || [];
+    //취득 자격증만 갯수 뜨게 만들기
+    const acquiredCerts = certs.filter(c => c.status === 'acquired');
+    document.getElementById('certificates').textContent = `${acquiredCerts.length} 개`;
+    document.getElementById('profile-job').textContent = career.title || '목표 직무 없음';
+    document.getElementById('profile-certification').textContent = acquiredCerts.length > 0 ? acquiredCerts.map(c => c.certificationId.name).join(', ') : '취득 자격증 없음';
+    document.getElementById('st-cert').innerHTML = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><button type="button" class="btn btn-accent btn-sm" id="cert-open-btn">+ 추가</button></div>`;
+    document.getElementById('st-cert').innerHTML += certs.length > 0 ? certs.map(c => 
+      `<div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">${c.certificationId.name}</div>
+      <span class="badge badge-green">${
+        c.status === 'acquired' ? '취득' : 
+        c.status === 'wish' ? '관심' : '목표'}</span>
+      <span style="font-size:11px;color:var(--text2);margin-left:4px;">${
+        c.status === 'acquired' && c.earnedDate ? new Date(c.earnedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' }) :
+        c.targetDate ? `목표 ${new Date(c.targetDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}` : ''}</span></div>`).join('') : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 자격증이 없습니다.</div>';
+    document.addEventListener('click', (event) => {
+      if (event.target && event.target.id === 'cert-open-btn') {
+        const url = '/career';
+        window.location.href = url;
+      } 
+    });
+  } catch (error) {
+    console.error('Error fetching career and certifications:', error);
+    // 실패해도 프로필 기본 정보는 보여주도록 함
+  }
+};
 
-// 초기화
-document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
+// ── 스펙(수상/어학/경험) 조회 & 렌더 ──────────────
 
+// 언어 enum → 한글 라벨 + 국기
+const LANG_LABEL = {
+  english:  { name: '영어',   flag: '🇺🇸', bg: 'var(--sky-bg)' },
+  japanese: { name: '일본어', flag: '🇯🇵', bg: 'var(--green-bg)' },
+  chinese:  { name: '중국어', flag: '🇨🇳', bg: 'var(--red-bg)' },
+  other:    { name: '기타',   flag: '🌐', bg: 'var(--bg3)' },
+};
+
+// 날짜 → "2025. 6." (값 없으면 빈 문자열, Invalid Date 방지)
+function fmtYM(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' });
+}
+
+// 통합 조회
+async function fetchSpecs() {
+  try {
+    const res = await fetch('/spec/mine', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('스펙 정보를 불러오지 못했습니다.');
+    const data = await res.json();
+    if (!data.success) throw new Error('스펙 정보를 불러오지 못했습니다.');
+
+    renderAwards(data.awards || []);
+    renderLanguages(data.languages || []);
+    renderExperiences(data.experiences || []);
+  } catch (err) {
+    console.error('fetchSpecs 에러:', err);
+  }
+}
+
+// ① 수상 및 대외활동 (#st-activity)
+function renderAwards(awards) {
+  const box = document.getElementById('st-activity');
+  if (!box) return;
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>`;
+
+  const list = awards.length
+    ? awards.map(a => {
+        const meta = [a.organizer, a.rank, fmtYM(a.acquiredDate)].filter(Boolean).join(' · ');
+        return `<div class="activity-item spec-clickable" data-spec-type="award" data-spec='${encodeURIComponent(JSON.stringify(a))}' style="cursor:pointer;">
+          <div class="activity-dot" style="background:var(--accent);"></div>
+          <div class="activity-body"><div class="activity-title">${a.name || ''}</div>
+          <div class="activity-meta">${meta}</div></div></div>`;
+      }).join('')
+    : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 수상경력이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
+// ② 어학 성적 (#st-lang)
+function renderLanguages(languages) {
+  const box = document.getElementById('st-lang');
+  if (!box) return;
+
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><button type="button" class="btn btn-accent btn-sm" id="language-open-btn">+ 추가</button></div>`;
+
+  const list = languages.length
+  ? languages.map(l => {
+      const meta = LANG_LABEL[l.language] || LANG_LABEL.other;
+      const title = l.testName || meta.name;   // 시험명 우선, 없으면 언어명
+      const extra = [l.score, fmtYM(l.acquiredDate)].filter(Boolean).join(' · ');
+      return `<div class="cert-item spec-clickable" data-spec-type="language" data-spec='${encodeURIComponent(JSON.stringify(l))}' style="cursor:pointer;">
+        <div class="cert-icon" style="background:${meta.bg};">${meta.flag}</div>
+        <div class="cert-name">${title}</div>
+        <span style="font-size:11px;color:var(--text2);margin-left:auto;">${extra}</span></div>`;
+    }).join('')
+  : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 어학성적이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
+// ③ 경험 / 활동 / 교육 (#exp-work)
+function renderExperiences(experiences) {
+  const box = document.getElementById('exp-work');
+  if (!box) return;
+
+  if (!experiences.length) {
+    box.innerHTML = '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 경험/활동이 없습니다.</div>';
+    return;
+  }
+
+  box.innerHTML = experiences.map((e, i) => {
+    const last = i === experiences.length - 1;
+    const period = [fmtYM(e.startDate), fmtYM(e.endDate)].filter(Boolean).join(' ~ ');
+    const sub = [e.host, e.location].filter(Boolean).join(' · ');
+    const dot = i % 2 === 0 ? 'var(--accent)' : 'var(--purple)';
+    return `<div class="exp-item spec-clickable" data-spec-type="experience" data-spec='${encodeURIComponent(JSON.stringify(e))}' style="cursor:pointer;"${last ? ' style="border-bottom:none;"' : ''}>
+      <div class="exp-dot" style="background:${dot};"></div>
+      <div class="exp-body">
+        <div class="exp-title">${e.title || ''}</div>
+        ${sub ? `<div class="exp-meta">${sub}</div>` : ''}
+        ${period ? `<div class="exp-period">${period}</div>` : ''}
+        ${e.note ? `<div class="exp-ach" style="margin-top:8px;">${e.note}</div>` : ''}
+      </div></div>`;
+  }).join('');
+}
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.spec-clickable');
+  if (!item) return;
+  const type = item.dataset.specType;
+  const data = JSON.parse(decodeURIComponent(item.dataset.spec));
+  window._specModals?.[type]?.openForEdit(data);
+});
+
+// 기존의 흩어진 DOMContentLoaded 3개를 이걸로 통일
 document.addEventListener('DOMContentLoaded', () => {
   fetchProgress();
-  fetchAcademicinfo();
   fetchAcademicTrend();
   fetchUserProfile();
+  fetchCareerAndCerts();
+  fetchSpecs();                       // ← 수상·어학·경험 한 번에
+  if (window.initSpecModals) window.initSpecModals();
 });
+

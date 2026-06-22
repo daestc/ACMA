@@ -1,0 +1,50 @@
+<!-- 어학성적 추가 모달 -->
+<div class="spec-modal" id="language-modal" hidden>
+  <div class="spec-modal-content" role="dialog" aria-modal="true" aria-labelledby="language-modal-title">
+    <div class="spec-modal-header">
+      <h3 id="language-modal-title">어학성적 추가</h3>
+      <button type="button" class="spec-modal-close" data-modal-close aria-label="닫기">&times;</button>
+    </div>
+
+    <div class="spec-modal-form">
+      <div class="spec-field">
+        <label for="language-lang">언어 <span class="spec-required">*</span></label>
+        <select id="language-lang" required>
+          <option value="" disabled selected>언어 선택</option>
+          <option value="english">영어 (TOEIC / TOEFL / IELTS / OPIc)</option>
+          <option value="japanese">일본어 (JLPT)</option>
+          <option value="chinese">중국어 (HSK)</option>
+          <option value="other">기타</option>
+        </select>
+      </div>
+      <div class="spec-field">
+        <label for="language-test">시험 종류</label>
+        <select id="language-test">
+          <option value="" disabled selected>언어를 먼저 선택하세요</option>
+        </select>
+      </div>
+      <div class="spec-field">
+        <label for="language-score">점수 / 등급 <span class="spec-required">*</span></label>
+        <input type="text" id="language-score" placeholder="예: 850, N2, 5급" />
+      </div>
+
+      <div class="spec-field">
+        <label for="language-acquired">취득일</label>
+        <input type="date" id="language-acquired" />
+      </div>
+
+      <div class="spec-field">
+        <label for="language-expiry">유효기간 만료일</label>
+        <input type="date" id="language-expiry" />
+      </div>
+
+      <p class="spec-error" data-modal-error hidden></p>
+
+      <div class="spec-modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-delete hidden style="margin-right:auto;color:var(--red);">삭제</button>
+        <button type="button" class="btn btn-ghost" data-modal-cancel>취소</button>
+        <button type="button" class="btn btn-accent" data-modal-submit>저장</button>
+      </div>
+    </div>
+  </div>
+</div>

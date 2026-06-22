@@ -487,6 +487,20 @@ async function getMyJobs(userId) {
   }
 };
 
+//선택한 목표 직무와 모든 자격증 가져오기
+async function getMyCareerAndCertifications(userId) {
+  try {
+    const [jobs, certs] = await Promise.all([
+      getMyJobs(userId),
+      getMyCertifications(userId)
+    ]);
+    const targetJob = jobs.find(job => job.status === 'target') || null;
+    return { targetJob, certs };
+  } catch (error) {    console.error('Error fetching career and certifications:', error);
+    throw new Error('Failed to fetch career and certifications');
+  }
+};
+
 // 선택한 직무 삭제하기
 async function deleteJob(jobId, userId) {
   try {
@@ -533,4 +547,5 @@ module.exports = {
   deleteCertification, // 선택한 자격증 삭제하기
   getMyJobs, // 현재 선택한 직무 목록 가져오기
   deleteJob, // 선택한 직무 삭제하기
+  getMyCareerAndCertifications, // 선택한 목표 직무와 목표 자격증 가져오기
 };

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const userskill = require('../models/User_skills');
 const { clearUserLectureTimetables } = require('./calendarService');
 
 // 사용자의 오늘 자 todoList 가져오기. userId로 변경가능
@@ -199,6 +200,7 @@ async function updateProfile(userEmail, profileData) {
 
   return { universityChanged, clearedLectureCount };
 }
+// user 정보 가져오기
 async function getProfile(userEmail) {
   try {
     const user = await User.findOne({ email: userEmail });
@@ -218,5 +220,21 @@ async function getProfile(userEmail) {
     throw error;
   }
 }
+// 수상경력 정보 가져오기
+async function getMyAwards(userEmail) {
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) throw new Error('사용자를 찾지 못했습니다.');
+    const userSkills = await userskill.findOne({ userId: user._id });
+    if (!userSkills) {
+      return [];
+    }
 
-module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};
+    return userSkills.userAward;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
+module.exports = {getTodaytodoList, gettodoList, addTodo, deleteTodo, getHabitList, addHabit ,editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile, getMyAwards};

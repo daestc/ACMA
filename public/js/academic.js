@@ -273,21 +273,22 @@ function buildSubjectRow(subject = {}) {
   const row = document.createElement('div');
   row.className = 'subject-row';
   row.innerHTML = `
-    <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
-    <select class="select-field" name="subjectType" style="min-width:120px;">
+    <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;" readonly>
+    <select class="select-field" name="subjectType" style="min-width:120px; pointer-events: none; background-color: #f3f4f6;" tabindex="-1">
       <option value="major_required">전필</option>
       <option value="major_elective">전선</option>
       <option value="general_required">교필</option>
       <option value="general_elective">교선</option>
       <option value="free">일선</option>
     </select>
-    <select class="select-field" name="credits">
-      <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
+    <select class="select-field" name="credits" style="pointer-events: none; background-color: #f3f4f6;" tabindex="-1">
+      <option value="3">3학점</option>
+      <option value="2">2학점</option>
+      <option value="1">1학점</option>
     </select>
     <select class="select-field" name="grade" onchange="calcGPA()">
       <option value="A+">A+</option><option value="A">A</option><option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
-    </select>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.subject-row').remove(); calcGPA()">✕</button>`;
+    </select>`;
 
   // populate values after element creation
   setTimeout(() => {
@@ -320,10 +321,12 @@ async function saveAcademicData() {
 
   const payload = {
     semester: semesterSelect?.value || '2026-1',
-    subjectName: subjects.map(subject => subject.subjectName),
-    subjectType: subjects.map(subject => subject.subjectType),
-    credits: subjects.map(subject => subject.credits),
-    grade: subjects.map(subject => subject.grade),
+    subjects: subjects.map(subject => ({
+      subjectName: subject.subjectName,
+      subjectType: subject.subjectType,
+      credits: subject.credits,
+      grade: subject.grade
+    }))
   };
 
   const button = document.querySelector('#ac-gpa .btn-accent');
@@ -336,7 +339,7 @@ async function saveAcademicData() {
       button.textContent = '저장 중...';
     }
 
-    const response = await fetch('/academic/addCourse', {
+    const response = await fetch('/academic/updateBulkGrades', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -494,6 +494,32 @@ const certModalModule = {
         }
       });
     }
+    //취득 버튼
+    const passBtn = document.getElementById('cd-earn-btn');
+    if (passBtn) {
+      passBtn.addEventListener('click', async () => {
+        const modal = document.getElementById('cert-detail-modal');
+        if (!modal) return;
+        const jmcd = modal.dataset.jmcd;
+        const name = document.getElementById('cd-title')?.textContent || '';
+        try {          const res = await fetch('/career/save-cert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jmcd, name, status: 'acquired' })
+          });
+          const result = await res.json();
+          if (res.ok && result.success) {
+            alert('자격증이 취득으로 설정되었습니다.');
+            myCertModule.load().catch(err => console.error('Error refreshing my certs:', err));
+          } else {
+            alert(result.error || '취득 설정에 실패했습니다.');
+          }
+        } catch (err) {
+          console.error('취득 설정 실패:', err);
+          alert('취득 설정 중 오류가 발생했습니다.');
+        }
+      });
+    }
 
     // 목표 설정 버튼
     const changeBtn = document.getElementById('cd-change-btn');

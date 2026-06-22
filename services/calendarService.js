@@ -1,5 +1,7 @@
 const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
 const UniversitySchedule = require('../models/UniversitySchedule');
+const { saveSemesterRecord,removeSubjectFromRecord } = require('./academicSevice');
+
 const {
   buildLectureListFilter,
   buildLectureOwnershipFilter,
@@ -195,24 +197,38 @@ async function updateTimetable(userId, timetableId, updateData) {
 
 //시간표 제거
 async function deleteTimetable(userId, timetableId) {
-    const deletedTimetable = await Timetable.findOneAndUpdate(
-        {
-            _id: timetableId,
-            userId: userId,
-            isActive: true
-        },
-        {
-            isActive: false
-        },
-        { new: true }
-    );
+    try {
+        // 2. 시간표 소프트 삭제
+        const deletedTimetable = await Timetable.findOneAndUpdate(
+            {
+                _id: timetableId,
+                userId: userId,
+                isActive: true
+            },
+            {
+                isActive: false
+            }
+        );
 
-    if (!deletedTimetable) {
-        throw new Error('시간표를 찾을 수 없습니다.');
+        if (!deletedTimetable) {
+            throw new Error('시간표를 찾을 수 없습니다.');
+        }
+
+        // 3. 학점 DB에서도 해당 과목 제거 요청 (session 전달)
+        // 삭제된 시간표 문서에서 학기(semester)와 과목명(title)을 가져와서 지웁니다.
+        await removeSubjectFromRecord({
+            userId,
+            semester: deletedTimetable.semester,
+            subjectName: deletedTimetable.title 
+        });
+
+        return deletedTimetable;
+
+    } catch (error) {
+
+        throw error;
     }
-
-    return deletedTimetable;
-};
+}
 
 // 대학 변경 시 사용자가 추가한 강의 시간표 전체 비활성화
 async function clearUserLectureTimetables(userId) {
@@ -301,6 +317,7 @@ async function getAvailableUniversities({ page = 1, limit = 10 } = {}) {
 // 강의를 내 시간표에 추가 Lecture의 내용을 timetable에 맞추어 생성
 async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', university) {
   const univ = normalizeUniversity(university);
+  
   if (!univ) {
     const err = new Error('대학등록이 필요합니다');
     err.code = 'NO_UNIVERSITY';
@@ -341,6 +358,29 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', unive
 
   //학기 표시 규격에 맞게 변경 (년도 + 학기)
   const semesterValue = `${lecture.year}-${lecture.semester === '1학기' ? '1' : '2'}`;
+
+  const classificationMap = {
+    '전필': 'major_required',
+    '전선': 'major_elective',
+    '교필': 'general_required',
+    '교선': 'general_elective',
+    '일선': 'free',
+  };
+  //학점 DB에 저장
+  await saveSemesterRecord({
+    userId,
+    semester: semesterValue,
+    year: lecture.year,
+    semesterNumber: lecture.semester === '1학기' ? 1 : 2,
+    status: 'in_progress',
+    subjects: [{
+      subjectName: lecture.courseName,
+      subjectType: classificationMap[lecture.classification] || 'free',
+      professor: lecture.professor,
+      credits: lecture.credits,
+      grade: null,
+    }],
+  });
 
   //timetableSchema 생성
   return await Timetable.create({

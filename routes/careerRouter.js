@@ -43,5 +43,8 @@ router.get('/my-certs', requireLogin, careerController.getMyCertifications);
 // 자격증 삭제하기
 router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeCertification);
 
+// 현재 선택한 목표 직무와 목표 자격증 프로필 상단에 표시하기
+router.get('/my-career-and-certs', requireLogin, careerController.getMyCareerAndCertifications);
+
 
 module.exports = router;

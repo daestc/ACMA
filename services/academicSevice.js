@@ -29,30 +29,131 @@ function calculateSemesterSummary(subjects) {
     semesterPoints: 0,
   });
 }
+// 학기별 GPA 계산기 저장 (강의 개별 추가 대응)
+async function saveSemesterRecord(data, options = {}) {
+  const { userId, semester, year, semesterNumber, status = 'in_progress', subjects = [] } = data;
+  const session = options.session; // 트랜잭션 세션 지원
 
-// 학기별 GPA 계산기 저장
-async function saveSemesterRecord({ userId, semester, year, semesterNumber, status = 'in_progress', subjects = [] }) {
-  const semesterSummary = calculateSemesterSummary(subjects);
+  // 1. 기존 학기 데이터가 있는지 조회
+  let record = await model.AcademicRecord.findOne({ userId, semester }).session(session);
 
-  await model.AcademicRecord.findOneAndUpdate(
-    { userId, semester },
-    {
+  if (!record) {
+    // 2-A. 레코드가 없으면 새로 생성 (첫 강의 추가 시)
+    const semesterSummary = calculateSemesterSummary(subjects);
+    
+    record = new model.AcademicRecord({
       userId,
       semester,
       year,
       semesterNumber,
       status,
-      subjects,
+      subjects, // 전달받은 첫 강의 배열
       semesterSummary: {
         attemptedCredits: semesterSummary.attemptedCredits,
         earnedCredits: semesterSummary.earnedCredits,
         semesterGPA: semesterSummary.attemptedCredits
           ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
           : null,
-      },
-    },
-    { upsert: true, new: true, runValidators: true }
-  );
+      }
+    });
+  } else {
+    // 2-B. 레코드가 이미 존재하면 기존 과목 배열에 새 과목 추가
+    for (const newSubject of subjects) {
+      // 💡 중복 추가 방지: 이미 같은 이름의 과목이 배열에 있는지 검사
+      const isDuplicate = record.subjects.some(sub => sub.subjectName === newSubject.subjectName);
+      
+      if (!isDuplicate) {
+        record.subjects.push(newSubject);
+      }
+    }
+
+    // 상태 업데이트 (필요시)
+    record.status = status;
+
+    // 3. "합쳐진 전체 과목 배열"을 기준으로 GPA 요약 정보 재계산
+    const semesterSummary = calculateSemesterSummary(record.subjects);
+    
+    record.semesterSummary = {
+      attemptedCredits: semesterSummary.attemptedCredits,
+      earnedCredits: semesterSummary.earnedCredits,
+      semesterGPA: semesterSummary.attemptedCredits
+        ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
+        : null,
+    };
+  }
+
+  // 4. 최종 저장
+  await record.save({ session });
+  return record;
+}
+// 여러 과목의 성적을 한 번에 일괄 업데이트하는 함수 (배열 처리)
+async function updateBulkGrades({ userId, semester, updates }, options = {}) {
+  const session = options.session;
+
+  // 1. 해당 학기 데이터 조회
+  const record = await model.AcademicRecord.findOne({ userId, semester }).session(session);
+
+  if (!record) {
+    throw new Error('해당 학기 정보를 찾을 수 없습니다.');
+  }
+
+  // 2. 프론트엔드에서 넘어온 배열(updates)을 순회하며 기존 성적 변경
+  updates.forEach(updateData => {
+    const subject = record.subjects.find(sub => sub.subjectName === updateData.subjectName);
+    
+    if (subject) {
+      // 과목을 찾았다면 사용자가 선택한 이수구분과 성적으로 덮어씀
+      if (updateData.subjectType) subject.subjectType = updateData.subjectType;
+      if (updateData.grade) subject.grade = updateData.grade;
+    }
+  });
+
+  // 3. 성적들이 싹 바뀌었으므로, 합산된 전체 GPA 및 취득 학점 재계산
+  const semesterSummary = calculateSemesterSummary(record.subjects);
+  
+  record.semesterSummary = {
+    attemptedCredits: semesterSummary.attemptedCredits,
+    earnedCredits: semesterSummary.earnedCredits,
+    semesterGPA: semesterSummary.attemptedCredits
+      ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
+      : null,
+  };
+
+  // 4. 변경된 내역 DB에 최종 저장
+  await record.save({ session });
+  
+  return record;
+}
+// 학기 레코드에서 특정 과목을 제거하고 GPA를 재계산하는 함수
+async function removeSubjectFromRecord({ userId, semester, subjectName }, options = {}) {
+  const session = options.session;
+
+  // 1. 해당 학기 데이터 조회
+  const record = await model.AcademicRecord.findOne({ userId, semester }).session(session);
+
+  // 학기 데이터가 아예 없으면 지울 것도 없으므로 그냥 종료
+  if (!record) return; 
+
+  // 2. 과목 배열에서 '지우려는 과목'만 빼고 다시 필터링해서 덮어쓰기
+  const initialLength = record.subjects.length;
+  record.subjects = record.subjects.filter(sub => sub.subjectName !== subjectName);
+
+  // 만약 배열 길이가 같다면 (해당 과목이 원래 없었다면) 저장 없이 종료
+  if (record.subjects.length === initialLength) return;
+
+  // 3. 과목이 하나 빠졌으므로, 남은 과목들로 합산된 전체 GPA 및 취득 학점 재계산
+  const semesterSummary = calculateSemesterSummary(record.subjects);
+  
+  record.semesterSummary = {
+    attemptedCredits: semesterSummary.attemptedCredits,
+    earnedCredits: semesterSummary.earnedCredits,
+    semesterGPA: semesterSummary.attemptedCredits
+      ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
+      : null,
+  };
+
+  // 4. 변경된 내역 DB에 최종 저장
+  await record.save({ session });
 }
 
 const getSemesterRecord = async (userId, semester) => {
@@ -178,4 +279,6 @@ module.exports = {
   getAllSemesterRecords,
   getUniversityProfile,
   saveUniversityProfile,
+  updateBulkGrades,
+  removeSubjectFromRecord
 };
