@@ -41,12 +41,34 @@
           </div>
         </div>
 
-      <div class="dday-row">
-        <div class="dday-card blue"><div class="dday-label">자격증 시험</div><div class="dday-title">정보처리기사</div><div class="dday-count">D-12</div></div>
-        <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
-        <div class="dday-card red"><div class="dday-label">기말고사</div><div class="dday-title">2학기 기말</div><div class="dday-count">D-20</div></div>
-        <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
+<div class="dday-row">
+  
+<div class="dday-card blue certification-slider">
+  <div class="dday-label">자격증 시험</div>
+  
+  <div class="slider-container">
+    <% if (ddayCerts && ddayCerts.length > 0) { %>
+      
+      <% ddayCerts.forEach((cert, index) => { %>
+        <div class="slider-item <%= index === 0 ? 'active' : '' %>">
+          <div class="dday-title"><%= cert.title %></div>
+          <div class="dday-count"><%= cert.dDayText %></div>
+        </div>
+      <% }) %>
+
+    <% } else { %>
+      <div class="slider-item active">
+        <div class="dday-title">등록된 목표 자격증이 없습니다.</div>
+        <div class="dday-count">📌</div>
       </div>
+    <% } %>
+  </div>
+</div>
+
+  <div class="dday-card amber"><div class="dday-label">장학금 마감</div><div class="dday-title">성적우수 장학금</div><div class="dday-count">D-5</div></div>
+  <div class="dday-card red"><div class="dday-label">기말고사</div><div class="dday-title">2학기 기말</div><div class="dday-count">D-20</div></div>
+  <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
+</div>
 
       <div class="grid-2" style="margin-bottom:16px;">
         <div class="card">
