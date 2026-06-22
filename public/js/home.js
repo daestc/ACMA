@@ -554,5 +554,30 @@ async function deleteHabit(id) {
   updateHabitSummary();
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  // 슬라이더에 들어있는 카드 자식들을 전부 가져옴
+  const items = document.querySelectorAll('.certification-slider .slider-item');
+  console.log(` 자격증 일정 개수: ${items.length}개`);
+  
+  // 슬라이드 할 자격증 일정이 없거나 1개뿐이면 엔진 작동 안 함
+  if (items.length <= 1) {
+    return; 
+  }
+
+  let currentIndex = 0;
+
+  // 3초마다 
+  setInterval(() => {
+    // 현재 켜져 있는 자격증 active 클래스 제거 (숨기기)
+    items[currentIndex].classList.remove('active');
+
+    // 다음 자격증 번호 계산 (마지막 번호 다음엔 다시 0번으로 순환)
+    currentIndex = (currentIndex + 1) % items.length;
+
+    // 새로 보여줄 자격증에 active 클래스 추가 (나타나기)
+    items[currentIndex].classList.add('active');
+  }, 3000); // 3000ms = 3초
+});
+
 
 

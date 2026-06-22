@@ -44,6 +44,9 @@ const getHomePage = async (req, res) => {
     const todoList = await userService.getTodaytodoList(user.email);
     const {habitList, completedCount} = await userService.getHabitList(user.email);
 
+    //자격증 카테고리만
+    const myCertNotices = userCustomNotices.filter(n => n.category === 'certification');
+    
     res.render('pages/home', {
       user,
       todoList,
@@ -53,6 +56,7 @@ const getHomePage = async (req, res) => {
       topNotices: userCustomNotices.slice(0, 6), //상위 6개
       urgentNotice: userCustomNotices.filter(n => n.isUrgent === true), 
       myCertNotices: userCustomNotices.filter(n => n.category === 'certification'), 
+      ddayCerts: myCertNotices,
       pageTitle: '홈'
     });
 
