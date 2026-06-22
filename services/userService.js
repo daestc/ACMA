@@ -200,6 +200,7 @@ async function updateProfile(userEmail, profileData) {
 
   return { universityChanged, clearedLectureCount };
 }
+// user 정보 가져오기
 async function getProfile(userEmail) {
   try {
     const user = await User.findOne({ email: userEmail });

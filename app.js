@@ -30,7 +30,7 @@ const alertRouter = require('./routes/alertRouter');
 const staffRouter = require('./routes/staffRouter');
 const adminRouter = require('./routes/adminRouter');
 const suggestionRouter = require('./routes/suggestionRouter');
-
+const specRouter = require('./routes/specRouter');
 
 
 //DB 연결
@@ -78,6 +78,7 @@ app.use('/suggestions', suggestionRouter);
 app.use('/', alertRouter);
 app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);
+app.use('/spec', specRouter);
 
 // 오류 처리 미들웨어
 app.use(notFoundHandler);

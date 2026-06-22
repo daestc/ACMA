@@ -55,14 +55,6 @@ function closeMyPageModal() {
   document.getElementById('mypage-modal-overlay').style.display = 'none';
 }
 
-// 수상경력 추가 모달
-function openAwardModal() {
-  document.getElementById('award-modal').style.display = 'flex';
-}
-function closeAwardModal() {
-  document.getElementById('award-modal').style.display = 'none';
-}
-
 // 오버레이 클릭 닫기
 document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('mypage-modal-overlay');

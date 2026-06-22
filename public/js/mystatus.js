@@ -218,36 +218,113 @@ async function fetchCareerAndCerts() {
   }
 };
 
-//수상경력 정보 가져와서 목록에 표시
-async function fetchAwards() {
-  try {
-    const response = await fetch('/user/my-awards', { credentials: 'same-origin' });
-    if (!response.ok) throw new Error('수상경력 정보를 가져오는데 실패했습니다.');
-    const data = await response.json();
-    if (!data.success) throw new Error('수상경력 정보를 가져오는데 실패했습니다.');
-    const awards = data.awards || [];
-    const awardsContainer = document.getElementById('st-activity');
-    if (!awardsContainer) return;
-    awardsContainer.innerHTML = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn" onclick="openAwardModal()">+ 수상경력 추가</button></div>`;
-    awardsContainer.innerHTML += awards.length > 0 ? awards.map(a => 
-      `<div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div>
-      <div class="activity-body"><div class="activity-title">${a.title}</div>
-      <div class="activity-meta">${a.organization} · ${new Date(a.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })} · ${a.type}</div></div></div>`).join('') : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 수상경력이 없습니다.</div>';
-  } catch (error) {
-    console.error('Error fetching awards:', error);
-    // 실패해도 프로필 기본 정보는 보여주도록 함
-  }
+// ── 스펙(수상/어학/경험) 조회 & 렌더 ──────────────
+
+// 언어 enum → 한글 라벨 + 국기
+const LANG_LABEL = {
+  english:  { name: '영어',   flag: '🇺🇸', bg: 'var(--sky-bg)' },
+  japanese: { name: '일본어', flag: '🇯🇵', bg: 'var(--green-bg)' },
+  chinese:  { name: '중국어', flag: '🇨🇳', bg: 'var(--red-bg)' },
+  other:    { name: '기타',   flag: '🌐', bg: 'var(--bg3)' },
 };
 
+// 날짜 → "2025. 6." (값 없으면 빈 문자열, Invalid Date 방지)
+function fmtYM(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' });
+}
 
-// 초기화
-document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
-document.addEventListener('DOMContentLoaded', fetchAwards);
+// 통합 조회
+async function fetchSpecs() {
+  try {
+    const res = await fetch('/spec/mine', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('스펙 정보를 불러오지 못했습니다.');
+    const data = await res.json();
+    if (!data.success) throw new Error('스펙 정보를 불러오지 못했습니다.');
 
+    renderAwards(data.awards || []);
+    renderLanguages(data.languages || []);
+    renderExperiences(data.experiences || []);
+  } catch (err) {
+    console.error('fetchSpecs 에러:', err);
+  }
+}
+
+// ① 수상 및 대외활동 (#st-activity)
+function renderAwards(awards) {
+  const box = document.getElementById('st-activity');
+  if (!box) return;
+
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>`;
+
+  const list = awards.length
+    ? awards.map(a => {
+        const meta = [a.organizer, a.rank, fmtYM(a.acquiredDate)].filter(Boolean).join(' · ');
+        return `<div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div>
+          <div class="activity-body"><div class="activity-title">${a.name || ''}</div>
+          <div class="activity-meta">${meta}</div></div></div>`;
+      }).join('')
+    : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 수상경력이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
+// ② 어학 성적 (#st-lang)
+function renderLanguages(languages) {
+  const box = document.getElementById('st-lang');
+  if (!box) return;
+
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><button type="button" class="btn btn-accent btn-sm" id="language-open-btn">+ 추가</button></div>`;
+
+  const list = languages.length
+  ? languages.map(l => {
+      const meta = LANG_LABEL[l.language] || LANG_LABEL.other;
+      const title = l.testName || meta.name;   // 시험명 우선, 없으면 언어명
+      const extra = [l.score, fmtYM(l.acquiredDate)].filter(Boolean).join(' · ');
+      return `<div class="cert-item"><div class="cert-icon" style="background:${meta.bg};">${meta.flag}</div>
+        <div class="cert-name">${title}</div>
+        <span style="font-size:11px;color:var(--text2);margin-left:auto;">${extra}</span></div>`;
+    }).join('')
+  : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 어학성적이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
+// ③ 경험 / 활동 / 교육 (#exp-work)
+function renderExperiences(experiences) {
+  const box = document.getElementById('exp-work');
+  if (!box) return;
+
+  if (!experiences.length) {
+    box.innerHTML = '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 경험/활동이 없습니다.</div>';
+    return;
+  }
+
+  box.innerHTML = experiences.map((e, i) => {
+    const last = i === experiences.length - 1;
+    const period = [fmtYM(e.startDate), fmtYM(e.endDate)].filter(Boolean).join(' ~ ');
+    const sub = [e.host, e.location].filter(Boolean).join(' · ');
+    const dot = i % 2 === 0 ? 'var(--accent)' : 'var(--purple)';
+    return `<div class="exp-item"${last ? ' style="border-bottom:none;"' : ''}>
+      <div class="exp-dot" style="background:${dot};"></div>
+      <div class="exp-body">
+        <div class="exp-title">${e.title || ''}</div>
+        ${sub ? `<div class="exp-meta">${sub}</div>` : ''}
+        ${period ? `<div class="exp-period">${period}</div>` : ''}
+        ${e.note ? `<div class="exp-ach" style="margin-top:8px;">${e.note}</div>` : ''}
+      </div></div>`;
+  }).join('');
+}
+
+// 기존의 흩어진 DOMContentLoaded 3개를 이걸로 통일
 document.addEventListener('DOMContentLoaded', () => {
   fetchProgress();
   fetchAcademicTrend();
   fetchUserProfile();
   fetchCareerAndCerts();
+  fetchSpecs();                       // ← 수상·어학·경험 한 번에
+  if (window.initSpecModals) window.initSpecModals();
 });
 
