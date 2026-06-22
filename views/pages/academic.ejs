@@ -23,7 +23,6 @@
           <button class="tab-btn active" onclick="switchAcademicTab('gpa',this)">학점 등록</button>
           <button class="tab-btn" onclick="switchAcademicTab('credit',this)">이수 현황</button>
           <button class="tab-btn" onclick="switchAcademicTab('grad',this)">졸업요건</button>
-          <button class="tab-btn" onclick="switchAcademicTab('sim',this)">목표 시뮬레이터</button>
         </div>
 
         <!-- GPA 계산기 -->
@@ -278,20 +277,6 @@
                 </div>
               </div>
             </div>
-            
-            <!-- 목표 시뮬레이터 -->
-        <div id="ac-sim" style="display:none;">
-          <div class="card" style="max-width:560px;">
-            <div class="card-title" style="margin-bottom:16px;"> 목표 GPA 시뮬레이터</div>
-            <div class="form-group"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">목표 누적 GPA</label><input class="input-field" type="number" step="0.01" max="4.5" value="3.9" id="target-gpa" oninput="calcSim()" style="width:100%;"></div>
-            <div class="form-group"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">다음 학기 예정 이수 학점</label><input class="input-field" type="number" min="1" max="24" value="18" id="next-credits" oninput="calcSim()" style="width:100%;"></div>
-            <div style="background:var(--accent-bg);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:20px;margin-top:8px;">
-              <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:8px;">필요한 다음 학기 GPA</div>
-              <div style="font-size:42px;font-weight:800;font-family:'DM Sans';color:var(--accent);" id="sim-result">4.05</div>
-              <div style="font-size:12px;color:var(--text2);margin-top:8px;" id="sim-desc">최소 <strong style="color:var(--amber);">A (4.0)</strong> 이상 받아야 합니다.</div>
-            </div>
-          </div>
-        </div>
 		</div>
 
 	</main>

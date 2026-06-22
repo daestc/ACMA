@@ -195,8 +195,11 @@ async function fetchCareerAndCerts() {
     if (!data.success) throw new Error('목표 직무와 자격증 정보를 가져오는데 실패했습니다.');
     const career = data.career || {};
     const certs = data.certifications || [];
+    //취득 자격증만 갯수 뜨게 만들기
+    const acquiredCerts = certs.filter(c => c.status === 'acquired');
+    document.getElementById('certificates').textContent = `${acquiredCerts.length} 개`;
     document.getElementById('profile-job').textContent = career.title || '목표 직무 없음';
-    document.getElementById('profile-certification').textContent = certs.length > 0 ? certs.map(c => c.certificationId.name).join(', ') : '목표 자격증 없음';
+    document.getElementById('profile-certification').textContent = acquiredCerts.length > 0 ? acquiredCerts.map(c => c.certificationId.name).join(', ') : '취득 자격증 없음';
     document.getElementById('st-cert').innerHTML = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><button type="button" class="btn btn-accent btn-sm" id="cert-open-btn">+ 추가</button></div>`;
     document.getElementById('st-cert').innerHTML += certs.length > 0 ? certs.map(c => 
       `<div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">${c.certificationId.name}</div>
@@ -256,13 +259,13 @@ async function fetchSpecs() {
 function renderAwards(awards) {
   const box = document.getElementById('st-activity');
   if (!box) return;
-
   const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>`;
 
   const list = awards.length
     ? awards.map(a => {
         const meta = [a.organizer, a.rank, fmtYM(a.acquiredDate)].filter(Boolean).join(' · ');
-        return `<div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div>
+        return `<div class="activity-item spec-clickable" data-spec-type="award" data-spec='${encodeURIComponent(JSON.stringify(a))}' style="cursor:pointer;">
+          <div class="activity-dot" style="background:var(--accent);"></div>
           <div class="activity-body"><div class="activity-title">${a.name || ''}</div>
           <div class="activity-meta">${meta}</div></div></div>`;
       }).join('')
@@ -283,7 +286,8 @@ function renderLanguages(languages) {
       const meta = LANG_LABEL[l.language] || LANG_LABEL.other;
       const title = l.testName || meta.name;   // 시험명 우선, 없으면 언어명
       const extra = [l.score, fmtYM(l.acquiredDate)].filter(Boolean).join(' · ');
-      return `<div class="cert-item"><div class="cert-icon" style="background:${meta.bg};">${meta.flag}</div>
+      return `<div class="cert-item spec-clickable" data-spec-type="language" data-spec='${encodeURIComponent(JSON.stringify(l))}' style="cursor:pointer;">
+        <div class="cert-icon" style="background:${meta.bg};">${meta.flag}</div>
         <div class="cert-name">${title}</div>
         <span style="font-size:11px;color:var(--text2);margin-left:auto;">${extra}</span></div>`;
     }).join('')
@@ -307,7 +311,7 @@ function renderExperiences(experiences) {
     const period = [fmtYM(e.startDate), fmtYM(e.endDate)].filter(Boolean).join(' ~ ');
     const sub = [e.host, e.location].filter(Boolean).join(' · ');
     const dot = i % 2 === 0 ? 'var(--accent)' : 'var(--purple)';
-    return `<div class="exp-item"${last ? ' style="border-bottom:none;"' : ''}>
+    return `<div class="exp-item spec-clickable" data-spec-type="experience" data-spec='${encodeURIComponent(JSON.stringify(e))}' style="cursor:pointer;"${last ? ' style="border-bottom:none;"' : ''}>
       <div class="exp-dot" style="background:${dot};"></div>
       <div class="exp-body">
         <div class="exp-title">${e.title || ''}</div>
@@ -317,6 +321,13 @@ function renderExperiences(experiences) {
       </div></div>`;
   }).join('');
 }
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.spec-clickable');
+  if (!item) return;
+  const type = item.dataset.specType;
+  const data = JSON.parse(decodeURIComponent(item.dataset.spec));
+  window._specModals?.[type]?.openForEdit(data);
+});
 
 // 기존의 흩어진 DOMContentLoaded 3개를 이걸로 통일
 document.addEventListener('DOMContentLoaded', () => {
