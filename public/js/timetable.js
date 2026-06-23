@@ -110,8 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const semesterInput = document.getElementById('tt-semester');
   const searchLectureBtn = document.getElementById('search-lecture-btn'); //검색 버튼
   const openLectureSearchBtn = document.getElementById('open-lecture-search-btn');
-const closeLectureSearchBtn = document.getElementById('close-lecture-search-btn');
+  const closeLectureSearchBtn = document.getElementById('close-lecture-search-btn');
   setSemesterOptions();
+  setLectureTimeFilterOptions(); //검색 필터
 
   if (!openBtn || !closeBtn || !form) return;
 
@@ -452,13 +453,23 @@ async function loadLectures(page = 1) {
 
   const listEl = document.getElementById('lecture-search-list');
   const pagEl = document.getElementById('lecture-search-pagination');
-  const keyword = document.getElementById('lecture-keyword').value.trim();
 
   listEl.innerHTML = '<p class="lecture-search-loading">불러오는 중...</p>';
   pagEl.innerHTML = '';
 
   const params = new URLSearchParams({ page, limit: 10 });
+
+  const keyword = document.getElementById('lecture-keyword').value.trim();
+  const classification = document.getElementById('lecture-classification')?.value || '';
+  const credits = document.getElementById('lecture-credits')?.value || '';
+  const startTime = document.getElementById('lecture-start-time')?.value || '';
+  const endTime = document.getElementById('lecture-end-time')?.value || '';
+  
   if (keyword) params.append('keyword', keyword);
+  if (classification) params.append('classification', classification);
+  if (credits) params.append('credits', credits);
+  if (startTime) params.append('startTime', startTime);
+  if (endTime) params.append('endTime', endTime);
 
   try {
     const res = await fetch(`/calendar/lectures?${params.toString()}`);
@@ -659,6 +670,20 @@ function openLectureSearchModal() {
 
   document.getElementById('lecture-search-modal').style.display = 'flex';
 }
+
+//강의 검색 시간 필터
+function setLectureTimeFilterOptions() {
+  const startSelect = document.getElementById('lecture-start-time');
+  const endSelect = document.getElementById('lecture-end-time');
+
+  if (!startSelect || !endSelect) return;
+
+  const options = getTimeOptions();
+
+  startSelect.innerHTML = '<option value="">시작 시간</option>' + options.replace('<option value="">시간 선택</option>', '');
+  endSelect.innerHTML = '<option value="">끝 시간</option>' + options.replace('<option value="">시간 선택</option>', '');
+}
+
 //시간표 검색 모달 닫기
 function closeLectureSearchModal() {
   document.getElementById('lecture-search-modal').style.display = 'none';
@@ -667,4 +692,8 @@ function closeLectureSearchModal() {
   document.getElementById('lecture-search-pagination').innerHTML = '';
   document.getElementById('available-university-list').innerHTML = '';
   document.getElementById('available-university-pagination').innerHTML = '';
+  document.getElementById('lecture-classification').value = '';
+  document.getElementById('lecture-credits').value = '';
+  document.getElementById('lecture-start-time').value = '';
+  document.getElementById('lecture-end-time').value = '';
 }

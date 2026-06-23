@@ -994,14 +994,27 @@ input,select,textarea{font-family:inherit;}
 }
 
 .lecture-search-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
 }
 
-.lecture-search-controls input {
-  flex: 1;
+#lecture-keyword {
+  grid-column: 1 / -1;
 }
+
+.lecture-search-controls input,
+.lecture-search-controls select {
+  width: 100%;
+  min-width: 0;
+}
+
+#search-lecture-btn {
+  white-space: nowrap;
+}
+
     .notice-item { 
       cursor: default !important; 
       border-bottom: 1px solid #f1f5f9; 
@@ -1122,4 +1135,22 @@ input,select,textarea{font-family:inherit;}
 
 .timetable-event-bar {
   border-left: 3px solid rgba(255, 255, 255, 0.85);
+}
+
+.lecture-search-controls-grid {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(4, 1fr) auto;
+  gap: 8px;
+}
+
+.lecture-search-controls-grid input,
+.lecture-search-controls-grid select {
+  min-width: 0;
+  padding: 8px;
+}
+
+@media (max-width: 720px) {
+  .lecture-search-controls-grid {
+    grid-template-columns: 1fr;
+  }
 }

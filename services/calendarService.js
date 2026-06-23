@@ -241,6 +241,26 @@ async function getLectureList(filter = {}) {
   const extra = [];
   if (filter.year) extra.push({ year: Number(filter.year) });
   if (filter.semester) extra.push({ semester: filter.semester });
+  if (filter.classification) extra.push({ classification: filter.classification });
+  if (filter.credits) extra.push({ credits: Number(filter.credits) });
+  
+  if (filter.startTime && filter.endTime) { //설정한 시간 안의 강의만 검색
+    const startMinute = timeToMinutes(filter.startTime);
+    const endMinute = timeToMinutes(filter.endTime);
+
+    if (endMinute <= startMinute) {
+      throw new Error('검색 종료 시간은 시작 시간보다 늦어야 합니다.');
+    }
+
+    extra.push({
+      schedules: {
+        $elemMatch: {
+          startMinute: { $gte: startMinute },
+          endMinute: { $lte: endMinute },
+        },
+      },
+    });
+  }
 
   const query = extra.length
     ? { $and: [baseQuery, ...extra] }
