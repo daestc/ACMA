@@ -78,4 +78,25 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-module.exports = { requireLogin, requireStaff, requireAdmin };
+// 세션의 일일 사용량을 오늘 날짜 기준으로 리셋 (자정 쿨타임)
+function refreshDailyUsage(req, res, next) {
+  if (!req.session?.user) return next();
+  const today = new Date().toISOString().slice(0, 10);
+  const u = req.session.user;
+
+  if (!u.dailyUsage) {
+    u.dailyUsage = {
+      quiz:    { count: 0, date: today },
+      summary: { count: 0, date: today },
+    };
+    return req.session.save(() => next());
+  }
+
+  let changed = false;
+  if (u.dailyUsage.quiz?.date    !== today) { u.dailyUsage.quiz    = { count: 0, date: today }; changed = true; }
+  if (u.dailyUsage.summary?.date !== today) { u.dailyUsage.summary = { count: 0, date: today }; changed = true; }
+  if (changed) return req.session.save(() => next());
+  next();
+}
+
+module.exports = { requireLogin, requireStaff, requireAdmin, refreshDailyUsage };

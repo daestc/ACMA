@@ -1,5 +1,5 @@
 // 자격증 서비스
-const axios = require('axios');
+const axios = npmrequire('axios');
 const Notice = require('../models/Notice'); 
 const dateCaculate = require('./dateCaculateService'); // 날짜 계산
 

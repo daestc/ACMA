@@ -11,6 +11,7 @@ const passport    = require('./config/passport');
 const connectDB   = require('./config/database');
 
 const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
+const { refreshDailyUsage } = require('./middleware/auth');
 
 // app 생성
 const app = express();
@@ -30,7 +31,8 @@ const alertRouter = require('./routes/alertRouter');
 const staffRouter = require('./routes/staffRouter');
 const adminRouter = require('./routes/adminRouter');
 const suggestionRouter = require('./routes/suggestionRouter');
-const specRouter = require('./routes/specRouter');
+const specRouter    = require('./routes/specRouter');
+const paymentRouter = require('./routes/paymentRouter');
 
 
 //DB 연결
@@ -59,6 +61,7 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(refreshDailyUsage);
 
 //라우터 등록
 // app.get('/', (req, res)=>{
@@ -78,7 +81,8 @@ app.use('/suggestions', suggestionRouter);
 app.use('/', alertRouter);
 app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);
-app.use('/spec', specRouter);
+app.use('/spec',    specRouter);
+app.use('/payment', paymentRouter);
 
 // 오류 처리 미들웨어
 app.use(notFoundHandler);

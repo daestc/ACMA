@@ -74,6 +74,15 @@ const UserSchema = new mongoose.Schema({
   major: { type: String, default: null, trim: true },
   // 재학 상태
   enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업'], default: '재학' },
+  // 구독 플랜
+  planType:     { type: String, enum: ['free', 'premium'], default: 'free' },
+  // 포인트 잔액 (원 단위)
+  pointBalance: { type: Number, default: 0, min: 0 },
+  // 일일 AI 기능 사용량
+  dailyUsage: {
+    quiz:    { count: { type: Number, default: 0 }, date: { type: String, default: '' } },
+    summary: { count: { type: Number, default: 0 }, date: { type: String, default: '' } },
+  },
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
   

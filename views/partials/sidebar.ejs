@@ -53,6 +53,44 @@
   </nav>
 
   <div class="sidebar-footer">
+    <div style="margin-bottom:10px;padding:11px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;">내 플랜</span>
+        <% if (user && user.planType === 'premium') { %>
+          <span style="font-size:11px;background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:20px;">프리미엄</span>
+        <% } else { %>
+          <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">무료</span>
+        <% } %>
+      </div>
+      <% if (user && user.planType !== 'premium') {
+        const today = new Date().toISOString().slice(0, 10);
+        const quizUsed = (user.dailyUsage?.quiz?.date === today) ? (user.dailyUsage.quiz.count || 0) : 0;
+        const sumUsed  = (user.dailyUsage?.summary?.date === today) ? (user.dailyUsage.summary.count || 0) : 0;
+        const quizPct  = Math.min(100, Math.round(quizUsed / 10 * 100));
+        const sumPct   = Math.min(100, Math.round(sumUsed  / 5  * 100));
+      %>
+        <div style="margin-bottom:5px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
+            <span>퀴즈</span><span style="color:var(--text1);font-weight:600;"><%= quizUsed %> / 10</span>
+          </div>
+          <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:<%= quizPct %>%;background:#534AB7;border-radius:2px;"></div>
+          </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
+            <span>요약</span><span style="color:var(--text1);font-weight:600;"><%= sumUsed %> / 5</span>
+          </div>
+          <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:<%= sumPct %>%;background:#1D9E75;border-radius:2px;"></div>
+          </div>
+        </div>
+        <a href="/payment" style="display:block;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text2);text-decoration:none;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">업그레이드 →</a>
+      <% } else if (user) { %>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5;">퀴즈 · 요약 무제한 이용 중</div>
+        <a href="/payment" style="display:block;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text2);text-decoration:none;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">플랜 관리</a>
+      <% } %>
+    </div>
     <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
   </div>
 </aside>

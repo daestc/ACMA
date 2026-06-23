@@ -38,16 +38,19 @@ exports.postLogin = async (req, res, next) => {
     req.session.regenerate((err) => {
       if (err) return next(err);
       req.session.user = {
-        id:       user._id,
-        name:     user.name,
-        email:    user.email,
-        studentId: user.studentId,
-        university: user.university,
-        major:    user.major,
-        university: user.university,
-        grade:    user.grade,
-        provider: user.provider,
-        role:     user.role || 'student',
+        id:               user._id,
+        name:             user.name,
+        email:            user.email,
+        studentId:        user.studentId,
+        university:       user.university,
+        major:            user.major,
+        grade:            user.grade,
+        provider:         user.provider,
+        role:             user.role || 'student',
+        enrollmentStatus: user.enrollmentStatus || '재학',
+        planType:         user.planType         || 'free',
+        pointBalance:     user.pointBalance     || 0,
+        dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
       };
       req.session.save((err) => {
         if (err) return next(err);
@@ -133,16 +136,19 @@ exports.postRegister = async (req, res) => {
     req.session.regenerate((err) => {
       if (err) return res.redirect('/auth/login');
       req.session.user = {
-        id:       user._id,
-        name:     user.name,
-        email:    user.email,
-        studentId: user.studentId,
-        university: user.university,
-        major:    user.major,
-        university: user.university,
-        grade:    user.grade,
-        provider: user.provider,
-        role:     user.role,
+        id:               user._id,
+        name:             user.name,
+        email:            user.email,
+        studentId:        user.studentId,
+        university:       user.university,
+        major:            user.major,
+        grade:            user.grade,
+        provider:         user.provider,
+        role:             user.role,
+        enrollmentStatus: user.enrollmentStatus || '재학',
+        planType:         user.planType         || 'free',
+        pointBalance:     user.pointBalance     || 0,
+        dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
       };
       // user.role: student(학생) 또는 staff(대학관계자) 추가
 
@@ -255,14 +261,19 @@ exports.oauthCallback = (provider) => {
       req.session.regenerate((regenErr) => {
         if (regenErr) return next(regenErr);
         req.session.user = {
-          id:       user._id,
-          name:     user.name,
-          email:    user.email,
-          major:    user.major,
-          university: user.university,
-          grade:    user.grade,
-          provider: user.provider,
-          role:     user.role || 'student',
+          id:               user._id,
+          name:             user.name,
+          email:            user.email,
+          studentId:        user.studentId,
+          university:       user.university,
+          major:            user.major,
+          grade:            user.grade,
+          provider:         user.provider,
+          role:             user.role || 'student',
+          enrollmentStatus: user.enrollmentStatus || '재학',
+          planType:         user.planType         || 'free',
+          pointBalance:     user.pointBalance     || 0,
+          dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
         };
         req.session.save((saveErr) => {
           if (saveErr) return next(saveErr);
