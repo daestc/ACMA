@@ -1,6 +1,7 @@
 // controller/notificationController.js
-const { fetchHomeNotices } = require('./noticeController'); // 🎯 아까 우리가 고친 싱싱한 공지 수집 함수 가져오기
+const { fetchHomeNotices } = require('./noticeController'); 
 const dateCaculate = require('../service/dateCaculateService');
+
 
 //  실시간 긴급 알림 목록 반환 (D-Day 당일 ~ 7일 전 전용 + 페이징)
 async function getNotifications(req, res) {
@@ -38,8 +39,14 @@ async function getNotifications(req, res) {
             });
         }
 
-        // d-day랑 d-7만 내보내기
-        myUrgentNotices = myUrgentNotices.filter(n => n.isUrgent === true);
+        // d-day~  d-7만 내보내기
+       myUrgentNotices = myUrgentNotices.filter(n => {
+            if (n.dDayText) {
+                const text = String(n.dDayText).trim();
+                return text === 'D-day' || (text.startsWith('D-') && parseInt(text.replace('D-', '')) <= 7);
+            }
+            return n.dDayText && !n.dDayText.includes('종료');
+        });
 
         //페이징 처리
         const page = parseInt(req.query.page) || 1;
@@ -54,9 +61,9 @@ async function getNotifications(req, res) {
 
         return res.json({
             success: true,
-            alerts: paginatedAlerts,
-            hasMore: hasMore,
-            totalCount: myUrgentNotices.length 
+            alerts: myUrgentNotices,
+            hasMore: endIndex < myUrgentNotices.length,
+            totalCount: myUrgentNotices.length
         });
 
     } catch (error) {
