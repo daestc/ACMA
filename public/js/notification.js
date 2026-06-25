@@ -5,7 +5,7 @@ let currentPage = 1;
 const itemsPerPage = 5; 
 let totalNotifPages = 1;
 
-// 1. 개별 알림 아이템 HTML 템플릿 생성
+//  개별 알림 아이템 HTML 템플릿 생성
 function createNotifItem(notice) {
   const badgeClass = notice.dDayBadgeClass || 'blue';
   let inlineBadgeStyle = 'color: #3b82f6; background: #dbeafe;'; // blue 기본
@@ -24,7 +24,7 @@ function createNotifItem(notice) {
   `;
 }
 
-// 2. 알림 패널 내부에 현재 페이지의 5개 아이템 덮어씌우기 렌더링
+// 알림 패널 내부에 현재 페이지의 5개 아이템 덮어씌우기 렌더링
 function renderNotifPage() {
   const notifListDiv = document.getElementById('dynamic-notif-list');
   const pageText = document.getElementById('notif-page-text');
@@ -49,7 +49,7 @@ function renderNotifPage() {
   if (nextBtn) nextBtn.disabled = (currentPage === totalNotifPages);
 }
 
-// 3. 미니 페이징 화살표 `<` `>` 클릭 핸들러
+// 미니 페이징 화살표 `<` `>` 클릭 핸들러
 window.moveNotifPage = function(direction) {
   const targetPage = currentPage + direction;
   if (targetPage >= 1 && targetPage <= totalNotifPages) {
@@ -58,7 +58,7 @@ window.moveNotifPage = function(direction) {
   }
 };
 
-// 4. 사용자가 알림 종 클릭 시 패널 토글 및 읽음 처리
+// 사용자가 알림 종 클릭 시 패널 토글 및 읽음 처리
 window.toggleNotifPanel = function() {
   const panel = document.getElementById('notif-panel');
   if (!panel) return;
@@ -75,15 +75,17 @@ window.toggleNotifPanel = function() {
   }
 };
 
-// 5. 페이지 로드 시 실시간 급박한 알림 데이터 가져오기 순서
+//  페이지 로드 시 실시간 급박한 알림 데이터 가져오기 순서
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const response = await fetch('/notice/urgent'); 
     const result = await response.json();
-    const rawAlerts = Array.isArray(result) ? result : [];
+    const rawAlerts = result.success && Array.isArray(result.alerts) ? result.alerts : [];
 
-    // 🎯 오늘 날짜 기준 유효한(지난 일정 제외) 알림 필터
-    allAlerts = rawAlerts.filter(a => a.Dday >= 0);
+    allAlerts = rawAlerts;
+
+    // 오늘 날짜 기준 유효한(지난 일정 제외) 알림 필터
+    const totalCount = result.totalCount || allAlerts.length;
     totalNotifPages = Math.ceil(allAlerts.length / itemsPerPage) || 1;
 
     const notifListDiv = document.getElementById('dynamic-notif-list');

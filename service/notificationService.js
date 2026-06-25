@@ -2,6 +2,7 @@
 const Notice = require('../models/Notice');            
 const CalendarEvent = require('../models/Calendar');    
 const Notification = require('../models/Notification'); 
+const careerService = require('./careerService');
 
 //읽지 않은 알림 목록 가져오기
 const getNotifications = async (userId) => {
@@ -64,6 +65,12 @@ const getBannerData = async (userId) => {
 
             matchNotices.forEach(notice => {
                 if (!notice.endDate) return; // 마감일이 없는 건 패스
+                if (notice.category === 'certification') {
+                    const noticeJmcd = notice.jmcd ? String(notice.jmcd).trim() : null;
+                    if (!noticeJmcd || !myTargetCertJmcds.includes(noticeJmcd)) {
+                        return; 
+                    }
+                }
                 
                 const noticeEnd = new Date(notice.endDate);
                 const endOfNoticeDay = new Date(noticeEnd.getFullYear(), noticeEnd.getMonth(), noticeEnd.getDate(), 0, 0, 0, 0);
@@ -72,10 +79,10 @@ const getBannerData = async (userId) => {
                 const diffTime = endOfNoticeDay.getTime() - startOfToday.getTime();
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // 오직 D-Day(0) 이거나 D-7(7) 일 때만 로직 실행
-                if (diffDays === 0 || diffDays === 7) {
+                // D-day ~ d-7  
+                if (diffDays >= 0 && diffDays <= 7) {
                     let icon = notice.category === 'certification' ? '🏆' : '💰';
-                    let dDayStr = diffDays === 0 ? 'D-day' : 'D-7';
+                    let dDayStr = diffDays === 0 ? 'D-day' : `D-${diffDays}`;
                     let alertMessage = "";
                     const rawTitle = notice.title; 
 
@@ -93,16 +100,16 @@ const getBannerData = async (userId) => {
                     
                         if (diffDays === 0) {
                             alertMessage = `오늘 ${certName} ${examType} 마감돼요!`;
-                        } else if (diffDays === 7) {
-                            alertMessage = `${certName} ${examType} 7일 남았어요!`;
+                        } else  {
+                            alertMessage = `${certName} ${examType} ${diffDays}일 남았어요!`;
                         }
                     } else { 
                         // 장학금 문자열 정제
                         let scholarshipName = rawTitle.replace(/(공고|신청|장학생|모집)/g, "").trim();
                         if (diffDays === 0) {
                             alertMessage = `오늘 ${scholarshipName} 신청 마감일이에요!`;
-                        } else if (diffDays === 7) {
-                            alertMessage = `${scholarshipName} 신청 마감까지 7일 남았어요!`;
+                        } else {
+                            alertMessage = `[${rawTitle}] 마감까지 ${diffDays}일 남았어요!`;
                         }
                     }
 

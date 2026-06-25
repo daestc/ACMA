@@ -5,6 +5,7 @@ const UniversitySchedule = require('../models/UniversitySchedule');
 const User = require('../models/User');
 const { buildStaffUniversityFilter, normalizeUniversity } = require('../services/lectureAdminService');
 
+// 유저 대학교 정보 식별 함수
 async function resolveUserUniversity(req) {
     const sessionUser = req.session?.user;
     if (!sessionUser?.id) return null;
@@ -59,6 +60,7 @@ function getUniversityScheduleDday(schedule) {
     };
 }
 
+// 카테고리 텍스트 및 배지 매핑
 function mapNoticeCategory(item) {
     let categoryName = '기타';
     let categoryBadgeClass = 'badge-gray';
@@ -72,13 +74,20 @@ function mapNoticeCategory(item) {
     } else if (item.category === 'academic') {
         categoryName = '학사일정';
         categoryBadgeClass = 'badge-blue';
+    } else if (item.category === 'recruit') {
+        categoryName = '채용/인턴';
+        categoryBadgeClass = 'badge-primary';
+    } else if (item.category === 'activity' || item.category === 'contest') {
+        categoryName = '공모전';
+        categoryBadgeClass = 'badge-warning';
     }
 
     return { categoryName, categoryBadgeClass };
 }
 
+// 개별 데이터 포맷 가공 팩토리
 function mapNoticeDoc(doc) {
-    const item = doc.toObject();
+    const item = typeof doc.toObject === 'function' ? doc.toObject() : doc;
     const diff = dateCaculate.getRemainingDays(item.endDate);
 
     let typeIcon = '📌';
@@ -103,7 +112,7 @@ function mapNoticeDoc(doc) {
     return {
         ...item,
         Dday: diff,
-        isUrgent: diff >= 0 && diff <= 50,
+        isUrgent: diff >= 0 && diff <= 7, // 🎯 실시간 알림과 호환되게 7일 범위로 정렬!
         dDayText: dateCaculate.formatDDayText(diff),
         dDayBadgeClass: diff === 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'),
         categoryName,
@@ -114,6 +123,7 @@ function mapNoticeDoc(doc) {
     };
 }
 
+// 🎯 [정리] 중복 정의 구문 싹 밀어버리고 하나로 멀끔하게 통합!
 async function fetchAllData(university) {
     const [dbNotices, universitySchedules] = await Promise.all([
         Notice.find({ isPublished: true }).sort({ endDate: 1 }),
@@ -143,7 +153,7 @@ function mapUniversityScheduleToNotice(schedule) {
         createdAt: schedule.createdAt,
         isUniversitySchedule: true,
         Dday: diff,
-        isUrgent: diff >= 0 && diff <= 50,
+        isUrgent: diff >= 0 && diff <= 7,
         dDayText,
         dDayBadgeClass,
         categoryName: '학사일정',
@@ -179,72 +189,7 @@ function sortNoticesByDate(notices) {
     });
 }
 
-// 공통 데이터 가져오기 (로그인 사용자의 소속 대학 학교 일정 포함)
-async function fetchAllData(university) {
-    const [dbNotices, universitySchedules] = await Promise.all([
-        Notice.find({ isPublished: true }).sort({ endDate: 1 }),
-        getUniversitySchedulesForNotice(university),
-    ]);
-
-    const mappedNotices = dbNotices
-        .map(mapNoticeDoc)
-        .filter((n) => n.Dday !== null && n.Dday >= 0);
-
-    return sortNoticesByDate([...mappedNotices, ...universitySchedules]);
-        let typeIcon = '📌';
-        let typeColor = 'var(--accent-bg)';
-        
-        if (item.title && item.title.includes('원서접수')) {
-            typeIcon = '📝';
-            typeColor = '#e0f2fe';
-        } else if (item.title && item.title.includes('시험')) {
-            typeIcon = '✍️';
-            typeColor = '#fef3c7'; 
-        } else if (item.title && item.title.includes('결과발표')) {
-            typeIcon = '📢';
-            typeColor = '#dcfce7'; 
-        }
-
-        let categoryName = '기타';
-        let categoryBadgeClass = 'badge-gray';
-
-        if (item.category === 'certification') {
-            categoryName = '자격증';
-            categoryBadgeClass = 'badge-purple';
-        } else if (item.category === 'scholarship') {
-            categoryName = '장학금';
-            categoryBadgeClass = 'badge-success';
-        } else if (item.category === 'academic') {
-            categoryName = '학사일정';
-            categoryBadgeClass = 'badge-info';
-        } else if (item.category === 'recruit') {
-            categoryName = '채용/인턴';
-            categoryBadgeClass = 'badge-primary';
-        } else if (item.category === 'activity') {
-            categoryName = '공모전';
-            categoryBadgeClass = 'badge-warning';
-        }
-
-        const formattedDate = item.createdAt 
-            ? new Date(item.createdAt).toISOString().split('T')[0] 
-            : '';
-        
-        return { 
-            ...item,
-            Dday: diff,
-            isUrgent: diff >= 0 && diff <= 7,
-            dDayText: dateCaculate.formatDDayText(diff),
-            dDayBadgeClass: diff === 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'), 
-            categoryName,
-            icon: typeIcon,
-            iconBgColor: typeColor,
-            categoryBadgeClass,
-            formattedDate
-        };
-}
-
-
-// 전체 가공 공지를 가져갈 수 있도록 열어둠
+// 외부(알림창 서비스 등)에서 전체 가공 공지를 가져갈 수 있도록 개방
 async function fetchHomeNotices(university) {
     try {
         return await fetchAllData(university);
@@ -254,12 +199,16 @@ async function fetchHomeNotices(university) {
     }
 }
 
-
-// 공지사항 메인 페이지 렌더링 
+//공지사항 
 async function getNoticePage(req, res) {
     try {
         const user = req.session?.user || null;
         const university = await resolveUserUniversity(req);
+
+        let categoryFilter = req.query.category || '';
+        if (Array.isArray(categoryFilter)) {
+            categoryFilter = categoryFilter[0]; 
+        }
 
         let showNotice = await fetchAllData(university);
         const urgentNotices = showNotice.filter(n => n.isUrgent == true);
@@ -291,8 +240,7 @@ async function getNoticePage(req, res) {
             });
         }
 
-        // 카테고리 탭 선택 필터링
-        const categoryFilter = req.query.category || '';
+        // 카테고리 탭 선택 필터링 
         if (categoryFilter) {
             showNotice = showNotice.filter(n => {
                 const queryClean = String(categoryFilter).trim();
@@ -322,18 +270,15 @@ async function getNoticePage(req, res) {
         res.render('pages/notice', {
             user,
             notices: paginatedNotices,
-            urdentNotices: urgentNotices, // 탑바나 알림 배너용 긴급공지
+            urdentNotices: urgentNotices, 
             pageTitle: '공지사항',
-            currentPageNum: page, 
+            currentPageNum: safePage,
             totalPages: totalPages,
             startPage: startPage,
             endPage: endPage,
             hasPrev: hasPrev,
             hasNext: hasNext,
-            categoryFilter: categoryFilter,
-            currentPageNum: safePage,
-            totalPages,
-            categoryFilter,
+            categoryFilter: categoryFilter
         });
         
     } catch (error) {
