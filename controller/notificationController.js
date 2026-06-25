@@ -7,6 +7,7 @@ const dateCaculate = require('../service/dateCaculateService');
 async function getNotifications(req, res) {
     try {
      
+     
         const allFreshNotices = await fetchHomeNotices();
         const loggedInUser = req.user || req.session?.user;
         let myUrgentNotices = allFreshNotices;
