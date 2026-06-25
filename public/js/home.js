@@ -269,6 +269,9 @@ async function addTodoItem() {
     // 모달에서 사용할 todo 항목 복사
     const itemModal = itemHome.cloneNode(true);
 
+    const modalCheckBox = itemModal.querySelector('.check-box');
+    modalCheckBox.classList.add('delete-todo');
+
     // 마지막 자식 앞에 추가
     list.insertBefore(itemHome, list.lastElementChild);
     todoDList.appendChild(itemModal);
