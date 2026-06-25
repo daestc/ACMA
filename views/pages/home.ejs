@@ -48,6 +48,7 @@
         <div class="dday-card green"><div class="dday-label">수강신청</div><div class="dday-title">2026-1 수강신청</div><div class="dday-count">D-38</div></div>
       </div>
 
+      <!--오늘의 강의 & 할일-->
       <div class="grid-2" style="margin-bottom:16px;">
         <div class="card">
           <div class="card-header">
@@ -57,10 +58,10 @@
             <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
             <button class="tab-btn" onclick="switchHomeTodo('todo',this)">할 일</button>
           </div>
-          <div id="ht-lecture">
-            <div class="check-item"><div class="check-box checked" onclick="toggleCheck(this)">✓</div><span class="check-text done">자료구조 (09:00 ~ 10:30)</span><span class="check-time">완료</span></div>
-            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">알고리즘 (13:00 ~ 14:30)</span><span class="check-time">진행중</span></div>
-            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><span class="check-text">운영체제 (15:00 ~ 16:30)</span><span class="check-time">예정</span></div>
+          <div id="ht-lecture"> 
+            <div class="check-item">
+              <span class="check-text">오늘의 강의 불러오는 중...</span>
+            </div>
           </div>
           <div id="ht-todo" style="display:none;">
             <% if(!todoList || todoList.length === 0) { %>
