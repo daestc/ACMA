@@ -19,7 +19,6 @@ function mapUniversityScheduleToEvent(schedule) {
     endDate: schedule.endDate || schedule.startDate,
     isAllDay: true,
     category: 'notice',
-    isDday: false,
     color: UNIVERSITY_EVENT_COLOR,
     isDeleted: false,
     isUniversityEvent: true,
@@ -57,6 +56,7 @@ async function getEventsListByUser(userId, university) {
 };
 
 //일정생성
+
 async function createNewEvent(userId, eventData) {
 
     validateEventData(eventData);//도메인 검증 함수
@@ -69,7 +69,6 @@ async function createNewEvent(userId, eventData) {
         endDate: eventData.endDate || eventData.startDate,
         isAllDay: eventData.isAllDay ?? true,
         category: eventData.category || 'personal',
-        isDday: eventData.isDday ?? false,
         color: eventData.color || '#3B82F6',
     });
     return newEvent;
@@ -86,7 +85,6 @@ async function updateEvent(userId, eventId, updateData) {
         endDate: updateData.endDate || updateData.startDate,
         isAllDay: updateData.isAllDay ?? true,
         category: updateData.category || 'personal',
-        isDday: updateData.isDday ?? false,
         color: updateData.color || '#3B82F6',
     };
 

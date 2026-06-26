@@ -235,7 +235,6 @@ function setEventFormReadOnly(readOnly) {
     'event-start-time',
     'event-end-time',
     'event-all-day',
-    'event-dday',
     'event-category',
     'event-color',
   ];
@@ -261,7 +260,6 @@ function openUniversityEventDetail(event) {
   document.getElementById('event-category').value = event.category || 'notice';
   document.getElementById('event-color').value = event.color || '#F59E0B';
   document.getElementById('event-all-day').checked = true;
-  document.getElementById('event-dday').checked = false;
   document.getElementById('event-start-time').value = '';
   document.getElementById('event-end-time').value = '';
 
@@ -295,8 +293,7 @@ async function createEvent(e) {
     endDate: endDateTime,
     category: document.getElementById('event-category').value,
     color: document.getElementById('event-color').value,
-    isAllDay: isAllDay,
-    isDday: document.getElementById('event-dday').checked
+    isAllDay: isAllDay
   };
 
   const url = eventId ? `/calendar/events/${eventId}` : '/calendar/events';
@@ -438,13 +435,11 @@ function openEventDetail(eventId) {
   document.getElementById('event-category').value = event.category || 'personal';
   document.getElementById('event-color').value = event.color || '#3B82F6';
   document.getElementById('event-all-day').checked = event.isAllDay ?? true;
-  document.getElementById('event-dday').checked = event.isDday ?? false;
 
   document.getElementById('delete-event-btn').style.display = 'inline-block';
   document.getElementById('event-modal').style.display = 'flex';
 
   document.getElementById('event-all-day').checked = event.isAllDay ?? true;
-  document.getElementById('event-dday').checked = event.isDday ?? false;
 
   if (!event.isAllDay) {
     document.getElementById('event-start-time').value = toInputTime(event.startDate);
@@ -500,7 +495,6 @@ function closeEventModal() {
   document.getElementById('delete-event-btn').style.display = 'none';
 
   document.getElementById('event-all-day').checked = true;
-  document.getElementById('event-dday').checked = false;
   document.getElementById('event-start-time').value = '';
   document.getElementById('event-end-time').value = '';
   toggleTimeFields();
