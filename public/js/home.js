@@ -8,7 +8,10 @@ let selectedHabitId = null; // 현재 수정 중인 습관 id
 let pendingChanges = {}; // habitList에서 변경된 값만 모아두기
 
 // 페이지 로드 시 진행률 초기화
-document.addEventListener('DOMContentLoaded', updateHabitSummary);
+document.addEventListener('DOMContentLoaded', () => {
+  updateHabitSummary();
+  loadTodayLectures();
+});
 
 // 페이지 이탈시 isCompleted 수정 사항 DB 반영
 document.addEventListener('visibilitychange', function() {
@@ -41,6 +44,116 @@ function switchHomeTodo(tab, btn) {
 
   btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+// ── 오늘의 강의 불러오기 ────────────────────
+async function loadTodayLectures() { 
+  const lectureBox = document.getElementById('ht-lecture');
+  if(!lectureBox) {
+    console.log('오늘의 강의 실패');
+    return;
+  }
+
+  try {
+    const res = await fetch('/calendar/timetables');
+
+    if (!res.ok) {
+      lectureBox.innerHTML = `
+        <div class="check-item">
+          <span class="check-text">오늘의 강의를 불러오지 못했습니다.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const timetables = await res.json(); //불러온 db json변환
+
+    const today = new Date();
+    const todayDayOfWeek = today.getDay();
+
+    const todayLectures = []; //오늘 강의를 담을 변수
+
+    timetables.forEach(item => { //오늘 강의 추출
+      if (!isTodayInSemester(today, item.semester)) return;
+
+      (item.schedule || []).forEach(sch => {
+        if(Number(sch.dayOfWeek) !== todayDayOfWeek) return;
+
+        todayLectures.push({
+          title: item.title,
+          location: item.location,
+          professorName: item.professorName,
+          startTime: sch.startTime,
+          endTime: sch.endTime,
+          color: item.color || '#60A5FA'
+        });
+      });
+    });
+
+    todayLectures.sort((a,b) => a.startTime.localeCompare(b.startTime)); //정렬
+
+    if (todayLectures.length === 0) { //오늘 강의가 없는경우
+      lectureBox.innerHTML = `
+        <div class="check-item">
+          <span class="check-text">오늘 등록된 강의가 없습니다.</span>
+        </div>
+      `;
+      return;
+    }
+
+    lectureBox.innerHTML = todayLectures.map(lecture => `
+      <div class="check-item home-lecture-item">
+        <span class="selected-event-dot" style="background:${lecture.color}"></span>
+        <span class="check-text">
+          ${escapeHtml(lecture.title)}
+          <small style="display:block;color:var(--text2);margin-top:2px;">
+            ${escapeHtml(lecture.location || '장소 미정')}
+            ${lecture.professorName ? ` · ${escapeHtml(lecture.professorName)}` : ''}
+          </small>
+        </span>
+        <span class="check-time">${lecture.startTime} ~ ${lecture.endTime}</span>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    lectureBox.innerHTML = `
+      <div class="check-item">
+        <span class="check-text">오늘의 강의를 불러오지 못했습니다.</span>
+      </div>
+    `;
+  }
+}
+
+// ── 현재 학기 계산  ────────────────────
+function isTodayInSemester(date, semester) {
+  if (!semester) return true;
+
+  const match = String(semester).match(/^(\d{4})-([12])$/);
+  if (!match) return true;
+
+  const year = Number(match[1]);
+  const term = Number(match[2]);
+
+  let start;
+  let end;
+
+  if (term === 1) {
+    start = new Date(year, 2, 1);
+    end = new Date(year, 5, 30, 23, 59, 59);
+  } else {
+    start = new Date(year, 8, 1);
+    end = new Date(year, 11, 31, 23, 59, 59);
+  }
+
+  return date >= start && date <= end;
+}
+
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── 모달 열기 / 닫기 ─────────────────────────────
@@ -155,6 +268,9 @@ async function addTodoItem() {
 
     // 모달에서 사용할 todo 항목 복사
     const itemModal = itemHome.cloneNode(true);
+
+    const modalCheckBox = itemModal.querySelector('.check-box');
+    modalCheckBox.classList.add('delete-todo');
 
     // 마지막 자식 앞에 추가
     list.insertBefore(itemHome, list.lastElementChild);
