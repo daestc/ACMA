@@ -76,6 +76,30 @@
     <div id="lecture-search-enabled">
       <div class="lecture-search-controls">
         <input type="text" id="lecture-keyword" placeholder="강의명 검색">
+        
+        <select id="lecture-classification">
+          <option value="">이수구분 전체</option>
+          <option value="전필">전필</option>
+          <option value="전선">전선</option>
+          <option value="교필">교필</option>
+          <option value="교선">교선</option>
+        </select>
+
+        <select id="lecture-credits">
+          <option value="">학점 전체</option>
+          <option value="1">1학점</option>
+          <option value="2">2학점</option>
+          <option value="3">3학점</option>
+        </select>
+
+        <select id="lecture-start-time">
+          <option value="">시작 시간</option>
+        </select>
+
+        <select id="lecture-end-time">
+          <option value="">끝 시간</option>
+        </select>
+
         <button type="button" id="search-lecture-btn" class="btn btn-sm">검색</button>
       </div>
 

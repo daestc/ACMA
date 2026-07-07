@@ -21,7 +21,6 @@ function mapUniversityScheduleToEvent(schedule) {
     endDate: schedule.endDate || schedule.startDate,
     isAllDay: true,
     category: 'notice',
-    isDday: false,
     color: UNIVERSITY_EVENT_COLOR,
     isDeleted: false,
     isUniversityEvent: true,
@@ -59,6 +58,7 @@ async function getEventsListByUser(userId, university) {
 };
 
 //일정생성
+
 async function createNewEvent(userId, eventData) {
 
     validateEventData(eventData);//도메인 검증 함수
@@ -71,7 +71,6 @@ async function createNewEvent(userId, eventData) {
         endDate: eventData.endDate || eventData.startDate,
         isAllDay: eventData.isAllDay ?? true,
         category: eventData.category || 'personal',
-        isDday: eventData.isDday ?? false,
         color: eventData.color || '#3B82F6',
     });
     return newEvent;
@@ -88,7 +87,6 @@ async function updateEvent(userId, eventId, updateData) {
         endDate: updateData.endDate || updateData.startDate,
         isAllDay: updateData.isAllDay ?? true,
         category: updateData.category || 'personal',
-        isDday: updateData.isDday ?? false,
         color: updateData.color || '#3B82F6',
     };
 
@@ -257,6 +255,26 @@ async function getLectureList(filter = {}) {
   const extra = [];
   if (filter.year) extra.push({ year: Number(filter.year) });
   if (filter.semester) extra.push({ semester: filter.semester });
+  if (filter.classification) extra.push({ classification: filter.classification });
+  if (filter.credits) extra.push({ credits: Number(filter.credits) });
+  
+  if (filter.startTime && filter.endTime) { //설정한 시간 안의 강의만 검색
+    const startMinute = timeToMinutes(filter.startTime);
+    const endMinute = timeToMinutes(filter.endTime);
+
+    if (endMinute <= startMinute) {
+      throw new Error('검색 종료 시간은 시작 시간보다 늦어야 합니다.');
+    }
+
+    extra.push({
+      schedules: {
+        $elemMatch: {
+          startMinute: { $gte: startMinute },
+          endMinute: { $lte: endMinute },
+        },
+      },
+    });
+  }
 
   const query = extra.length
     ? { $and: [baseQuery, ...extra] }
