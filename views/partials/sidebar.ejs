@@ -4,56 +4,81 @@
   <%- include('./sidebar-staff', { currentPage, user }) %>
 <% } else { %>
 
-<aside class="sidebar" id="app-sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-header-left">
-      <div class="s-logo">A</div>
-      <span class="s-logo-text">AcadMe</span>
-    </div>
-    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+<aside class="sidebar" id="app-sidebar" style="width:52px"
+       onmouseenter="sbExpand()" onmouseleave="sbCollapse()">
+
+  <!-- 로고 -->
+  <div class="sb-logo-row">
+    <div class="s-logo">A</div>
+    <span class="s-logo-text">AcadMe</span>
   </div>
 
-  <div class="sidebar-user">
-    <div class="user-info">
-      <div class="user-avatar"><%= user ? user.name[0] : '' %></div>
-      <div>
-        <div class="user-name"><%= user ? user.name : '' %></div>
-        <div class="user-role"><%= user ? user.major : '' %></div>
-      </div>
-    </div>
-  </div>
+  <!-- nav -->
+  <div class="sb-scroll">
 
-  <nav class="sidebar-nav">
-    <div class="nav-section">
-      <div class="nav-label">메인</div>
-      <a href="/home"     class="nav-item <%= currentPage === 'home'     ? 'active' : '' %>"><span class="nav-icon">🏠</span>홈</a>
-      <a href="/calendar" class="nav-item <%= currentPage === 'calendar' ? 'active' : '' %>"><span class="nav-icon">📅</span>캘린더</a>
-      <a href="/mystatus" class="nav-item <%= currentPage === 'mystatus' ? 'active' : '' %>"><span class="nav-icon">⭐</span>MyStatus</a>
+    <!-- 메인 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">🏠</span>
+      <span class="sb-cat-name">메인</span>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">학업</div>
-      <a href="/notice"   class="nav-item <%= currentPage === 'notice'   ? 'active' : '' %>">
-        <span class="nav-icon">📢</span>공지사항
-      </a>
-      <a href="/academic" class="nav-item <%= currentPage === 'academic' ? 'active' : '' %>"><span class="nav-icon">🎓</span>학사관리</a>
-      <a href="/study"    class="nav-item <%= currentPage === 'study'    ? 'active' : '' %>"><span class="nav-icon">📖</span>공부</a>
-      <a href="/suggestions" class="nav-item <%= currentPage === 'suggestions' ? 'active' : '' %>"><span class="nav-icon">💬</span>건의 게시판</a>
+    <div class="sb-sub-list">
+      <a href="/home"     class="sb-mi <%= currentPage==='home'     ?'active':'' %>"><span class="sb-mi-dot"></span>홈</a>
+      <a href="/calendar" class="sb-mi <%= currentPage==='calendar' ?'active':'' %>"><span class="sb-mi-dot"></span>캘린더</a>
+      <a href="/mystatus" class="sb-mi <%= currentPage==='mystatus' ?'active':'' %>"><span class="sb-mi-dot"></span>MyStatus</a>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">진로</div>
-      <a href="/career"   class="nav-item <%= currentPage === 'career'   ? 'active' : '' %>"><span class="nav-icon">💼</span>진로정보</a>
+    <div class="sb-divider"></div>
+
+    <!-- 학업 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">📚</span>
+      <span class="sb-cat-name">학업</span>
     </div>
+    <div class="sb-sub-list">
+      <a href="/notice"      class="sb-mi <%= currentPage==='notice'      ?'active':'' %>"><span class="sb-mi-dot"></span>공지사항</a>
+      <a href="/academic"    class="sb-mi <%= currentPage==='academic'    ?'active':'' %>"><span class="sb-mi-dot"></span>학사관리</a>
+      <a href="/study"       class="sb-mi <%= currentPage==='study'       ?'active':'' %>"><span class="sb-mi-dot"></span>공부</a>
+      <a href="/suggestions" class="sb-mi <%= currentPage==='suggestions' ?'active':'' %>"><span class="sb-mi-dot"></span>건의 게시판</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 진로 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">💼</span>
+      <span class="sb-cat-name">진로</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/career" class="sb-mi <%= currentPage==='career' ?'active':'' %>"><span class="sb-mi-dot"></span>진로정보</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 플랜 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">💳</span>
+      <span class="sb-cat-name">플랜</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/payment" class="sb-mi <%= currentPage==='payment' ?'active':'' %>"><span class="sb-mi-dot"></span>구독 플랜</a>
+    </div>
+
     <% if (user && user.role === 'admin') { %>
-    <div class="nav-section">
-      <div class="nav-label">관리</div>
-      <a href="/admin/staff" class="nav-item <%= currentPage === 'adminStaff' ? 'active' : '' %>"><span class="nav-icon">✅</span>가입 승인</a>
-      <a href="/admin/adminStatistics" class="nav-item <%= currentPage === 'adminStatistics' ? 'active' : '' %>"><span class="nav-icon">📊</span>통계</a>
+    <div class="sb-divider"></div>
+    <!-- 관리 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">⚙️</span>
+      <span class="sb-cat-name">관리</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/admin/users"           class="sb-mi <%= currentPage==='adminUsers'      ?'active':'' %>"><span class="sb-mi-dot"></span>사용자 관리</a>
+      <a href="/admin/staff"           class="sb-mi <%= currentPage==='adminStaff'      ?'active':'' %>"><span class="sb-mi-dot"></span>가입 승인</a>
+      <a href="/admin/adminStatistics" class="sb-mi <%= currentPage==='adminStatistics' ?'active':'' %>"><span class="sb-mi-dot"></span>통계</a>
     </div>
     <% } %>
-  </nav>
 
+  </div>
+
+  <!-- 하단 플랜 + 로그아웃 -->
   <div class="sidebar-footer">
-    <div style="margin-bottom:10px;padding:11px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;">
+    <div class="sb-plan-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:12px;font-weight:600;">내 플랜</span>
         <% if (user && user.planType === 'premium') { %>
@@ -85,14 +110,15 @@
             <div style="height:100%;width:<%= sumPct %>%;background:#1D9E75;border-radius:2px;"></div>
           </div>
         </div>
-        <a href="/payment" style="display:block;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text2);text-decoration:none;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">업그레이드 →</a>
+        <a href="/payment" class="sb-upgrade-link">업그레이드 →</a>
       <% } else if (user) { %>
         <div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5;">퀴즈 · 요약 무제한 이용 중</div>
-        <a href="/payment" style="display:block;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text2);text-decoration:none;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">플랜 관리</a>
+        <a href="/payment" class="sb-upgrade-link">플랜 관리</a>
       <% } %>
     </div>
-    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
+    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span><span class="sb-item-label">로그아웃</span></div>
   </div>
+
 </aside>
 
 <% } %>

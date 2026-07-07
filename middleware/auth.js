@@ -14,6 +14,11 @@ function requireLogin(req, res, next) {
     res.redirect('/auth/login?expired=1');
     return;
   }
+  if (req.session.user.accountStatus === 'suspended') {
+    req.session.destroy(() => {});
+    res.redirect('/auth/login?suspended=1');
+    return;
+  }
   req.user = req.session.user;
   next();
 }
@@ -31,6 +36,11 @@ async function requireStaff(req, res, next) {
   try {
     const user = await User.findById(req.session.user.id).lean();
     if (!user) return res.redirect('/auth/login?expired=1');
+
+    if (user.accountStatus === 'suspended') {
+      req.session.destroy(() => {});
+      return res.redirect('/auth/login?suspended=1');
+    }
 
     if (user.role === 'staff' && user.staffStatus === 'approved') {
       if (!user.university?.trim()) {
@@ -70,6 +80,10 @@ async function requireAdmin(req, res, next) {
     const user = await User.findById(req.session.user.id).lean();
     if (!user || user.role !== 'admin') {
       return res.redirect('/home');
+    }
+    if (user.accountStatus === 'suspended') {
+      req.session.destroy(() => {});
+      return res.redirect('/auth/login?suspended=1');
     }
     req.user = { ...req.session.user, role: user.role };
     next();

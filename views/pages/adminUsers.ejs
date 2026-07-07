@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title>사용자 관리</title>
+</head>
+<body>
+
+<%- include('../partials/sidebar', { currentPage: 'adminUsers', user }) %>
+
+<main class="main-content">
+  <%- include('../partials/topbar', { pageTitle: '사용자 관리', user }) %>
+
+  <div class="page-content">
+
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">사용자 관리</h2>
+      <p style="font-size:14px;color:var(--text2);">전체 학교 · 관리자 및 학생 계정 현황</p>
+    </div>
+
+    <!-- 통계 카드 -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">등록 학교</div>
+        <div style="font-size:24px;font-weight:700;"><%= stats.univCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">개교</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">학교관리자</div>
+        <div style="font-size:24px;font-weight:700;color:#534AB7;"><%= stats.staffCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">전체 학생</div>
+        <div style="font-size:24px;font-weight:700;"><%= stats.studentCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">현재 접속 중</div>
+        <div style="font-size:24px;font-weight:700;color:#1D9E75;"><%= stats.onlineCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+    </div>
+
+    <!-- 학교 탭 (가로 스크롤) -->
+    <div style="overflow-x:auto;padding-bottom:4px;margin-bottom:20px;scrollbar-width:none;">
+      <div id="school-tabs" style="display:flex;gap:8px;min-width:max-content;">
+        <% universities.forEach((univ, i) => {
+          const sc = staffList.filter(s => s.university === univ).length;
+          const uc = studentList.filter(s => s.university === univ).length;
+        %>
+        <button onclick="selectUniv(this,'<%= univ %>')"
+          class="stab <%= i===0 ? 'active-stab' : '' %>"
+          data-univ="<%= univ %>">
+          <%= univ %><span style="font-size:11px;margin-left:6px;opacity:.65;">학생 <%= uc %>명</span>
+        </button>
+        <% }) %>
+        <% if (studentList.filter(s => !s.university).length > 0) { %>
+        <button onclick="selectUniv(this,'__none__')" class="stab" data-univ="__none__">
+          미분류<span style="font-size:11px;margin-left:6px;opacity:.65;color:#B45309;">⚠</span>
+        </button>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- 학교별 본문 -->
+    <% universities.forEach((univ, i) => {
+      const univStaff    = staffList.filter(s => s.university === univ);
+      const univStudents = studentList.filter(s => s.university === univ);
+      const onlineCnt    = [...univStaff, ...univStudents].filter(u => u.isOnline).length;
+    %>
+    <div class="school-section" data-univ="<%= univ %>" style="display:<%= i===0 ? 'block' : 'none' %>;">
+
+      <!-- 학교 헤더 -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#3C3489;flex-shrink:0;"><%= univ[0] %></div>
+        <div>
+          <div style="font-size:16px;font-weight:700;"><%= univ %></div>
+          <div style="font-size:13px;color:var(--text2);">학생 <%= univStudents.length %>명 · 현재 접속 <%= onlineCnt %>명 · 관리자 <%= univStaff.length %>명</div>
+        </div>
+      </div>
+
+      <!-- 학교관리자 섹션 -->
+      <% if (univStaff.length > 0) { %>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">학교관리자</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <% univStaff.forEach(st => {
+            const lastLogin = st.lastLoginAt ? new Date(st.lastLoginAt).toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-';
+          %>
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:<%= st.isOnline ? '#1D9E75' : '#94a3b8' %>;flex-shrink:0;"></span>
+            <div style="width:34px;height:34px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3C3489;flex-shrink:0;"><%= st.name[0] %></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;"><%= st.name %></div>
+              <div style="font-size:12px;color:var(--text2);"><%= st.email %></div>
+            </div>
+            <% if (st.isOnline) { %>
+              <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;flex-shrink:0;">접속 중</span>
+            <% } else { %>
+              <span style="font-size:11px;color:var(--text2);flex-shrink:0;"><%= lastLogin %></span>
+            <% } %>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="openModal('<%= st._id %>','staff')" class="au-btn-warn">관리자 해제</button>
+              <button onclick="openModal('<%= st._id %>','staff')" class="au-btn-danger">삭제</button>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- 일반사용자(학생) 섹션 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.07em;text-transform:uppercase;">일반사용자</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="setFilter(this,'<%= univ %>','all')"     class="au-fchip active-fchip" data-f="all">전체</button>
+            <button onclick="setFilter(this,'<%= univ %>','online')"  class="au-fchip" data-f="online">접속 중</button>
+            <button onclick="setFilter(this,'<%= univ %>','suspended')" class="au-fchip" data-f="suspended">정지</button>
+            <button onclick="setFilter(this,'<%= univ %>','dormant')" class="au-fchip" data-f="dormant">휴면</button>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:var(--bg3);">
+                <th style="width:42px;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">접속</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">이름</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">전공</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">학번</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">상태</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">마지막 접속</th>
+              </tr>
+            </thead>
+            <tbody class="student-tbody" data-univ="<%= univ %>">
+              <% univStudents.forEach(s => {
+                const lastLogin = s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-';
+              %>
+              <tr class="au-srow"
+                data-status="<%= s.isOnline ? 'online' : (s.accountStatus || 'active') %>"
+                style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;"
+                onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"
+                onclick="openModal('<%= s._id %>','student')">
+                <td style="padding:10px 12px;">
+                  <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<%= s.isOnline ? '#1D9E75' : '#94a3b8' %>;"></span>
+                </td>
+                <td style="padding:10px 12px;font-weight:600;color:#534AB7;"><%= s.name %></td>
+                <td style="padding:10px 12px;color:var(--text1);"><%= s.major || '-' %></td>
+                <td style="padding:10px 12px;color:var(--text2);"><%= s.studentId || '-' %></td>
+                <td style="padding:10px 12px;">
+                  <% const st = s.accountStatus || 'active';
+                     const stMap = {active:'정상',dormant:'휴면',suspended:'정지'};
+                     const stStyle = {active:'background:#F1F5F9;color:#475569;',dormant:'background:#FEF3C7;color:#92400E;',suspended:'background:#FEE2E2;color:#991B1B;'};
+                  %>
+                  <span style="font-size:11px;<%= stStyle[st] %>padding:2px 8px;border-radius:20px;"><%= stMap[st] %></span>
+                </td>
+                <td style="padding:10px 12px;font-size:12px;">
+                  <% if (s.isOnline) { %>
+                    <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">접속 중</span>
+                  <% } else { %>
+                    <span style="color:var(--text2);"><%= lastLogin %></span>
+                  <% } %>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (univStudents.length === 0) { %>
+              <tr><td colspan="6" style="padding:32px;text-align:center;color:var(--text2);">등록된 학생이 없습니다.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <% }) %>
+
+    <!-- 미분류 섹션 -->
+    <% const noneStudents = studentList.filter(s => !s.university); %>
+    <% if (noneStudents.length > 0) { %>
+    <div class="school-section" data-univ="__none__" style="display:none;">
+      <div style="padding:12px 16px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:12px;margin-bottom:16px;font-size:13px;color:#92400E;">
+        소속 대학교 정보가 없는 계정입니다. 확인 후 삭제하거나 학교관리자로 역할 변경 시 대학교 정보를 먼저 설정해야 합니다.
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:var(--bg3);">
+            <th style="width:42px;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">접속</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">이름</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">이메일</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">상태</th>
+          </tr></thead>
+          <tbody>
+            <% noneStudents.forEach(s => { %>
+            <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''" onclick="openModal('<%= s._id %>','student')">
+              <td style="padding:10px 12px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<%= s.isOnline ? '#1D9E75' : '#94a3b8' %>;"></span></td>
+              <td style="padding:10px 12px;font-weight:600;color:#534AB7;"><%= s.name %></td>
+              <td style="padding:10px 12px;color:var(--text2);"><%= s.email %></td>
+              <td style="padding:10px 12px;"><span style="font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:20px;">미분류</span></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% } %>
+
+  </div>
+</main>
+
+<!-- 사용자 상세 모달 -->
+<div id="au-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.5);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;">
+
+    <!-- 모달 헤더 -->
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:10;border-radius:20px 20px 0 0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="au-avatar" style="width:42px;height:42px;border-radius:50%;background:#EEEDFE;color:#3C3489;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;"></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="au-name" style="font-size:16px;font-weight:700;"></span>
+            <span id="au-role-badge" style="font-size:11px;padding:2px 8px;border-radius:20px;"></span>
+            <span id="au-online-badge" style="display:none;font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">접속 중</span>
+          </div>
+          <div id="au-meta" style="font-size:13px;color:var(--text2);margin-top:2px;"></div>
+        </div>
+      </div>
+      <button onclick="closeModal()" style="width:32px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:16px;color:var(--text2);">✕</button>
+    </div>
+
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
+
+      <!-- 기본 정보 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">계정 상태</div>
+          <div id="au-status" style="font-size:14px;font-weight:600;"></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">재학 상태</div>
+          <div id="au-enroll" style="font-size:14px;font-weight:600;"></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">마지막 접속</div>
+          <div id="au-lastlogin" style="font-size:13px;font-weight:600;"></div>
+        </div>
+      </div>
+
+      <!-- 접속 기록 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">최근 접속 기록</div>
+        <div id="au-history" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;"></div>
+      </div>
+
+      <!-- 역할 변경 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">역할 변경</div>
+        <div id="au-role-section" style="display:flex;gap:8px;">
+          <button id="btn-to-staff"   onclick="changeRole('staff')"   style="display:none;flex:1;height:38px;border-radius:10px;border:1px solid #AFA9EC;background:#EEEDFE;color:#3C3489;font-size:13px;cursor:pointer;">학교관리자로 승격</button>
+          <button id="btn-to-student" onclick="changeRole('student')" style="display:none;flex:1;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:13px;cursor:pointer;">일반사용자로 변경</button>
+        </div>
+      </div>
+
+      <!-- 계정 관리 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">계정 관리</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="handleStatus('dormant')"   class="au-action-btn au-warn-btn">🌙 휴면 처리</button>
+          <button onclick="handleStatus('suspended')" class="au-action-btn au-danger-btn">🚫 계정 정지</button>
+          <button onclick="handleStatus('active')"    class="au-action-btn">✅ 정상 복구</button>
+          <button onclick="handleResetPw()"           class="au-action-btn">🔑 비밀번호 초기화</button>
+          <button onclick="handleDelete()"            class="au-action-btn au-danger-btn" style="grid-column:span 2;">🗑 계정 삭제</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/modals/mypage', { user: user }) %>
+<script src="/js/common.js"></script>
+
+<style>
+.stab{height:36px;padding:0 16px;font-size:13px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;}
+.stab:hover{background:var(--bg3);}
+.active-stab{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489;font-weight:600;}
+.au-fchip{height:28px;padding:0 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;}
+.au-fchip:hover{background:var(--bg3);}
+.active-fchip{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489;}
+.au-btn-warn{height:28px;padding:0 10px;font-size:12px;border-radius:6px;border:1px solid #FCD34D;background:transparent;color:#92400E;cursor:pointer;}
+.au-btn-warn:hover{background:#FEF3C7;}
+.au-btn-danger{height:28px;padding:0 10px;font-size:12px;border-radius:6px;border:1px solid #FCA5A5;background:transparent;color:#991B1B;cursor:pointer;}
+.au-btn-danger:hover{background:#FEE2E2;}
+.au-action-btn{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:13px;cursor:pointer;}
+.au-action-btn:hover{background:var(--bg4, var(--bg3));}
+.au-warn-btn{border-color:#FCD34D;color:#92400E;}
+.au-warn-btn:hover{background:#FEF3C7;}
+.au-danger-btn{border-color:#FCA5A5;color:#991B1B;}
+.au-danger-btn:hover{background:#FEE2E2;}
+</style>
+
+<script>
+let currentUserId = null;
+let currentUserRole = null;
+
+// ── 학교 탭 ──────────────────────────────────────────
+function selectUniv(el, univ) {
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active-stab'));
+  el.classList.add('active-stab');
+  document.querySelectorAll('.school-section').forEach(s => {
+    s.style.display = s.dataset.univ === univ ? 'block' : 'none';
+  });
+}
+
+// ── 일반사용자 필터 ───────────────────────────────────
+function setFilter(el, univ, f) {
+  const section = document.querySelector(`.school-section[data-univ="${univ}"]`);
+  section?.querySelectorAll('.au-fchip').forEach(b => b.classList.remove('active-fchip'));
+  el.classList.add('active-fchip');
+  const tbody = document.querySelector(`.student-tbody[data-univ="${univ}"]`);
+  tbody?.querySelectorAll('.au-srow').forEach(row => {
+    if (f === 'all') { row.style.display = ''; return; }
+    row.style.display = row.dataset.status === f ? '' : 'none';
+  });
+}
+
+// ── 모달 열기 ─────────────────────────────────────────
+async function openModal(id, role) {
+  currentUserId   = id;
+  currentUserRole = role;
+  document.getElementById('au-modal-overlay').style.display = 'flex';
+  document.getElementById('au-history').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;">불러오는 중...</div>';
+
+  try {
+    const res  = await fetch(`/admin/users/${id}`);
+    const data = await res.json();
+    if (!data.ok) return alert('조회 실패');
+    const u = data.user;
+
+    document.getElementById('au-avatar').textContent = u.name[0];
+    document.getElementById('au-name').textContent   = u.name;
+
+    const roleBadge = document.getElementById('au-role-badge');
+    if (u.role === 'staff') {
+      roleBadge.textContent = '학교관리자';
+      roleBadge.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:20px;background:#EEEDFE;color:#3C3489;';
+    } else {
+      roleBadge.textContent = '일반사용자';
+      roleBadge.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:20px;background:#F1F5F9;color:#475569;';
+    }
+
+    document.getElementById('au-online-badge').style.display = u.isOnline ? 'inline-block' : 'none';
+    document.getElementById('au-meta').textContent = [u.university, u.major, u.studentId, u.enrollmentStatus].filter(Boolean).join(' · ');
+
+    const statusMap   = { active:'정상', dormant:'휴면', suspended:'정지' };
+    const statusColor = { active:'#475569', dormant:'#92400E', suspended:'#991B1B' };
+    const st = u.accountStatus || 'active';
+    document.getElementById('au-status').innerHTML = `<span style="color:${statusColor[st]}">${statusMap[st]}</span>`;
+    document.getElementById('au-enroll').textContent = u.enrollmentStatus || '-';
+    document.getElementById('au-lastlogin').innerHTML = u.isOnline
+      ? '<span style="color:#1D9E75;">접속 중</span>'
+      : (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('ko-KR') : '-');
+
+    // 접속 기록
+    const history = u.loginHistory || [];
+    document.getElementById('au-history').innerHTML = history.length === 0
+      ? '<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;">접속 기록이 없습니다.</div>'
+      : history.map((h, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;${i < history.length-1 ? 'border-bottom:1px solid var(--border);' : ''}font-size:12px;">
+          <span style="font-size:10px;padding:2px 8px;border-radius:20px;flex-shrink:0;${h.action==='login'?'background:#E1F5EE;color:#0F6E56;':'background:#F1F5F9;color:#475569;'}">${h.action==='login'?'로그인':'로그아웃'}</span>
+          <span style="flex:1;color:var(--text1);">${new Date(h.at).toLocaleString('ko-KR')}</span>
+          <span style="color:var(--text2);">${h.ip||''}</span>
+        </div>`).join('');
+
+    // 역할 변경 버튼
+    const toStaff   = document.getElementById('btn-to-staff');
+    const toStudent = document.getElementById('btn-to-student');
+    toStaff.style.display   = u.role === 'student' ? 'block' : 'none';
+    toStudent.style.display = u.role === 'staff'   ? 'block' : 'none';
+
+  } catch { alert('서버 오류가 발생했습니다.'); }
+}
+
+function closeModal() {
+  document.getElementById('au-modal-overlay').style.display = 'none';
+  currentUserId = null;
+}
+document.getElementById('au-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('au-modal-overlay')) closeModal();
+});
+
+// ── 역할 변경 ──────────────────────────────────────────
+async function changeRole(targetRole) {
+  if (!currentUserId) return;
+  const label = targetRole === 'staff' ? '학교관리자로 승격' : '일반사용자로 변경';
+  if (!confirm(`${label}하시겠습니까?`)) return;
+  try {
+    const res  = await fetch(`/admin/users/${currentUserId}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetRole }),
+    });
+    const data = await res.json();
+    if (!data.ok) return alert(data.message || '처리 실패');
+    alert(`${label} 완료`);
+    location.reload();
+  } catch { alert('서버 오류'); }
+}
+
+// ── 계정 상태 변경 ─────────────────────────────────────
+const statusLabel = { dormant:'휴면 처리', suspended:'계정 정지', active:'정상 복구' };
+async function handleStatus(action) {
+  if (!currentUserId) return;
+  if (!confirm(`${statusLabel[action]}하시겠습니까?`)) return;
+  try {
+    const res  = await fetch(`/admin/users/${currentUserId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!data.ok) return alert(data.message || '처리 실패');
+    alert(`${statusLabel[action]} 완료`);
+    location.reload();
+  } catch { alert('서버 오류'); }
+}
+
+// ── 비밀번호 초기화 ────────────────────────────────────
+async function handleResetPw() {
+  if (!currentUserId || !confirm('임시 비밀번호로 초기화하시겠습니까?')) return;
+  try {
+    const res  = await fetch(`/admin/users/${currentUserId}/reset-password`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) return alert('초기화 실패');
+    alert(`임시 비밀번호: ${data.tempPassword}\n\n학생에게 안내 후 변경을 요청하세요.`);
+  } catch { alert('서버 오류'); }
+}
+
+// ── 계정 삭제 ──────────────────────────────────────────
+async function handleDelete() {
+  if (!currentUserId || !confirm('계정을 삭제하면 복구할 수 없습니다. 정말 삭제하시겠습니까?')) return;
+  try {
+    const res  = await fetch(`/admin/users/${currentUserId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) return alert(data.message || '삭제 실패');
+    alert('계정이 삭제되었습니다.');
+    closeModal();
+    location.reload();
+  } catch { alert('서버 오류'); }
+}
+</script>
+
+</body>
+</html>

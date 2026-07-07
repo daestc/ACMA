@@ -127,13 +127,116 @@
   </div>
 </main>
 
+<!-- 포인트 충전 모달 -->
+<div id="point-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.5);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:380px;max-width:95vw;padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <span style="font-size:16px;font-weight:700;">포인트 충전</span>
+      <button onclick="closePointModal()" style="width:30px;height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px;color:var(--text2);">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+      <% [1000,3000,5000,10000,30000].forEach(amt => { %>
+      <button onclick="selectPoint(<%= amt %>)" class="point-amt-btn" data-amt="<%= amt %>"
+        style="padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;font-size:14px;font-weight:600;transition:all .12s;">
+        <%= amt.toLocaleString() %>원
+      </button>
+      <% }) %>
+    </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2);">
+      선택한 금액: <strong id="selected-point-label" style="color:var(--text1);">-</strong>
+    </div>
+    <button onclick="startPoint()" id="point-pay-btn" disabled
+      style="width:100%;height:44px;border-radius:12px;border:none;background:#534AB7;color:#fff;font-size:14px;font-weight:600;cursor:pointer;opacity:.5;">
+      충전하기
+    </button>
+  </div>
+</div>
+
+<%- include('../partials/modals/mypage', { user: user }) %>
+
+<script src="https://js.tosspayments.com/v1/payment"></script>
+<script src="/js/common.js"></script>
 <script>
-function startPremium() {
-  alert('토스페이먼츠 결제 연동 준비 중입니다.');
+const _clientKey = '<%= clientKey %>';
+const _successUrl = window.location.origin + '/payment/confirm';
+const _failUrl    = window.location.origin + '/payment/fail';
+
+let tossPayments;
+try { tossPayments = TossPayments(_clientKey); } catch(e) {}
+
+// ── 프리미엄 결제 ──────────────────────────────────────
+async function startPremium() {
+  try {
+    const res  = await fetch('/payment/checkout/premium', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!data.ok) return alert(data.message || '오류가 발생했습니다.');
+    await tossPayments.requestPayment('카드', {
+      amount:     data.amount,
+      orderId:    data.orderId,
+      orderName:  data.orderName,
+      customerName: '<%= user.name %>',
+      successUrl: _successUrl,
+      failUrl:    _failUrl,
+    });
+  } catch(e) {
+    if (e?.code !== 'USER_CANCEL') alert('결제 중 오류가 발생했습니다.');
+  }
 }
+
+// ── 포인트 충전 모달 ───────────────────────────────────
+let _selectedPoint = 0;
+
 function chargePoints() {
-  alert('포인트 충전 준비 중입니다.');
+  document.getElementById('point-modal-overlay').style.display = 'flex';
 }
+function closePointModal() {
+  document.getElementById('point-modal-overlay').style.display = 'none';
+  _selectedPoint = 0;
+  document.querySelectorAll('.point-amt-btn').forEach(b => b.style.cssText = '');
+  document.getElementById('selected-point-label').textContent = '-';
+  document.getElementById('point-pay-btn').disabled = true;
+  document.getElementById('point-pay-btn').style.opacity = '.5';
+}
+function selectPoint(amt) {
+  _selectedPoint = amt;
+  document.querySelectorAll('.point-amt-btn').forEach(b => {
+    const isSelected = Number(b.dataset.amt) === amt;
+    b.style.background   = isSelected ? '#EEEDFE' : '';
+    b.style.borderColor  = isSelected ? '#534AB7' : '';
+    b.style.color        = isSelected ? '#3C3489' : '';
+  });
+  document.getElementById('selected-point-label').textContent = amt.toLocaleString() + '원';
+  document.getElementById('point-pay-btn').disabled = false;
+  document.getElementById('point-pay-btn').style.opacity = '1';
+}
+
+async function startPoint() {
+  if (!_selectedPoint) return;
+  try {
+    const res  = await fetch('/payment/checkout/point', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: _selectedPoint }),
+    });
+    const data = await res.json();
+    if (!data.ok) return alert(data.message || '오류가 발생했습니다.');
+    closePointModal();
+    await tossPayments.requestPayment('카드', {
+      amount:      data.amount,
+      orderId:     data.orderId,
+      orderName:   data.orderName,
+      customerName: '<%= user.name %>',
+      successUrl:  _successUrl,
+      failUrl:     _failUrl,
+    });
+  } catch(e) {
+    if (e?.code !== 'USER_CANCEL') alert('결제 중 오류가 발생했습니다.');
+  }
+}
+
+document.getElementById('point-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('point-modal-overlay')) closePointModal();
+});
 </script>
 
 </body>

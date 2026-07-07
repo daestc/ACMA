@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderCalendar();
   renderTimetable();
+  loadWeatherAsync();
 
   document.getElementById('prev-month').addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() - 1);
@@ -65,19 +66,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadCalendarData() {
-  const [eventRes, timetableRes, weatherList] = await Promise.all([
+  const [eventRes, timetableRes] = await Promise.all([
     fetch('/calendar/events'),
     fetch('/calendar/timetables'),
-    fetchWeatherList() // weather.js 공용 함수
   ]);
 
   events = await eventRes.json();
   window.timetables = await timetableRes.json();
+}
 
-  weatherMap = {};
-  weatherList.forEach(weather => {
-    weatherMap[weather.date] = weather;
-  });
+function loadWeatherAsync() {
+  fetchWeatherList()
+    .then(weatherList => {
+      weatherMap = {};
+      weatherList.forEach(w => { weatherMap[w.date] = w; });
+      renderCalendar();
+    })
+    .catch(() => {});
 }
 
 function renderCalendar() {

@@ -70,7 +70,7 @@ async function updateStaffStatus(req, res, status) {
     const target = await User.findOneAndUpdate(
       { _id: req.params.id, role: 'staff' },
       { staffStatus: status },
-      { returnDocument: 'after' }
+      { new: true }
     );
 
     if (!target) {
@@ -86,7 +86,142 @@ async function updateStaffStatus(req, res, status) {
 }
 
 exports.approveStaff = (req, res) => updateStaffStatus(req, res, 'approved');
-exports.rejectStaff = (req, res) => updateStaffStatus(req, res, 'rejected');
+exports.rejectStaff  = (req, res) => updateStaffStatus(req, res, 'rejected');
+
+// ── 전체 사용자 관리 페이지 ─────────────────────────────
+
+exports.getUsersPage = async (req, res, next) => {
+  try {
+    const [staffList, studentList] = await Promise.all([
+      User.find({ role: 'staff', staffStatus: 'approved' })
+        .select('name email university isOnline lastLoginAt accountStatus')
+        .sort({ university: 1, name: 1 })
+        .lean(),
+      User.find({ role: 'student' })
+        .select('name email studentId major university enrollmentStatus isOnline lastLoginAt accountStatus')
+        .sort({ university: 1, isOnline: -1, lastLoginAt: -1 })
+        .lean(),
+    ]);
+
+    const univSet = new Set([
+      ...staffList.map(u => u.university).filter(Boolean),
+      ...studentList.map(u => u.university).filter(Boolean),
+    ]);
+    const universities = [...univSet].sort();
+
+    const onlineCount = [...staffList, ...studentList].filter(u => u.isOnline).length;
+
+    res.render('pages/adminUsers', {
+      user: req.user,
+      pageTitle: '사용자 관리',
+      currentPage: 'adminUsers',
+      universities,
+      staffList,
+      studentList,
+      stats: {
+        univCount:    universities.length,
+        staffCount:   staffList.length,
+        studentCount: studentList.length,
+        onlineCount,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 사용자 상세 조회 (JSON)
+exports.getUserDetail = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('name email studentId major university enrollmentStatus role staffStatus isOnline lastLoginAt lastLogoutAt accountStatus loginHistory createdAt')
+      .lean();
+    if (!user) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
+
+    const history = (user.loginHistory || []).slice().reverse().slice(0, 10);
+    res.json({ ok: true, user: { ...user, loginHistory: history } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 역할 변경 (student ↔ staff)
+exports.changeUserRole = async (req, res, next) => {
+  try {
+    const { targetRole } = req.body;
+    if (!['student', 'staff'].includes(targetRole)) {
+      return res.status(400).json({ ok: false, message: '유효하지 않은 역할입니다.' });
+    }
+
+    const target = await User.findById(req.params.id).lean();
+    if (!target) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
+    if (target.role === 'admin') return res.status(403).json({ ok: false, message: '최고관리자 계정은 변경할 수 없습니다.' });
+
+    if (targetRole === 'staff' && !target.university?.trim()) {
+      return res.status(400).json({ ok: false, message: '소속 대학교 정보가 없어 학교관리자로 승격할 수 없습니다.' });
+    }
+
+    const update = targetRole === 'staff'
+      ? { role: 'staff', staffStatus: 'approved' }
+      : { role: 'student', staffStatus: null };
+
+    const updated = await User.findByIdAndUpdate(req.params.id, update, { new: true }).lean();
+    logger.info(`역할변경 | target=${updated.email} | ${target.role} → ${targetRole} | by=${req.user.email}`);
+    res.json({ ok: true, role: updated.role });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 계정 상태 변경
+exports.adminChangeStatus = async (req, res, next) => {
+  try {
+    const { action } = req.body;
+    if (!['active', 'dormant', 'suspended'].includes(action)) {
+      return res.status(400).json({ ok: false, message: '유효하지 않은 상태입니다.' });
+    }
+    const target = await User.findOneAndUpdate(
+      { _id: req.params.id, role: { $ne: 'admin' } },
+      { accountStatus: action },
+      { new: true },
+    ).lean();
+    if (!target) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
+    logger.info(`계정상태변경 | target=${target.email} | action=${action} | by=${req.user.email}`);
+    res.json({ ok: true, accountStatus: target.accountStatus });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 비밀번호 초기화
+exports.adminResetPassword = async (req, res, next) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const tempPw = Math.random().toString(36).slice(-8);
+    const hashed = await bcrypt.hash(tempPw, 12);
+    const target = await User.findOneAndUpdate(
+      { _id: req.params.id, role: { $ne: 'admin' } },
+      { password: hashed },
+    ).lean();
+    if (!target) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
+    logger.info(`비밀번호초기화 | target=${target.email} | by=${req.user.email}`);
+    res.json({ ok: true, tempPassword: tempPw });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 계정 삭제
+exports.adminDeleteUser = async (req, res, next) => {
+  try {
+    const target = await User.findOneAndDelete({ _id: req.params.id, role: { $ne: 'admin' } }).lean();
+    if (!target) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
+    logger.info(`계정삭제 | target=${target.email} | by=${req.user.email}`);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // 인증 사진 열람 (관리자 전용) 
 exports.getVerificationImage = async (req, res) => {

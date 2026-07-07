@@ -211,6 +211,108 @@ const saveMajorGraduation = async (req, res) => {
   }
 };
 
+// ── 학생 관리 ─────────────────────────────────────────────
+
+const User = require('../models/User');
+const DORMANT_DAYS = 180; // 6개월
+
+const getStudentsPage = async (req, res, next) => {
+  try {
+    const university = req.user.university;
+    const students = await User.find({ university, role: 'student' })
+      .select('name email studentId major enrollmentStatus planType pointBalance isOnline lastLoginAt lastLogoutAt accountStatus')
+      .sort({ isOnline: -1, lastLoginAt: -1 })
+      .lean();
+
+    const now = Date.now();
+    const dormantThreshold = now - DORMANT_DAYS * 24 * 60 * 60 * 1000;
+
+    const enriched = students.map(s => ({
+      ...s,
+      isDormant: s.lastLoginAt && s.lastLoginAt.getTime() < dormantThreshold,
+    }));
+
+    const totalCount    = students.length;
+    const onlineCount   = students.filter(s => s.isOnline).length;
+    const premiumCount  = students.filter(s => s.planType === 'premium').length;
+    const dormantCount  = enriched.filter(s => s.isDormant).length;
+
+    res.render('pages/staffStudents', {
+      user: req.user,
+      pageTitle: '학생 관리',
+      currentPage: 'staffStudents',
+      students: enriched,
+      stats: { totalCount, onlineCount, premiumCount, dormantCount },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getStudentDetail = async (req, res, next) => {
+  try {
+    const university = req.user.university;
+    const student = await User.findOne({ _id: req.params.id, university, role: 'student' })
+      .select('name email studentId major enrollmentStatus planType pointBalance isOnline lastLoginAt lastLogoutAt accountStatus loginHistory dailyUsage')
+      .lean();
+
+    if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
+
+    const history = (student.loginHistory || []).slice().reverse().slice(0, 10);
+    res.json({ ok: true, student: { ...student, loginHistory: history } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const suspendStudent = async (req, res, next) => {
+  try {
+    const university = req.user.university;
+    const { action } = req.body; // 'dormant' | 'suspended' | 'active'
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, university, role: 'student' },
+      { accountStatus: action || 'suspended' },
+      { new: true },
+    ).lean();
+
+    if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
+    logger.info(`계정상태변경 | target=${student.email} | action=${action} | by=${req.user.email}`);
+    res.json({ ok: true, accountStatus: student.accountStatus });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteStudent = async (req, res, next) => {
+  try {
+    const university = req.user.university;
+    const student = await User.findOneAndDelete({ _id: req.params.id, university, role: 'student' }).lean();
+    if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
+    logger.info(`계정삭제 | target=${student.email} | by=${req.user.email}`);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resetStudentPassword = async (req, res, next) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const university = req.user.university;
+    const tempPw = Math.random().toString(36).slice(-8);
+    const hashed = await bcrypt.hash(tempPw, 12);
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, university, role: 'student' },
+      { password: hashed },
+    ).lean();
+    if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
+    logger.info(`비밀번호초기화 | target=${student.email} | by=${req.user.email}`);
+    res.json({ ok: true, tempPassword: tempPw });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getHomePage,
   getSchedulePage,
@@ -221,4 +323,9 @@ module.exports = {
   getMajorList,
   getMajorGraduation,
   saveMajorGraduation,
+  getStudentsPage,
+  getStudentDetail,
+  suspendStudent,
+  deleteStudent,
+  resetStudentPassword,
 };

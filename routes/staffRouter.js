@@ -30,4 +30,10 @@ router.get('/suggestions', suggestionController.getStaffPage);// 학생 건의 �
 router.get('/suggestions/:id', suggestionController.getStaffSuggestionDetail);// 건의 상세
 router.post('/suggestions/:id/reply', suggestionController.replySuggestion);// 건의 답변
 
+router.get('/students', staffController.getStudentsPage);// 학생 관리 페이지
+router.get('/students/:id', staffController.getStudentDetail);// 학생 상세 조회 (JSON)
+router.patch('/students/:id/status', staffController.suspendStudent);// 계정 상태 변경
+router.delete('/students/:id', staffController.deleteStudent);// 계정 삭제
+router.post('/students/:id/reset-password', staffController.resetStudentPassword);// 비밀번호 초기화
+
 module.exports = router;

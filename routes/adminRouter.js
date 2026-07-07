@@ -14,4 +14,12 @@ router.get('/staff/:id/verification', controller.getVerificationImage);
 router.post('/staff/:id/approve', controller.approveStaff);
 router.post('/staff/:id/reject', controller.rejectStaff);
 
+// 전체 사용자 관리
+router.get('/users', controller.getUsersPage);
+router.get('/users/:id', controller.getUserDetail);
+router.patch('/users/:id/role', controller.changeUserRole);
+router.patch('/users/:id/status', controller.adminChangeStatus);
+router.post('/users/:id/reset-password', controller.adminResetPassword);
+router.delete('/users/:id', controller.adminDeleteUser);
+
 module.exports = router;

@@ -7,16 +7,35 @@
 // 마지막 조회에 사용한 좌표 (홈 위젯 위치 표기용, null이면 기본 좌표 사용)
 let lastCoords = null;
 
+const _WEATHER_CACHE_KEY = 'acme_weather_v1';
+const _WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30분
+
 // 일별 날씨 배열 [{ date:'YYYY-MM-DD', time, temp, sky, pty, icon, description }] 반환
-// 현재 위치(location.js)를 구해 위경도를 쿼리로 전달, 실패 시 서버 기본 좌표(서울) 사용
+// localStorage 캐시(30분) 우선 사용 → 만료 시 API 재요청
 async function fetchWeatherList() {
+  try {
+    const raw = localStorage.getItem(_WEATHER_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (Date.now() - cached.ts < _WEATHER_CACHE_TTL) {
+        return cached.data;
+      }
+    }
+  } catch {}
+
   const coords = await getCurrentCoords();
   lastCoords = coords;
   const query = coords ? `?lat=${coords.lat}&lon=${coords.lon}` : '';
 
   const response = await fetch(`/calendar/weather${query}`);
   if (!response.ok) throw new Error('날씨 API 요청 실패');
-  return await response.json();
+  const data = await response.json();
+
+  try {
+    localStorage.setItem(_WEATHER_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+
+  return data;
 }
 
 // Date -> 'YYYY-MM-DD' (날씨 API의 date 형식과 동일)

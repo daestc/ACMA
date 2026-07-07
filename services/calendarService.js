@@ -366,24 +366,8 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', unive
     '교선': 'general_elective',
     '일선': 'free',
   };
-  //학점 DB에 저장
-  await saveSemesterRecord({
-    userId,
-    semester: semesterValue,
-    year: lecture.year,
-    semesterNumber: lecture.semester === '1학기' ? 1 : 2,
-    status: 'in_progress',
-    subjects: [{
-      subjectName: lecture.courseName,
-      subjectType: classificationMap[lecture.classification] || 'free',
-      professor: lecture.professor,
-      credits: lecture.credits,
-      grade: null,
-    }],
-  });
-
-  //timetableSchema 생성
-  return await Timetable.create({
+  // 시간표 생성 먼저
+  const newTimetable = await Timetable.create({
     userId,
     semester: semesterValue,
     title: lecture.courseName,
@@ -394,6 +378,29 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', unive
     color,
     schedule,
   });
+
+  // 학점 DB 저장 — 실패 시 방금 만든 시간표도 삭제해 완전 롤백
+  try {
+    await saveSemesterRecord({
+      userId,
+      semester: semesterValue,
+      year: lecture.year,
+      semesterNumber: lecture.semester === '1학기' ? 1 : 2,
+      status: 'in_progress',
+      subjects: [{
+        subjectName: lecture.courseName,
+        subjectType: classificationMap[lecture.classification] || 'free',
+        professor: lecture.professor,
+        credits: lecture.credits,
+        grade: null,
+      }],
+    });
+  } catch (err) {
+    await Timetable.findByIdAndDelete(newTimetable._id).catch(() => {});
+    throw new Error('학점 정보 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+  }
+
+  return newTimetable;
 }
 
 //일정 도메인 규칙

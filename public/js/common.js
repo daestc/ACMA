@@ -3,27 +3,44 @@
    모든 페이지에서 공통으로 사용하는 유틸리티 함수
    ================================================ */
 
-// ── 사이드바 토글 ─────────────────────────────────
+// ── 사이드바 (데스크탑: 호버 / 모바일: 토글) ─────
+let _sbTimer = null;
+
+function sbExpand() {
+  clearTimeout(_sbTimer);
+  const sb = document.getElementById('app-sidebar');
+  if (!sb) return;
+  sb.classList.add('expanded');
+  sb.style.width = '220px';
+}
+
+function sbCollapse() {
+  _sbTimer = setTimeout(() => {
+    const sb = document.getElementById('app-sidebar');
+    if (!sb) return;
+    sb.classList.remove('expanded');
+    sb.style.width = '52px';
+  }, 150);
+}
+
+// 모바일 전용 토글
 function toggleSidebar() {
+  if (window.innerWidth >= 769) return;
   const sidebar  = document.getElementById('app-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
-  const icon     = document.getElementById('hamburger-icon');
-  const isOpen   = sidebar.classList.contains('open');
-
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.contains('open');
   sidebar.classList.toggle('open', !isOpen);
-  backdrop.classList.toggle('visible', !isOpen);
-  if (icon) icon.classList.toggle('open', !isOpen);
+  backdrop?.classList.toggle('visible', !isOpen);
 }
 
 function closeSidebar() {
   document.getElementById('app-sidebar')?.classList.remove('open');
   document.getElementById('sidebar-backdrop')?.classList.remove('visible');
-  document.getElementById('hamburger-icon')?.classList.remove('open');
 }
 
-// 화면 넓어지면 사이드바 자동으로 닫기
 window.addEventListener('resize', () => {
-  if (window.innerWidth > 1024) closeSidebar();
+  if (window.innerWidth >= 769) closeSidebar();
 });
 
 // ── 체크박스 토글 ─────────────────────────────────
@@ -55,7 +72,6 @@ function closeMyPageModal() {
   document.getElementById('mypage-modal-overlay').style.display = 'none';
 }
 
-// 오버레이 클릭 닫기
 document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('mypage-modal-overlay');
   if (overlay) {
@@ -65,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ESC 키로 모달 전체 닫기
 window.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   closeMyPageModal();

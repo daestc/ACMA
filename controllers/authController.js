@@ -14,7 +14,9 @@ function homeByRole(role) {
 
 exports.getLogin = (req, res) => {
   if (req.session.user) return res.redirect(homeByRole(req.session.user.role));
-  const error = req.query.expired === '1'
+  const error = req.query.suspended === '1'
+    ? '계정이 정지되었습니다. 관리자에게 문의하세요.'
+    : req.query.expired === '1'
     ? '세션이 만료되었습니다. 다시 로그인해주세요.'
     : req.session.authError || null;
   delete req.session.authError;
@@ -35,6 +37,15 @@ exports.postLogin = async (req, res, next) => {
   try {
     const user = await authService.loginUser(email, password);
 
+    // 로그인 시각 및 접속 기록 저장
+    const now = new Date();
+    const User = require('../models/User');
+    User.findByIdAndUpdate(user._id, {
+      isOnline: true,
+      lastLoginAt: now,
+      $push: { loginHistory: { $each: [{ action: 'login', at: now, ip }], $slice: -20 } },
+    }).catch(err => logger.warn(`isOnline 업데이트 실패 | userId=${user._id} | ${err.message}`));
+
     req.session.regenerate((err) => {
       if (err) return next(err);
       req.session.user = {
@@ -48,6 +59,7 @@ exports.postLogin = async (req, res, next) => {
         provider:         user.provider,
         role:             user.role || 'student',
         enrollmentStatus: user.enrollmentStatus || '재학',
+        accountStatus:    user.accountStatus    || 'active',
         planType:         user.planType         || 'free',
         pointBalance:     user.pointBalance     || 0,
         dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
@@ -146,6 +158,7 @@ exports.postRegister = async (req, res) => {
         provider:         user.provider,
         role:             user.role,
         enrollmentStatus: user.enrollmentStatus || '재학',
+        accountStatus:    user.accountStatus    || 'active',
         planType:         user.planType         || 'free',
         pointBalance:     user.pointBalance     || 0,
         dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
@@ -175,6 +188,17 @@ exports.postRegister = async (req, res) => {
 exports.postLogout = (req, res) => {
   const userId = req.session.user?.id;
   const ip     = req.ip;
+
+  if (userId) {
+    const now = new Date();
+    const User = require('../models/User');
+    User.findByIdAndUpdate(userId, {
+      isOnline: false,
+      lastLogoutAt: now,
+      $push: { loginHistory: { $each: [{ action: 'logout', at: now, ip }], $slice: -20 } },
+    }).catch(err => logger.warn(`isOnline 업데이트 실패 | userId=${userId} | ${err.message}`));
+  }
+
   req.session.destroy(() => {
     logger.info(`로그아웃 | userId=${userId} | ip=${ip}`);
     res.clearCookie('connect.sid');
@@ -271,6 +295,7 @@ exports.oauthCallback = (provider) => {
           provider:         user.provider,
           role:             user.role || 'student',
           enrollmentStatus: user.enrollmentStatus || '재학',
+          accountStatus:    user.accountStatus    || 'active',
           planType:         user.planType         || 'free',
           pointBalance:     user.pointBalance     || 0,
           dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
