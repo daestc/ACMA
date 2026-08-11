@@ -111,6 +111,8 @@ const dailyChecklistSchema = new Schema(
         isCompleted: { type: Boolean, default: false },
         completedAt: { type: Date, default: null },
         order: { type: Number, default: 0 },
+        source: { type: String, enum: ['manual', 'ai'], default: 'manual' },
+        weeklyPlanId: { type: Schema.Types.ObjectId, ref: 'WeeklyPlan', default: null },
       },
     ],
   },

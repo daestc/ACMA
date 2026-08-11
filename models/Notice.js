@@ -58,5 +58,6 @@ const noticeSchema = new mongoose.Schema(
 // 조회 성능 최적화
 noticeSchema.index({ category: 1, endDate: 1 }); 
 noticeSchema.index({ scrapCount: -1 });
+noticeSchema.index({ jmcd: 1, startDate: 1 })
 
 module.exports = mongoose.model('Notice', noticeSchema);

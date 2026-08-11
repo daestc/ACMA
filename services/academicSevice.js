@@ -12,12 +12,20 @@ function calculateSemesterSummary(subjects) {
 
   return subjects.reduce((summary, subject) => {
     const credits = Number(subject.credits) || 0;
-    const gradePoint = gradePoints[subject.grade] ?? null;
+    const grade = subject.grade;
+
+    // P/NP는 GPA 계산(분모/분자) 대상이 아님. P는 취득학점에는 포함.
+    if (grade === 'P' || grade === 'NP') {
+      if (grade === 'P') summary.earnedCredits += credits;
+      return summary;
+    }
+
+    const gradePoint = gradePoints[grade] ?? null;
 
     summary.attemptedCredits += credits;
     if (gradePoint !== null) {
       summary.semesterPoints += gradePoint * credits;
-      if (subject.grade !== 'F') {
+      if (grade !== 'F') {
         summary.earnedCredits += credits;
       }
     }

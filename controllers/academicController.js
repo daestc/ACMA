@@ -1,7 +1,7 @@
 const academicService = require('../services/academicSevice');
 const User = require('../models/User');
 const {
-  getStaffGraduationForStudent,
+  resolveRequirements,
 } = require('../services/graduationService');
 
 // 학기별 과목 추가, 수정, 삭제
@@ -208,10 +208,7 @@ const getGraduationRequirements = async (req, res) => {
     if (!user) return res.status(404).json({ success: false });
 
     const profile = await academicService.getUniversityProfile(user._id);
-    const graduation = await getStaffGraduationForStudent(
-      user.university,
-      profile?.major || user.major,
-    );
+    const graduation = await resolveRequirements(user._id);
 
     if (!graduation.available) {
       return res.json({
@@ -291,11 +288,7 @@ const getProgress = async (req, res) => {
     });
 
     const profile = await academicService.getUniversityProfile(user);
-    const userDoc = await User.findById(user).select('university major').lean();
-    const graduation = await getStaffGraduationForStudent(
-      userDoc?.university,
-      profile?.major || userDoc?.major,
-    );
+    const graduation = await resolveRequirements(user);
 
     return res.json({
       success: true,
