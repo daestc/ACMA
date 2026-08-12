@@ -31,15 +31,19 @@
             <div class="card">
               <div class="card-header">
                 <span class="card-title">학기 과목 입력</span>
-                <select class="select-field" name="semester" style="font-size:12px;padding:5px 10px;">
-                  <option value="2026-1">2026-1학기</option>
-                  <option value="2025-2">2025-2학기</option>
-                  <option value="2025-1">2025-1학기</option>
-                  <option value="2024-2">2024-2학기</option>
-                  <option value="2024-1">2024-1학기</option>
-                  <option value="2023-2">2023-2학기</option>
-                  <option value="2023-1">2023-1학기</option>
-                </select>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span id="semester-status-badge" class="badge badge-blue">-</span>
+                  <button type="button" id="semester-close-btn" class="btn" style="font-size:12px;padding:5px 10px;" onclick="toggleSemesterClose()">마감</button>
+                  <select class="select-field" name="semester" style="font-size:12px;padding:5px 10px;">
+                    <option value="2026-1">2026-1학기</option>
+                    <option value="2025-2">2025-2학기</option>
+                    <option value="2025-1">2025-1학기</option>
+                    <option value="2024-2">2024-2학기</option>
+                    <option value="2024-1">2024-1학기</option>
+                    <option value="2023-2">2023-2학기</option>
+                    <option value="2023-1">2023-1학기</option>
+                  </select>
+                </div>
               </div>
               <div id="subject-list">
                 <div class="subject-row">
@@ -91,6 +95,9 @@
                     <option value="A">A</option><option value="A+">A+</option><option value="B+">B+</option><option value="B">B</option>
                   </select>
                 </div>
+              </div>
+              <div id="semester-close-hint" style="display:none;font-size:12px;color:var(--accent);margin-top:8px;">
+                모든 과목 성적이 입력됐습니다 — 이 학기를 마감할까요?
               </div>
               <button type="button" class="btn btn-accent" style="margin-top:8px;width:100%;" onclick="saveAcademicData()">저장</button>
             </div>

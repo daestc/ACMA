@@ -3,7 +3,6 @@ const router = express.Router();
 const careerController = require('../controllers/careerController');
 const { requireLogin } = require('../middleware/auth');
 
-
 // 진로정보 페이지 
 router.get('/', requireLogin, (req, res) => {
   res.render('pages/career', {
@@ -13,6 +12,16 @@ router.get('/', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
+// 채용정보 페이지 (화면 확인용, 백엔드 미연동)
+router.get('/recruit', requireLogin, (req, res) => {
+  res.render('pages/recruit', {
+    title:       '채용정보',
+    currentPage: 'recruit',
+    pageTitle:   '📋 채용정보',
+    user:        req.user,
+  });
+});
+
 // 직무 관련 라우터
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 router.get('/categories', careerController.getCategories);
@@ -45,6 +54,5 @@ router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeC
 
 // 현재 선택한 목표 직무와 목표 자격증 프로필 상단에 표시하기
 router.get('/my-career-and-certs', requireLogin, careerController.getMyCareerAndCertifications);
-
 
 module.exports = router;

@@ -575,7 +575,7 @@ input,select,textarea{font-family:inherit;}
 .cal-month{font-size:16px;font-weight:700;color:var(--text);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
 .cal-day-header{text-align:center;font-size:10px;font-weight:700;color:var(--text3);padding:6px 0;text-transform:uppercase;}
-.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;padding:5px 2px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;padding:5px 2px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;overflow:hidden;}
 .cal-day:hover{background:var(--bg3);}
 .cal-day.today{background:var(--accent-bg);}
 .cal-day.today .day-num{background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;}
@@ -808,6 +808,8 @@ input,select,textarea{font-family:inherit;}
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 일정 추가 css */

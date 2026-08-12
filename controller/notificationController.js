@@ -1,21 +1,29 @@
 // controller/notificationController.js
-const { fetchHomeNotices } = require('./noticeController'); 
+const { fetchHomeNotices } = require('./noticeController');
 const dateCaculate = require('../service/dateCaculateService');
+const User = require('../models/User');
 
 
 //  실시간 긴급 알림 목록 반환 (D-Day 당일 ~ 7일 전 전용 + 페이징)
 async function getNotifications(req, res) {
     try {
-     
-     
-        const allFreshNotices = await fetchHomeNotices();
         const loggedInUser = req.user || req.session?.user;
+        const currentUserId = loggedInUser?._id || loggedInUser?.id || loggedInUser?.userDoc?._id;
+
+        // D-Day 알림을 꺼둔 사용자는 계산할 필요 없이 빈 결과 반환
+        if (currentUserId) {
+            const userDoc = await User.findById(currentUserId).select('notificationSettings.dDayAlert').lean();
+            if (userDoc?.notificationSettings?.dDayAlert === false) {
+                return res.json({ success: true, alerts: [], hasMore: false, totalCount: 0 });
+            }
+        }
+
+        const allFreshNotices = await fetchHomeNotices();
         let myUrgentNotices = allFreshNotices;
 
         if (loggedInUser) {
             const mongoose = require('mongoose');
             const UserCertModel = mongoose.model('UserCertification');
-            const currentUserId = loggedInUser._id || loggedInUser.id || loggedInUser.userDoc?._id;
 
             // 유저가 설정한 target 자격증 긁어오기
             const myCerts = await UserCertModel.find({ 
