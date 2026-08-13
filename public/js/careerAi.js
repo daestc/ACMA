@@ -60,20 +60,33 @@ function formatKstDate(isoString) {
   return `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
+// 점수 구간별로 막대 색을 달리한다 — 전부 같은 파란색이면 7개를 하나하나 다
+// 읽어야만 뭐가 부족한지 알 수 있다. 색만 봐도 약한 영역이 바로 눈에 띄어야 한다.
+function fillClassForScore(score) {
+  if (score >= 70) return 'fill-green';
+  if (score >= 40) return 'fill-blue';
+  if (score > 0) return 'fill-amber';
+  return 'fill-red';
+}
+
 // readinessService.checkReadiness/checkDiagnosisReadiness의 breakdown(7행: key/label/
 // score/weight/detail)을 포트폴리오·진단 두 페이지가 동일한 시각 언어로 렌더한다.
+// 2열 그리드로 배치해 세로 스크롤을 줄인다(7행 전부 세로로 쌓으면 카드 하나가
+// 화면 절반을 차지해 정작 아래 본문에 닿기 전에 지치게 된다).
 function renderScoreBreakdown(breakdown) {
-  return (breakdown || []).map(row => {
+  const rows = (breakdown || []).map(row => {
     const pct = Math.max(0, Math.min(100, row.score || 0));
     return `
-      <div class="progress-wrap">
+      <div class="progress-wrap" style="margin-bottom:10px;">
         <div class="progress-header">
           <span class="progress-label">${escapeHtml(row.label)}</span>
           <span class="progress-value">${escapeHtml(row.detail || '-')}</span>
         </div>
-        <div class="progress-track"><div class="progress-fill fill-blue" style="width:${pct}%"></div></div>
+        <div class="progress-track"><div class="progress-fill ${fillClassForScore(pct)}" style="width:${pct}%"></div></div>
       </div>`;
   }).join('');
+
+  return `<div class="grid-2" style="gap:0 24px;">${rows}</div>`;
 }
 
 // missingAnalyzer.analyzeMissing 결과(key/label/reason/impact/link)를 링크 가능한

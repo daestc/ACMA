@@ -104,6 +104,10 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']; // getWeek
 
 function renderDailyDay(day, index) {
   const [, month, dayOfMonth] = day.date.split('-');
+  const hasItems = (day.items || []).length > 0;
+  // 오늘 이전 + 배치 항목 없는 날은 흐리게 — 중간 주에 계획을 새로 생성하면 지나간
+  // 빈 요일 칸이 앞으로 채워질 요일보다 시선을 더 끌어서 정작 봐야 할 오늘 이후를 가린다.
+  const isEmptyPast = !hasItems && day.date < todayKstDateString();
   const itemsHtml = (day.items || [])
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -114,7 +118,7 @@ function renderDailyDay(day, index) {
     .join('') || '<div style="font-size:11px;color:var(--text2);">-</div>';
 
   return `
-    <div style="flex:1;min-width:100px;background:var(--bg3);border-radius:8px;padding:10px;">
+    <div style="flex:1;min-width:100px;background:var(--bg3);border-radius:8px;padding:10px;${isEmptyPast ? 'opacity:0.45;' : ''}">
       <div style="font-size:12px;font-weight:700;margin-bottom:8px;">${month}/${dayOfMonth} (${DAY_LABELS[index]})</div>
       <div style="display:flex;flex-direction:column;gap:6px;">${itemsHtml}</div>
     </div>`;

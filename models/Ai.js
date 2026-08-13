@@ -105,6 +105,35 @@ const careerDiagnosisSchema = new Schema({
     isApplication: { type: Boolean, default: false }, // true=원서접수 마감, false=시험일 등
   }], // _id 유지 — /gaps/:gapId/to-plan 참조용
 
+  // LLM 무관, graduationAdvisor.summarizeGraduation 계산값(suggestedFields만 LLM 생성).
+  // "직무 갭" 축과 별개인 "시간 제약" 축 — 졸업까지 학점이 얼마나 남았고 어느
+  // 방향으로 채울지.
+  graduation: {
+    hasData: { type: Boolean, default: false },
+    remaining: {
+      total: { type: Number, default: null },
+      majorRequired: { type: Number, default: null },
+      majorElective: { type: Number, default: null },
+      generalRequired: { type: Number, default: null },
+      generalElective: { type: Number, default: null },
+    },
+    pendingRequirements: { type: [String], default: [] },
+    estimatedSemesters: { type: Number, default: null },
+    horizon: { type: String, enum: ['semester', 'total'], default: 'semester' },
+    // creditType(어느 학점 유형에 속하는지)은 일부러 안 둔다 — 학교마다 커리큘럼이
+    // 달라 같은 "정보보호" 분야도 학교에 따라 전공선택/교양선택/개설 안 함이 갈리는데,
+    // LLM은 그 학교 커리큘럼을 모르니 추측으로 채울 수밖에 없다("LLM에게 모르는 걸
+    // 묻지 않는다" 원칙 위반 — 실제로 두 제안이 전부 majorRequired로 잘못 태깅된 적
+    // 있음). 학점 수치는 graduation.remaining에 이미 있으니 화면에서 그쪽과 나란히
+    // 보여주면 되고, 분야별 유형 구분은 사용자가 수강편람에서 직접 확인한다.
+    suggestedFields: [{
+      field: { type: String, required: true },       // "분야명"만 — 과목명 금지(validator에서 필터)
+      reason: { type: String, default: null },
+      _id: false,
+    }],
+    _id: false,
+  },
+
   missing: [missingItemSchema],
   generation: { type: generationMetaSchema, default: () => ({}) },
 }, { timestamps: true });

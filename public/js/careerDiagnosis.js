@@ -22,7 +22,9 @@ function renderReadiness(data) {
       </div>`
     : '';
 
-  document.getElementById('dg-missing').innerHTML = renderMissingList(data.missing);
+  // graduation 카드가 같은 정보(졸업 요건)를 더 자세히 보여주므로, 여기 missing
+  // 목록에서는 중복 표시하지 않는다.
+  document.getElementById('dg-missing').innerHTML = renderMissingList((data.missing || []).filter(m => m.key !== 'graduation'));
 
   const btn = document.getElementById('dg-generate-btn');
   btn.disabled = !data.ready;
@@ -31,7 +33,7 @@ function renderReadiness(data) {
 
 function renderStrength(strength) {
   const evidenceChips = (strength.evidence || []).map(e =>
-    `<span class="badge badge-blue" style="margin-right:4px;margin-top:4px;">${escapeHtml(e)}</span>`,
+    `<span class="evidence-chip" style="margin-right:4px;margin-top:4px;">${escapeHtml(e)}</span>`,
   ).join('');
 
   return `
@@ -71,11 +73,79 @@ function renderGap(gap) {
     </div>`;
 }
 
+// "직무 갭" 축과 별개인 "시간 제약" 축(졸업까지 학점) — graduationAdvisor.summarizeGraduation
+// 계산값 + suggestedFields(LLM). horizon에 따라 표시 관점을 다르게 한다: 저학년은
+// "다음 학기에 뭘 채울지", 졸업 임박이면 "졸업까지 뭐가 남았는지".
+function renderGraduation(graduation) {
+  const card = document.getElementById('dg-graduation-card');
+  if (!graduation?.hasData) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+
+  const r = graduation.remaining || {};
+  const titleEl = document.getElementById('dg-graduation-title');
+  const bodyEl = document.getElementById('dg-graduation-body');
+
+  const suggestedHtml = (graduation.suggestedFields || []).length
+    ? `<div style="margin-top:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">이런 분야를 채우면 좋습니다</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${graduation.suggestedFields.map(s => `
+            <div style="padding:10px 14px;background:var(--bg3);border-radius:8px;">
+              <span class="badge badge-purple" style="margin-right:8px;">${escapeHtml(s.field)}</span>
+              <span style="font-size:12px;color:var(--text2);">${escapeHtml(s.reason || '')}</span>
+            </div>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  const pendingLabel = graduation.horizon === 'semester' ? '졸업 전까지 준비할 것' : '남은 졸업 요건';
+  const pendingHtml = (graduation.pendingRequirements || []).length
+    ? `<div style="margin-top:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">${pendingLabel}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${graduation.pendingRequirements.map(p => `<span class="badge badge-amber">${escapeHtml(p)}</span>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  if (graduation.horizon === 'semester') {
+    // 전공필수·교양필수는 지정된 과목을 그대로 들어야 해서 "채운다"는 개념이 없다 —
+    // "남은 요건"으로만 보여주고, 실제로 분야를 골라 채울 수 있는 전공선택·교양선택만
+    // "채울 수 있는 학점"으로 강조한다.
+    titleEl.textContent = '🎓 다음 학기 이수 계획';
+    bodyEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);">
+        채울 수 있는 학점 <strong style="color:var(--text1);">전공선택 ${r.majorElective ?? 0}학점 · 교양선택 ${r.generalElective ?? 0}학점</strong>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">
+        남은 요건(선택 여지 없음): 전공필수 ${r.majorRequired ?? 0}학점 · 교양필수 ${r.generalRequired ?? 0}학점
+      </div>
+      ${suggestedHtml}
+      ${pendingHtml}`;
+  } else {
+    titleEl.textContent = '🎓 졸업까지 남은 학점';
+    bodyEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);">
+        총 <strong style="color:var(--text1);">${r.total ?? 0}학점</strong>${graduation.estimatedSemesters != null ? ` · 약 ${graduation.estimatedSemesters}학기` : ''}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">
+        전공필수 ${r.majorRequired ?? 0} · 전공선택 ${r.majorElective ?? 0} · 교양필수 ${r.generalRequired ?? 0} · 교양선택 ${r.generalElective ?? 0}
+      </div>
+      ${suggestedHtml}
+      ${pendingHtml}`;
+  }
+}
+
 function renderDiagnosis(doc) {
   currentDiagnosisId = doc._id;
 
   document.getElementById('dg-job-title').textContent = doc.jobTitle ? `목표 직무: ${doc.jobTitle}` : '진로 진단';
   document.getElementById('dg-overview').textContent = doc.overview || '';
+
+  renderGraduation(doc.graduation);
 
   document.getElementById('dg-strengths').innerHTML = (doc.strengths || []).map(renderStrength).join('')
     || '<div style="font-size:12px;color:var(--text2);">아직 뚜렷한 강점 항목이 없습니다.</div>';

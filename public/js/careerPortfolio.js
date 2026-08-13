@@ -26,7 +26,7 @@ function renderReadiness(data) {
 
 function renderSection(section) {
   const evidenceChips = (section.evidence || []).map(e =>
-    `<span class="badge badge-blue" style="margin-right:4px;margin-top:4px;">${escapeHtml(e)}</span>`,
+    `<span class="evidence-chip" style="margin-right:4px;margin-top:4px;">${escapeHtml(e)}</span>`,
   ).join('');
 
   return `

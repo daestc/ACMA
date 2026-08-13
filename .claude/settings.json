@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check services/ai/diagnosisService.js)",
+      "Bash(node \"/c/Users/82105/AppData/Local/Temp/claude/c--Users-82105-OneDrive-------project-jol-ACMA/1604d1a0-918a-4841-8aec-d42587cd9a9d/scratchpad/verify_graduation_advisor.js\")",
+      "Bash(node --check services/ai/prompts/diagnosis.js)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"try { require.resolve\\('playwright'\\); console.log\\('playwright 있음'\\); } catch\\(e\\) { console.log\\('playwright 없음:', e.message\\); }\")",
+      "Bash(npx --yes playwright --version)",
+      "Bash(npm install *)"
+    ]
+  }
+}

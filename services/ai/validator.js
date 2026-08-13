@@ -206,12 +206,23 @@ function validatePortfolio(data, context) {
 const GAP_SEVERITY_ENUM = ['high', 'medium', 'low'];
 const GAP_ACTION_TYPE_ENUM = ['cert', 'project', 'course', 'language', 'experience', 'none'];
 
+// suggestedFields.field가 이 패턴으로 끝나면 "분야명"이 아니라 과목명처럼 보이는
+// 것으로 간주해 제거한다 — 개설 과목 마스터 데이터가 DB에 없어서, 학교에 실제로
+// 있는지 확인할 방법이 없는 구체적 과목명을 LLM이 지어내면 그대로 통과해버린다
+// (프롬프트 규칙 14만으로는 100% 방어가 안 됨 — 정규식으로 이중 방어).
+const COURSE_NAME_PATTERN = /(론|개론|실습|특강|세미나|입문|연습)$/;
+const MAX_SUGGESTED_FIELDS = 3;
+
 // validatePortfolio와 반대 정책: strengths의 evidence가 전부 걸러져 0개가 돼도
 // 진단 자체는 valid:true를 유지한다 — overview/gaps/scores만으로도 진단은 성립한다
 // (포트폴리오는 evidence 없는 섹션이 곧 콘텐츠 없음이라 무효 처리하지만, 진단은
 // "부족한 점"이 핵심이라 강점 목록이 비어도 유효한 결과다). gaps가 배열이 아닌
 // 경우만 진단의 핵심이 없는 것이므로 invalid 처리한다.
-function validateDiagnosis(data, context) {
+//
+// graduationSummary는 diagnosisService가 graduationAdvisor.summarizeGraduation(context)로
+// 미리 계산해 넘긴다 — hasElectiveRoom이 false인데 LLM이 suggestedFields를 채워
+// 보내는 경우(프롬프트 규칙 16 위반)를 걸러내려면 필요하다.
+function validateDiagnosis(data, context, graduationSummary) {
   const errors = [];
 
   if (!Array.isArray(data?.gaps)) {
@@ -251,6 +262,40 @@ function validateDiagnosis(data, context) {
       actionType: GAP_ACTION_TYPE_ENUM.includes(g.actionType) ? g.actionType : 'none',
     }));
 
+  // hasElectiveRoom이 false면(전공선택·교양선택 모두 남은 학점 없음) "분야로
+  // 채우기" 제안 자체가 성립하지 않는다 — 프롬프트 규칙 16을 LLM이 어겨도
+  // 구조적으로 막는다.
+  const rawSuggestedFields = graduationSummary?.hasElectiveRoom
+    ? (Array.isArray(data?.suggestedFields) ? data.suggestedFields : [])
+    : [];
+  const seenFields = new Set();
+  const suggestedFields = [];
+  rawSuggestedFields.forEach((s, idx) => {
+    const field = typeof s?.field === 'string' ? s.field.trim() : '';
+    if (!field) return;
+
+    if (COURSE_NAME_PATTERN.test(field)) {
+      errors.push(`suggestedFields[${idx}](${field})는 과목명처럼 보여 제외`);
+      return;
+    }
+
+    const normalizedField = field.toLowerCase();
+    if (seenFields.has(normalizedField)) {
+      errors.push(`suggestedFields[${idx}](${field})는 중복이라 제외`);
+      return;
+    }
+    seenFields.add(normalizedField);
+
+    suggestedFields.push({
+      field,
+      reason: typeof s.reason === 'string' ? s.reason.trim() || null : null,
+    });
+  });
+
+  if (suggestedFields.length > MAX_SUGGESTED_FIELDS) {
+    errors.push(`suggestedFields가 ${MAX_SUGGESTED_FIELDS}개를 초과해 앞 ${MAX_SUGGESTED_FIELDS}개만 사용`);
+  }
+
   return {
     valid: true,
     errors,
@@ -258,6 +303,7 @@ function validateDiagnosis(data, context) {
       overview: String(data?.overview || '').trim() || null,
       strengths,
       gaps,
+      suggestedFields: suggestedFields.slice(0, MAX_SUGGESTED_FIELDS),
     },
   };
 }

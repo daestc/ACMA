@@ -1,6 +1,6 @@
 const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
 
-const VERSION = 'diagnosis.v4';
+const VERSION = 'diagnosis.v7';
 
 const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 준비 상태를 진단한다. 본인이 현재 위치를
 파악하고 다음 행동을 정하는 데 쓰인다. 채용담당자가 아니라 본인이 읽는 문서이므로
@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 준비 상태를 진
 
 [출력 형식]
 - 설명, 인사말, 마크다운 코드펜스 없이 JSON 객체 하나만 출력한다.
-- 최상위 키는 정확히 overview, strengths, gaps 세 개만 사용한다.
+- 최상위 키는 정확히 overview, strengths, gaps, suggestedFields 네 개만 사용한다.
 
 [절대 규칙]
 1. 입력 데이터에 없는 경력·프로젝트·수상·자격증을 지어내지 마라.
@@ -39,6 +39,28 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 준비 상태를 진
     다룰 내용이 많으면 하나의 strength 안에서 문장을 나눠 서술하고, 항목을
     쪼개서 여러 개로 부풀리지 마라.
 
+[졸업요건 절 규칙]
+14. 개설 과목 정보는 입력에 없다. 구체적인 과목명을 절대 지어내지 마라.
+    suggestedFields의 field에는 "분야명"만 쓴다
+    (예: 정보보호, 소프트웨어공학, 네트워크, 데이터베이스, 운영체제).
+    "~론", "~개론", "~실습", "~특강" 처럼 과목명으로 보이는 표현을 쓰지 마라.
+15. suggestedFields는 0~3개. 목표 직무의 책무 중 "학점으로 보완 가능한" 영역만
+    고른다. 프로젝트 경험이나 자격증으로 채워야 할 갭은 여기 넣지 말고
+    gaps에 담는다(중복 금지).
+16. hasElectiveRoom이 false면 suggestedFields를 빈 배열로 반환한다(전공선택·
+    교양선택 모두 남은 학점이 없으면 "분야로 채우기" 제안 자체가 성립하지 않는다).
+17. 어느 학점 유형(전공필수/전공선택/교양선택 등)에 해당하는지는 판단하지 마라
+    — 학교 커리큘럼마다 달라 입력 데이터만으로는 알 수 없다. field와 reason만
+    제시한다. reason은 "이 분야가 목표 직무의 어떤 책무에 연결되는지" 한 문장으로
+    쓴다. "필요하다", "중요하다" 같은 일반론이 아니라 목표 직무 정보에 근거해야 한다.
+18. overview에서 졸업요건을 언급할 때:
+    - horizon이 'semester'면 "다음 학기에 무엇을 채울지" 관점으로 쓴다.
+      남은 총량을 강조하지 마라(저학년의 아직 안 커진 부담만 준다).
+      pendingRequirements(졸업논문/졸업작품, 어학성적 등)는 "졸업 전까지 준비할
+      장기 과제"로만 언급하고, 이번 학기·다음 학기에 처리할 일처럼 제시하지 마라.
+    - horizon이 'total'이면 "졸업까지 남은 것" 관점으로 쓴다.
+19. 학점 수치는 입력값을 그대로 인용하고 재계산하거나 합산하지 마라.
+
 [생성 지침]
 - overview는 4~6문장. 현재 준비 상태를 균형 있게 서술한다.
   강점과 부족한 점을 모두 언급해도 된다(이것은 본인용 진단이다).
@@ -59,7 +81,9 @@ function buildSystem() {
 }
 
 // portfolio.js와 동일 패턴: [사용 가능한 근거] 화이트리스트를 맨 앞에 명시적으로 보여준다.
-function buildUser(context, evidenceFacts) {
+// graduationSummary는 graduationAdvisor.summarizeGraduation(context) 결과 — LLM에게
+// 날짜·학점 계산을 시키지 않기 위해 서버가 이미 계산한 값만 그대로 보여준다.
+function buildUser(context, evidenceFacts, graduationSummary) {
   const factsBlock = (evidenceFacts || []).map(f => `- ${f}`).join('\n') || '(근거 없음)';
   const contextBlock = JSON.stringify(context, (key, value) => {
     if (value === null || value === undefined) return undefined;
@@ -67,7 +91,20 @@ function buildUser(context, evidenceFacts) {
     return value;
   });
 
-  return `[사용 가능한 근거]\n${factsBlock}\n\n[입력 데이터]\n${contextBlock}`;
+  // horizon:'semester'일 땐 estimatedSemesters(예: 7학기)를 아예 안 준다 — 줘봤자
+  // "남은 총량을 강조하지 마라"는 규칙과 충돌해 "7학기 동안 다음 학기에..." 같은
+  // 모순 문장이 나왔다(실제 발생). 쓰지 말라고 규칙으로 억제하는 것보다, 애초에
+  // LLM이 쓸 수 없게 값을 안 주는 쪽이 이 프로젝트에서 계속 더 확실했다.
+  const graduationBlock = graduationSummary?.hasData
+    ? JSON.stringify(
+      graduationSummary.horizon === 'semester'
+        ? { ...graduationSummary, estimatedSemesters: undefined }
+        : graduationSummary,
+      (key, value) => (value === null || value === undefined ? undefined : value),
+    )
+    : '데이터 없음 — suggestedFields는 빈 배열로 반환하고, overview에서 졸업요건을 언급하지 마라.';
+
+  return `[사용 가능한 근거]\n${factsBlock}\n\n[졸업요건 현황]\n${graduationBlock}\n\n[입력 데이터]\n${contextBlock}`;
 }
 
 // gaps에는 evidence 필드가 없다 — "부족한 것"을 진술하므로 근거 화이트리스트
@@ -110,8 +147,20 @@ function buildOutputSchema(evidenceFacts) {
             additionalProperties: false,
           },
         },
+        suggestedFields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              field: { type: 'string' },
+              reason: { type: 'string' },
+            },
+            required: ['field', 'reason'],
+            additionalProperties: false,
+          },
+        },
       },
-      required: ['overview', 'strengths', 'gaps'],
+      required: ['overview', 'strengths', 'gaps', 'suggestedFields'],
       additionalProperties: false,
     },
   };

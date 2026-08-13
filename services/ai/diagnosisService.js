@@ -6,6 +6,7 @@ const validator = require('./validator');
 const readinessService = require('./readinessService');
 const missingAnalyzer = require('./missingAnalyzer');
 const gapLinker = require('./gapLinker');
+const graduationAdvisor = require('./graduationAdvisor');
 const retentionService = require('./retentionService');
 const logger = require('../../config/logger');
 
@@ -29,22 +30,24 @@ function buildGenerationMeta(meta, promptVersion) {
  * 동일한 이유 — buildPortfolioContext 중복 호출 방지).
  */
 async function generateDiagnosis(docId, userId, context) {
-  // scores/missing은 LLM과 무관하게 결정적으로 계산되므로, 아래에서 무엇이 실패하든
-  // 항상 저장된다 — "LLM이 실패해도 최소한 뭐가 부족한지는 보여줘야 한다"가 이 Phase의
-  // 핵심 요구사항이다.
+  // scores/missing/graduation은 LLM과 무관하게 결정적으로 계산되므로, 아래에서 무엇이
+  // 실패하든 항상 저장된다 — "LLM이 실패해도 최소한 뭐가 부족한지는 보여줘야 한다"가
+  // 이 Phase의 핵심 요구사항이다. graduation.suggestedFields만 LLM 생성이라 실패 시
+  // 빈 배열로 채운다.
   const missing = missingAnalyzer.analyzeMissing(context);
   const scores = readinessService.checkReadiness(context);
+  const graduationSummary = graduationAdvisor.summarizeGraduation(context);
 
   try {
     const facts = validator.collectEvidenceFacts(context);
 
     const { data, meta } = await aiClient.generateJSON({
       system: diagnosisPrompt.buildSystem(),
-      user: diagnosisPrompt.buildUser(context, facts),
+      user: diagnosisPrompt.buildUser(context, facts, graduationSummary),
       schema: diagnosisPrompt.buildOutputSchema(facts),
     });
 
-    const { valid, sanitized, errors: validationErrors } = validator.validateDiagnosis(data, context);
+    const { valid, sanitized, errors: validationErrors } = validator.validateDiagnosis(data, context, graduationSummary);
     if (!valid) {
       logger.error(
         `[ai] diagnosis validation failed (docId=${docId}): reasons=${JSON.stringify(validationErrors)} `
@@ -56,6 +59,7 @@ async function generateDiagnosis(docId, userId, context) {
         'scores.total': scores.total,
         'scores.breakdown': scores.breakdown,
         missing,
+        graduation: { ...graduationSummary, suggestedFields: [] },
       });
       return;
     }
@@ -74,6 +78,7 @@ async function generateDiagnosis(docId, userId, context) {
       'scores.total': scores.total,
       'scores.breakdown': scores.breakdown,
       missing,
+      graduation: { ...graduationSummary, suggestedFields: sanitized.suggestedFields },
       generation: buildGenerationMeta(meta, diagnosisPrompt.VERSION),
     });
 
@@ -86,6 +91,7 @@ async function generateDiagnosis(docId, userId, context) {
       'scores.total': scores.total,
       'scores.breakdown': scores.breakdown,
       missing,
+      graduation: { ...graduationSummary, suggestedFields: [] },
     }).catch(() => {});
   }
 }
