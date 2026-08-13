@@ -1,3 +1,5 @@
+const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
+
 const VERSION = 'diagnosis.v4';
 
 const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 준비 상태를 진단한다. 본인이 현재 위치를
@@ -22,8 +24,7 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 준비 상태를 진
    Cross Platform). evidence 배열은 원문을 그대로 유지한다(규칙 2).
 6. 한 문장에 기술명·도구명을 5개 이상 나열하지 마라. 관련 있는 것끼리 묶어
    문장으로 풀어 쓴다.
-7. 입력 데이터의 필드명(pendingRequirements, targetJob, evidence, specs 등)을
-   출력 문장에 그대로 쓰지 마라. 한국어로 풀어 쓴다.
+7. ${NO_RAW_FIELD_NAMES}
 8. GPA·학점 등 수치는 입력값을 그대로 인용하고 재계산하지 마라.
 9. 이전 학기 대비 학점 추이(향상/하락 등)를 추측해서 언급하지 마라. GPA 수치가
    주어지면 그대로 인용한다.

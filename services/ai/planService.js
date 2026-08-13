@@ -15,8 +15,9 @@ function normalizeForMatch(value) {
 // isDeadline 항목에 실제 마감일(dueDate)을 서버가 주입한다 — LLM은 날짜를 다루지 않는다.
 // context.certSchedule엔 안정적인 id가 없으므로(Notice._id 미노출) 정규화된 title
 // 부분포함 매칭을 쓴다. 매칭 실패 시 isDeadline을 false로 강등해 dueDate 없이
-// 배치되는 사고를 막는다.
-function injectDueDates(items, certSchedule, errors) {
+// 배치되는 사고를 막는다. 시간/항목이 버려지는 게 아니라 속성 하나가 조정되는
+// 것뿐이라 notices(정보성)로 분류한다 — errors(실제 배치 실패)와 다르다.
+function injectDueDates(items, certSchedule, notices) {
   items.forEach(item => {
     if (!item.isDeadline) return;
 
@@ -27,7 +28,7 @@ function injectDueDates(items, certSchedule, errors) {
 
     if (candidates.length === 0) {
       item.isDeadline = false;
-      errors.push(`"${item.title}" 마감 매칭 실패로 isDeadline 해제`);
+      notices.push(`"${item.title}" 마감 매칭 실패로 isDeadline 해제`);
       return;
     }
 
@@ -67,35 +68,38 @@ function buildGenerationMeta(meta, promptVersion) {
 // distribute() + applyDistributionToChecklists()를 실행하고 WeeklyPlan.distribution을
 // 갱신한다. 실패해도 WeeklyPlan.status는 건드리지 않는다 — 주간계획 자체는 여전히
 // 유효하므로 사용자에게 보여줄 수 있고, 분배만 재시도 가능해야 한다(POST .../distribute).
-async function runDistribution(weeklyPlanDoc, extraErrors = []) {
+// errors(실제 배치 실패)와 notices(정보성 안내)를 분리해서 저장한다 — 성격이 다른
+// 메시지를 한 배열에 섞어두면 화면에서 사용자가 뭘 조치해야 하는지 구분이 안 된다.
+async function runDistribution(weeklyPlanDoc, extraNotices = []) {
   try {
-    const { byDate, errors } = dailyDistributor.distribute(
+    const { byDate, errors, weekDates } = dailyDistributor.distribute(
       weeklyPlanDoc,
       weeklyPlanDoc.computed?.availableHoursByDay || [],
     );
-    await dailyDistributor.applyDistributionToChecklists(weeklyPlanDoc.userId, weeklyPlanDoc._id, byDate);
+    await dailyDistributor.applyDistributionToChecklists(weeklyPlanDoc.userId, weeklyPlanDoc._id, byDate, weekDates);
 
     const dayCount = [...byDate.values()].filter(arr => arr.length > 0).length;
     const itemCount = [...byDate.values()].reduce((sum, arr) => sum + arr.length, 0);
-    const allErrors = [...extraErrors, ...errors];
 
     await WeeklyPlan.findByIdAndUpdate(weeklyPlanDoc._id, {
       'distribution.status': 'done',
       'distribution.distributedAt': new Date(),
       'distribution.dayCount': dayCount,
       'distribution.itemCount': itemCount,
-      'distribution.errors': allErrors,
+      'distribution.errors': errors,
+      'distribution.notices': extraNotices,
     });
 
-    return { status: 'done', dayCount, itemCount, errors: allErrors };
+    return { status: 'done', dayCount, itemCount, errors, notices: extraNotices };
   } catch (distError) {
     logger.error(`[ai] daily distribution failed (weeklyPlanId=${weeklyPlanDoc._id}): ${distError.message}`);
-    const allErrors = [...extraErrors, distError.message];
+    const errors = [distError.message];
     await WeeklyPlan.findByIdAndUpdate(weeklyPlanDoc._id, {
       'distribution.status': 'failed',
-      'distribution.errors': allErrors,
+      'distribution.errors': errors,
+      'distribution.notices': extraNotices,
     }).catch(() => {});
-    return { status: 'failed', dayCount: 0, itemCount: 0, errors: allErrors };
+    return { status: 'failed', dayCount: 0, itemCount: 0, errors, notices: extraNotices };
   }
 }
 
@@ -121,8 +125,15 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
       throw new Error('LLM 출력이 검증을 통과하지 못했습니다.');
     }
 
-    const dueDateErrors = [];
-    injectDueDates(sanitized.items, context.certSchedule, dueDateErrors);
+    const extraNotices = [];
+    injectDueDates(sanitized.items, context.certSchedule, extraNotices);
+
+    // hasTimetable:false면 availableHoursByDay가 실제 시간표가 아니라 기본값(하루
+    // 6시간 균일)으로 채워졌다는 뜻이다 — 방학이라 정말 시간표가 없는 것과 학생이
+    // 아직 등록을 안 한 것을 구분할 수 없으므로, 조용히 기본값을 쓰는 대신 알린다.
+    if (context.computed.hasTimetable === false) {
+      extraNotices.push('이 주에 해당하는 시간표 데이터가 없어 하루 최대 6시간 가용 시간으로 임시 계산했습니다. 실제 여유 시간과 다를 수 있습니다.');
+    }
 
     const savedDoc = await WeeklyPlan.findByIdAndUpdate(docId, {
       status: 'done',
@@ -135,12 +146,13 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
         allocatedHours: sanitized.allocatedHours,
         academicPhase: context.computed.academicPhase,
         semester: context.computed.semester,
+        hasTimetable: context.computed.hasTimetable,
       },
       prevCompletionRate: context.prevCompletionRate,
       generation: buildGenerationMeta(meta, weeklyPlanPrompt.VERSION),
     }, { new: true }).lean();
 
-    await runDistribution(savedDoc, dueDateErrors);
+    await runDistribution(savedDoc, extraNotices);
   } catch (error) {
     logger.error(`[ai] weekly-plan generation failed (docId=${docId}): ${error.message}`);
     await WeeklyPlan.findByIdAndUpdate(docId, {

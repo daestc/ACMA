@@ -110,6 +110,20 @@ async function getCurrentWeeklyPlan(req, res) {
   }
 }
 
+// 오늘 날짜의 AI 일별 계획 항목만 뽑아온다 (홈 화면용 — 어느 WeeklyPlan에서 왔는지는
+// 몰라도 되고, 오늘 날짜 하나만 알면 된다).
+async function getTodayChecklist(req, res) {
+  try {
+    const today = kstDate.toKstDateString(new Date());
+    const doc = await DailyChecklist.findOne({ userId: req.user.id, date: today }).select('items').lean();
+    const items = (doc?.items || []).filter(item => item.source === 'ai');
+    return res.json({ success: true, date: today, items });
+  } catch (error) {
+    logger.error(`[ai] getTodayChecklist error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
 async function redistributeWeeklyPlan(req, res) {
   try {
     const doc = await WeeklyPlan.findById(req.params.id).lean();
@@ -152,6 +166,30 @@ async function getWeeklyPlanChecklist(req, res) {
     return res.json({ success: true, days });
   } catch (error) {
     logger.error(`[ai] getWeeklyPlanChecklist error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+// 일별 체크리스트 항목 완료 토글 (본인 문서 안에서만 — userId 필터로 찾아야 서브도큐먼트
+// _id만 아는 다른 사용자가 남의 항목을 못 건드린다).
+async function toggleChecklistItem(req, res) {
+  try {
+    const userId = req.user.id;
+    const { itemId } = req.params;
+
+    const doc = await DailyChecklist.findOne({ userId, 'items._id': itemId });
+    if (!doc) return res.status(404).json({ success: false });
+
+    const item = doc.items.id(itemId);
+    if (!item) return res.status(404).json({ success: false });
+
+    item.isCompleted = !item.isCompleted;
+    item.completedAt = item.isCompleted ? new Date() : null;
+    await doc.save();
+
+    return res.json({ success: true, isCompleted: item.isCompleted, completedAt: item.completedAt });
+  } catch (error) {
+    logger.error(`[ai] toggleChecklistItem error: ${error.message}`);
     res.status(500).json({ success: false });
   }
 }
@@ -412,8 +450,10 @@ module.exports = {
   requestWeeklyPlan,
   getWeeklyPlan,
   getCurrentWeeklyPlan,
+  getTodayChecklist,
   redistributeWeeklyPlan,
   getWeeklyPlanChecklist,
+  toggleChecklistItem,
   renderTestPage,
   getPortfolioReadiness,
   requestPortfolio,

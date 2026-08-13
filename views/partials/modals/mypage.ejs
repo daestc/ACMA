@@ -53,6 +53,7 @@
             <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">학번</label><input class="input-field" value="<%= user.studentId || '' %>" style="width:100%;" id="studentId"></div>
             <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">대학</label><input class="input-field" value="<%= user.university || '' %>" style="width:100%;" id="university"></div>
             <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">주전공-복수전공</label><input class="input-field" value="<%= user.major || '' %>" style="width:100%;" id="major"></div>
+            <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">학년</label><select class="input-field" style="width:100%;" id="grade"><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년 이상</option></select></div>
             <div class="form-group"><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px;">재학상태</label><select class="input-field" style="width:100%;" id="enrollmentStatus"><option>재학</option><option>휴학</option><option>졸업</option></select></div>
             <button class="btn btn-accent btn-sm" onclick="saveProfile()">저장</button>
           </div>

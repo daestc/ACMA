@@ -11,6 +11,7 @@ let pendingChanges = {}; // habitList에서 변경된 값만 모아두기
 document.addEventListener('DOMContentLoaded', () => {
   updateHabitSummary();
   loadTodayLectures();
+  loadTodayAiPlan();
 });
 
 // 페이지 이탈시 isCompleted 수정 사항 DB 반영
@@ -31,19 +32,75 @@ let urgentNotices = [];
 
 
 
-// ── 강의 일정 / 할 일 탭 전환 ────────────────────
+// ── 강의 일정 / 할 일 / AI 계획 탭 전환 ────────────────────
 function switchHomeTodo(tab, btn) {
-  document.getElementById('ht-lecture').style.display = 'none';
-  document.getElementById('ht-todo').style.display    = 'none';
+  ['lecture', 'todo', 'aiplan'].forEach(t => {
+    document.getElementById('ht-' + t).style.display = 'none';
+  });
   document.getElementById('ht-' + tab).style.display  = 'block';
-
-  // // 할일 탭 이면 수정버튼 활성화
-  // if(tab === "todo") {document.getElementById('todo-refactor').style.display = 'block';}
-  // else {document.getElementById('todo-refactor').style.display = 'none';}
-  
 
   btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+// ── 오늘의 AI 계획(주간 계획에서 분해된 항목) 불러오기 ────────────
+function homeEscapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+async function loadTodayAiPlan() {
+  const box = document.getElementById('ht-aiplan');
+  if (!box) return;
+
+  try {
+    const res = await fetch('/ai/weekly-plan/today', { credentials: 'same-origin' });
+    const data = await res.json();
+
+    if (!data.success || !data.items || data.items.length === 0) {
+      box.innerHTML = `
+        <div class="check-item todo-exam"><span class="check-text">오늘 배정된 AI 계획이 없습니다</span></div>
+        <span class="card-action" style="bottom: 0;" onclick="location.href='/career/plan'">계획 만들기</span>`;
+      return;
+    }
+
+    const itemsHtml = data.items
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map(item => `
+        <div class="check-item" data-id="${item._id}">
+          <div class="check-box ${item.isCompleted ? 'checked' : ''}" onclick="toggleAiPlanItem('${item._id}', this)">${item.isCompleted ? '✓' : ''}</div>
+          <span class="check-text ${item.isCompleted ? 'done' : ''}">${homeEscapeHtml(item.content)}</span>
+        </div>`)
+      .join('');
+
+    box.innerHTML = `${itemsHtml}<span class="card-action" style="bottom: 0;" onclick="location.href='/career/plan'">전체 보기</span>`;
+  } catch (err) {
+    console.error('loadTodayAiPlan failed', err);
+    box.innerHTML = '<div class="check-item"><span class="check-text">오늘의 AI 계획을 불러오지 못했습니다.</span></div>';
+  }
+}
+
+// 서버에 즉시 반영(AI 계획 항목은 다른 주간계획 화면과 상태를 공유하므로 pendingChanges
+// 방식의 지연 저장이 아니라 클릭 즉시 저장한다).
+async function toggleAiPlanItem(itemId, boxEl) {
+  try {
+    const res = await fetch(`/ai/weekly-plan/checklist/${itemId}/toggle`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    boxEl.classList.toggle('checked', data.isCompleted);
+    boxEl.textContent = data.isCompleted ? '✓' : '';
+    const textEl = boxEl.nextElementSibling;
+    if (textEl) textEl.classList.toggle('done', data.isCompleted);
+  } catch (err) {
+    console.error('toggleAiPlanItem failed', err);
+  }
 }
 
 // ── 오늘의 강의 불러오기 ────────────────────

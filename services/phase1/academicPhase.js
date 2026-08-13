@@ -25,6 +25,8 @@ async function getAcademicContext(userId, date = new Date()) {
     phase = 'vacation';
   } else if (ctx.activeSchedules.some(s => s.type === 'registration')) {
     phase = 'registration';
+  } else if (ctx.activeSchedules.some(s => s.type === 'semester_start')) {
+    phase = 'semester_start';
   }
 
   const upcoming = (ctx.examSchedules || [])

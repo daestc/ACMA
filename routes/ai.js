@@ -7,9 +7,11 @@ router.get('/test', requireLogin, aiController.renderTestPage);
 
 router.post('/weekly-plan', requireLogin, aiController.requestWeeklyPlan);
 router.get('/weekly-plan/current', requireLogin, aiController.getCurrentWeeklyPlan);
+router.get('/weekly-plan/today', requireLogin, aiController.getTodayChecklist);
 router.get('/weekly-plan/:id', requireLogin, aiController.getWeeklyPlan);
 router.post('/weekly-plan/:id/distribute', requireLogin, aiController.redistributeWeeklyPlan);
 router.get('/weekly-plan/:id/checklist', requireLogin, aiController.getWeeklyPlanChecklist);
+router.post('/weekly-plan/checklist/:itemId/toggle', requireLogin, aiController.toggleChecklistItem);
 
 router.get('/portfolio/readiness', requireLogin, aiController.getPortfolioReadiness);
 router.get('/portfolio/latest', requireLogin, aiController.getLatestPortfolio);

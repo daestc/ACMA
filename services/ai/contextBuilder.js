@@ -4,6 +4,7 @@ const AcademicRecordModel = require('../../models/Academic_records');
 const UserSkill = require('../../models/User_skills');
 const { Job, UserCertification } = require('../../models/Certifications_jobs');
 const logger = require('../../config/logger');
+const kstDate = require('../../utils/kstDate');
 
 const availabilityAdapter = require('../phase1/availability');
 const creditsAdapter = require('../phase1/credits');
@@ -255,12 +256,15 @@ async function buildUserContext(userId) {
 }
 
 async function buildWeeklyPlanContext(userId, weekStart) {
-  const [userContext, rawAvailableHoursByDay, academicPhase, prevWeekFeedback] = await Promise.all([
+  const [userContext, rawAvailability, academicPhase, prevWeekFeedback] = await Promise.all([
     buildUserContext(userId),
     availabilityAdapter.calcAvailableHours(userId, academicPhaseAdapter.deriveSemesterFromDate(weekStart)),
     academicPhaseAdapter.getAcademicContext(userId, weekStart),
     completionService.getPreviousWeekFeedback(userId, weekStart),
   ]);
+
+  const rawAvailableHoursByDay = rawAvailability?.hoursByDay;
+  const hasTimetable = rawAvailability?.hasTimetable ?? true;
 
   // Phase1 계약 위반(배열이 아니거나 길이/값이 이상함) 방어 — 여기서 조용히 NaN이
   // 새어나가면 validator의 시간 예산 제한이 통째로 무력화된다.
@@ -270,6 +274,19 @@ async function buildWeeklyPlanContext(userId, weekStart) {
   }
   const availableHoursByDay = (isValidShape ? rawAvailableHoursByDay : Array(7).fill(0))
     .map(h => (Number.isFinite(h) && h >= 0 ? h : 0));
+
+  // 주 중간에 생성하면(예: 목요일에 "이번 주" 계획 생성) dailyDistributor.distribute()는
+  // 이미 지난 요일을 배치 대상에서 제외하는데, 여기서 만드는 availableHoursTotal은 7일
+  // 전체 기준이라 LLM이 실제로 분배 가능한 시간보다 큰 예산으로 계획을 짜는 불일치가
+  // 있었다(그 결과 분배 단계에서 초과분이 통째로 버려짐 — 실제로 발생). 지난 요일의
+  // 가용시간을 0으로 만들어 두 숫자를 맞춘다. weekStart가 미래 주면 전부 오늘 이후라
+  // 아무것도 안 바뀐다.
+  const todayStr = kstDate.toKstDateString(new Date());
+  kstDate.getWeekDateStrings(weekStart).forEach(d => {
+    if (d < todayStr) {
+      availableHoursByDay[kstDate.getKstDayOfWeek(kstDate.fromKstDateString(d))] = 0;
+    }
+  });
 
   const availableHoursTotal = +availableHoursByDay.reduce((sum, h) => sum + h, 0).toFixed(1);
 
@@ -292,6 +309,7 @@ async function buildWeeklyPlanContext(userId, weekStart) {
       availableHoursTotal,
       academicPhase: academicPhase?.phase ?? null,
       semester: academicPhase?.semester ?? null,
+      hasTimetable,
     },
     prevCompletionRate: prevWeekFeedback?.rate ?? null,
     incompleteItems: prevWeekFeedback?.incompleteItems ?? [],

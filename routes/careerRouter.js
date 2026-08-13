@@ -21,6 +21,33 @@ router.get('/recruit', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
+// 주간 계획 페이지 (AI, /ai/weekly-plan* 연동)
+router.get('/plan', requireLogin, (req, res) => {
+  res.render('pages/careerPlan', {
+    title:       '주간 계획',
+    currentPage: 'careerPlan',
+    pageTitle:   '📅 주간 계획',
+    user:        req.user,
+  });
+});
+// 진로 포트폴리오 페이지 (AI, /ai/portfolio* 연동)
+router.get('/portfolio', requireLogin, (req, res) => {
+  res.render('pages/careerPortfolio', {
+    title:       '진로 포트폴리오',
+    currentPage: 'careerPortfolio',
+    pageTitle:   '💼 진로 포트폴리오',
+    user:        req.user,
+  });
+});
+// 진로 진단 페이지 (AI, /ai/diagnosis* 연동)
+router.get('/diagnosis', requireLogin, (req, res) => {
+  res.render('pages/careerDiagnosis', {
+    title:       '진로 진단',
+    currentPage: 'careerDiagnosis',
+    pageTitle:   '🩺 진로 진단',
+    user:        req.user,
+  });
+});
 
 // 직무 관련 라우터
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기

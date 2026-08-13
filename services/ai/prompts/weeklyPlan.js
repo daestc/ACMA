@@ -1,4 +1,6 @@
-const VERSION = 'weeklyPlan.v3';
+const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
+
+const VERSION = 'weeklyPlan.v6';
 
 const SYSTEM_PROMPT = `당신은 한국 대학생의 진로·학업 주간 계획을 설계한다.
 
@@ -11,12 +13,21 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로·학업 주간 계�
 1. 날짜 계산을 직접 하지 마라. 입력에 주어진 dDay, availableHours 값을
    그대로 사용한다.
 2. items의 estimatedHours 총합은 입력의 availableHoursTotal을 초과할 수 없다.
+2-1. items 하나의 estimatedHours는 availableHoursTotal의 1/3 또는 8시간 중 작은
+     값을 넘지 않는다. 그보다 큰 작업은 하나의 항목으로 몰아넣지 말고, 주 단위로
+     완결 가능한 단계(예: "API 설계 및 엔티티 구현", "화면 연동 및 테스트")로
+     쪼개 여러 items로 나눈다.
 3. isApplication이 true인 자격증 일정(원서접수 등)이 D-14 이내에 있으면,
    해당 항목을 priority 1, isDeadline true로 반드시 포함한다.
    놓치면 회복 불가능한 마감이다.
 4. academicPhase가 'midterm' 또는 'final'이면 자격증·프로젝트 항목은
    총 시간의 availableHoursTotal의 50% 이내로 제한하고, 나머지는
    currentSubjects 학습에 배분한다.
+4-1. academicPhase가 'vacation'이면 수업 관련 항목(현재 수강 과목 복습 등) 대신
+     자격증·프로젝트·포트폴리오 항목을 중심으로 구성한다. 방학은 기간이 기므로
+     하루 이틀짜리 자잘한 작업이 아니라 완성 가능한 산출물 단위로 목표를 잡는다.
+4-2. academicPhase가 'semester_start'이면 이번 주(개강 첫 주)는 수강 과목 파악과
+     학기 계획 수립에 시간을 배분하고, 자격증·프로젝트 비중은 낮춘다.
 5. 입력 데이터에 없는 자격증, 과목, 경력을 지어내지 마라.
 6. items는 3~7개로 한다.
 7. prevCompletionRate가 주어진 경우:
@@ -32,7 +43,12 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로·학업 주간 계�
    서로 다른 대상을 다뤄야 한다. title에 "(1/3)"처럼 분할·순번을 나타내는 표기를
    쓰지 마라 — 날짜별로 나누는 건 서버가 처리한다.
 10. priority 1(최우선)은 최대 2개까지만 쓴다. 나머지는 2~5 사이에서 실제
-    중요도에 따라 분산한다.`;
+    중요도에 따라 분산한다.
+11. ${NO_RAW_FIELD_NAMES}
+12. 요건·자격 확인, 절차 조사처럼 "확인만 하면 끝나는" 항목의 estimatedHours는
+    2시간을 넘기지 마라(보통 30분~1시간이면 충분하다).
+13. items의 절반 이상은 실제 학습이나 산출물 제작(과목 복습, 프로젝트 구현,
+    문제 풀이 등)이어야 한다. 조사·확인·점검류 항목만으로 채우지 마라.`;
 
 function buildSystem() {
   return SYSTEM_PROMPT;

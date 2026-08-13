@@ -5,7 +5,7 @@ const universityScheduleSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   type: {
     type: String,
-    enum: ['midterm', 'final', 'vacation', 'registration', 'holiday', 'orientation', 'other'],
+    enum: ['semester_start', 'midterm', 'final', 'vacation', 'registration', 'holiday', 'orientation', 'other'],
     default: 'other',
   },
   startDate: { type: Date, required: true },

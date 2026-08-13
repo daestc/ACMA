@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head', { title: pageTitle }) %>
+	<title>진로 진단</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'careerDiagnosis', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '진로 진단', user: user }) %>
+
+		<div class="page-content">
+      <!-- ══ 준비도 ══ -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <span class="card-title">준비도</span>
+          <span class="badge badge-blue" id="dg-total-badge">-</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;" id="dg-breakdown"></div>
+        <div id="dg-blockers"></div>
+        <div id="dg-missing"></div>
+        <div style="margin-top:16px;text-align:right;">
+          <button class="btn btn-accent" id="dg-generate-btn" onclick="generateDiagnosis()" disabled>진단 생성하기</button>
+        </div>
+      </div>
+
+      <!-- ══ 생성 중 ══ -->
+      <div class="card" id="dg-pending" style="display:none;text-align:center;padding:48px 20px;">
+        <div style="font-size:14px;color:var(--accent);">진단을 생성하는 중입니다... (최대 1분 소요)</div>
+      </div>
+
+      <!-- ══ 생성 실패 ══ -->
+      <div class="card" id="dg-failed" style="display:none;text-align:center;padding:48px 20px;">
+        <div style="font-size:14px;color:var(--red);" id="dg-failed-msg">생성에 실패했습니다.</div>
+      </div>
+
+      <!-- ══ 빈 상태 ══ -->
+      <div class="card" id="dg-empty" style="display:none;text-align:center;padding:48px 20px;">
+        <div style="font-size:36px;margin-bottom:12px;">🩺</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">아직 생성된 진단이 없습니다</div>
+        <p style="font-size:13px;color:var(--text2);line-height:1.6;">위에서 목표 직무를 설정한 뒤 생성해 보세요.</p>
+      </div>
+
+      <!-- ══ 진단 본문 ══ -->
+      <div id="dg-result" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title" id="dg-job-title">-</span>
+            <button class="btn btn-ghost btn-sm" onclick="generateDiagnosis()">다시 생성</button>
+          </div>
+          <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-top:8px;" id="dg-overview"></p>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:10px;">강점</div>
+          <div id="dg-strengths" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px;">부족한 점</div>
+          <div id="dg-gaps" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+      </div>
+		</div>
+
+	</main>
+
+	<!-- 모달 -->
+	<%- include('../partials/modals/mypage', { user: user }) %>
+
+	<script src="/js/common.js"></script>
+	<script src="/js/careerAi.js"></script>
+	<script src="/js/careerDiagnosis.js"></script>
+</body>
+
+</html>

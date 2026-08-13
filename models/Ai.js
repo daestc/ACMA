@@ -143,6 +143,11 @@ const weeklyPlanSchema = new Schema({
     allocatedHours: { type: Number, default: 0 },
     academicPhase: { type: String, default: null },
     semester: { type: String, default: null },
+    // false면 이 주에 해당하는 Timetable을 못 찾아 availableHoursByDay가 기본값
+    // (하루 6시간 균일)으로 대체됐다는 뜻 — 방학처럼 정말 시간표가 없는 것과 학생이
+    // 아직 등록을 안 한 것을 구분 못 하므로, false일 때 distribution.errors에
+    // 안내를 남긴다(services/ai/planService.js).
+    hasTimetable: { type: Boolean, default: true },
   },
 
   prevCompletionRate: { type: Number, default: null },
@@ -153,7 +158,11 @@ const weeklyPlanSchema = new Schema({
     distributedAt: { type: Date, default: null },
     dayCount: { type: Number, default: 0 },
     itemCount: { type: Number, default: 0 },
+    // errors: 실제로 시간/항목이 배치 안 되고 버려진 경우(사용자 조치 필요할 수 있음).
+    // notices: 정보성 안내(시간표 데이터 없음, 마감 매칭 실패로 isDeadline 해제 등) —
+    // 뭔가 실패한 게 아니라 참고 사항. 화면에서 성격이 다르게 뜨도록 분리한다.
     errors: { type: [String], default: [] },
+    notices: { type: [String], default: [] },
   },
 }, { timestamps: true });
 

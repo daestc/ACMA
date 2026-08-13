@@ -1,3 +1,5 @@
+const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
+
 const VERSION = 'portfolio.v3';
 
 const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 포트폴리오를 작성한다. 취업 지원 시
@@ -34,8 +36,7 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로 포트폴리오를 �
     유보·과제 제시형 표현을 body에 쓰지 마라.
 11. 근거만으로 긍정적으로 서술할 내용이 없는 영역은 section을 만들지 말고
     생략하라. 2문장짜리 빈 section이 있는 것보다 section 3개가 낫다.
-12. 입력 데이터의 필드명(pendingRequirements, targetJob, evidence, specs 등)을
-    출력 문장에 그대로 쓰지 마라. 한국어로 풀어 쓴다.
+12. ${NO_RAW_FIELD_NAMES}
 
 [생성 지침]
 - section은 2~5개. 역량 영역별로 묶는다

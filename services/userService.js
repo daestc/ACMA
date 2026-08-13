@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const userskill = require('../models/User_skills');
+const UniversityProfile = require('../models/University_profile');
 const { clearUserLectureTimetables } = require('./calendarService');
 
 // 사용자의 오늘 자 todoList 가져오기. userId로 변경가능
@@ -183,7 +184,7 @@ async function updateProfile(userEmail, profileData) {
     throw new Error('사용자를 찾지 못했습니다.');
   }
 
-  const { studentId, university, major, enrollmentStatus } = profileData;
+  const { studentId, university, major, enrollmentStatus, grade } = profileData;
   const oldUniversity = user.university?.trim() || '';
   const newUniversity = university?.trim() || '';
   const universityChanged = oldUniversity !== newUniversity;
@@ -198,6 +199,22 @@ async function updateProfile(userEmail, profileData) {
     { studentId, university: newUniversity, major, enrollmentStatus },
   );
 
+  // 학년은 User가 아니라 UniversityProfile.grade에 저장된다(AI 컨텍스트가 여기서
+  // 읽음 — services/ai/contextBuilder.js). 문서가 아직 없으면 만들되(major는 스키마
+  // 필수 필드라 $setOnInsert로 채움), 이미 있으면 grade만 갱신하고 다른 필드는
+  // 건드리지 않는다(enrollmentStatus enum이 User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
+  const gradeNum = Number(grade);
+  if (grade !== undefined && grade !== null && String(grade).trim() !== '' && Number.isFinite(gradeNum)) {
+    await UniversityProfile.findOneAndUpdate(
+      { userId: user._id },
+      {
+        $set: { grade: gradeNum },
+        $setOnInsert: { userId: user._id, major: (major || user.major || '미설정').trim() || '미설정' },
+      },
+      { upsert: true, setDefaultsOnInsert: true },
+    );
+  }
+
   return { universityChanged, clearedLectureCount };
 }
 // user 정보 가져오기
@@ -206,6 +223,8 @@ async function getProfile(userEmail) {
     const user = await User.findOne({ email: userEmail });
     if (!user) throw new Error('사용자를 찾지 못했습니다.');
 
+    const universityProfile = await UniversityProfile.findOne({ userId: user._id }).select('grade').lean();
+
     return {
       name: user.name,
       email: user.email,
@@ -213,7 +232,8 @@ async function getProfile(userEmail) {
       studentId: user.studentId,
       university: user.university,
       major: user.major,
-      enrollmentStatus: user.enrollmentStatus
+      enrollmentStatus: user.enrollmentStatus,
+      grade: universityProfile?.grade ?? null,
     };
   } catch (error) {
     console.error(error);
