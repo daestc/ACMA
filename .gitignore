@@ -191,3 +191,6 @@ $RECYCLE.BIN/
 # ?? ?? ??? ??? (????)
 uploads/
 public/upload/
+
+# Claude Code 로컬 권한 설정 (사용자별, 커밋 대상 아님)
+.claude/settings.local.json
