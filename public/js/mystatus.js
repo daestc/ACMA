@@ -6,7 +6,7 @@
 
 // ── 자격증 / 대외활동 / 어학성적 탭 ──────────────
 function switchStatusTab(tab, btn) {
-  ['cert', 'activity', 'lang'].forEach(t => {
+  ['cert', 'activity', 'lang', 'skill'].forEach(t => {
     document.getElementById('st-' + t).style.display = 'none';
   });
   document.getElementById('st-' + tab).style.display = 'block';
@@ -250,6 +250,7 @@ async function fetchSpecs() {
     renderAwards(data.awards || []);
     renderLanguages(data.languages || []);
     renderExperiences(data.experiences || []);
+    renderSkills(data.skills || []);
   } catch (err) {
     console.error('fetchSpecs 에러:', err);
   }
@@ -321,6 +322,28 @@ function renderExperiences(experiences) {
       </div></div>`;
   }).join('');
 }
+// ④ 보유 스킬 (#st-skill)
+const SKILL_LEVEL_BADGE = { 하급: 'badge-blue', 중급: 'badge-amber', 고급: 'badge-green' };
+
+function renderSkills(skills) {
+  const box = document.getElementById('st-skill');
+  if (!box) return;
+
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🛠 보유 스킬</span><button type="button" class="btn btn-accent btn-sm" id="skill-open-btn">+ 추가</button></div>`;
+
+  const list = skills.length
+    ? skills.map(s => {
+        const badgeClass = SKILL_LEVEL_BADGE[s.level] || 'badge-blue';
+        return `<div class="cert-item spec-clickable" data-spec-type="skill" data-spec='${encodeURIComponent(JSON.stringify(s))}' style="cursor:pointer;">
+          <div class="cert-icon">🛠</div>
+          <div class="cert-name">${s.name || ''}</div>
+          <span class="badge ${badgeClass}" style="margin-left:auto;">${s.level || ''}</span></div>`;
+      }).join('')
+    : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 스킬이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
 document.addEventListener('click', (e) => {
   const item = e.target.closest('.spec-clickable');
   if (!item) return;

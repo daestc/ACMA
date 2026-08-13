@@ -5,6 +5,7 @@ const aiClient = require('./aiClient');
 const validator = require('./validator');
 const readinessService = require('./readinessService');
 const missingAnalyzer = require('./missingAnalyzer');
+const retentionService = require('./retentionService');
 const logger = require('../../config/logger');
 
 const GENERIC_FAILURE_MESSAGE = '생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
@@ -19,25 +20,6 @@ function buildGenerationMeta(meta, promptVersion) {
     latencyMs: meta.latencyMs,
     retryCount: meta.retryCount,
   };
-}
-
-// 사용자당 done 문서가 MAX_DONE_DOCS_PER_USER개를 넘으면 오래된 것부터 삭제.
-// 이력 자체는 가치가 없으니 지연시키지 말 것(명세 §8) — 실패해도 생성 자체는
-// 이미 끝났으므로 조용히 로그만 남긴다.
-async function enforceRetention(userId) {
-  try {
-    const doneDocs = await CareerPortfolio.find({ userId, status: 'done' })
-      .select('_id')
-      .sort({ createdAt: -1 })
-      .skip(MAX_DONE_DOCS_PER_USER)
-      .lean();
-
-    if (doneDocs.length > 0) {
-      await CareerPortfolio.deleteMany({ _id: { $in: doneDocs.map(d => d._id) } });
-    }
-  } catch (error) {
-    logger.error(`[ai] portfolio retention cleanup failed (userId=${userId}): ${error.message}`);
-  }
 }
 
 /**
@@ -87,7 +69,7 @@ async function generatePortfolio(docId, userId, context) {
       generation: buildGenerationMeta(meta, portfolioPrompt.VERSION),
     });
 
-    await enforceRetention(userId);
+    await retentionService.enforceRetention(CareerPortfolio, userId, MAX_DONE_DOCS_PER_USER);
   } catch (error) {
     logger.error(`[ai] portfolio generation failed (docId=${docId}): ${error.message}`);
     await CareerPortfolio.findByIdAndUpdate(docId, {

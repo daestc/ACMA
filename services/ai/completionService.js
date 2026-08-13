@@ -34,7 +34,15 @@ async function getPreviousWeekFeedback(userId, weekStart) {
   const prevWeekStart = new Date(weekStart);
   prevWeekStart.setUTCDate(prevWeekStart.getUTCDate() - 7);
 
-  const prevPlan = await WeeklyPlan.findOne({ userId, weekStart: prevWeekStart }).select('_id items').lean();
+  // Date 완전 일치(findOne({weekStart: prevWeekStart}))는 위험하다 — weekStart가
+  // 정확히 KST 자정(예: 15:00:00.000Z)으로 저장돼 있어야만 매칭되는데, 생성 경로가
+  // 하나라도 다른 헬퍼를 쓰거나 밀리초가 어긋나면 조용히 못 찾고 rate:null로 빠져서
+  // 원인 추적이 어렵다. 그날 하루 범위로 조회하면 이런 미세한 시각 불일치에 안전하다.
+  const prevWeekStartRangeEnd = new Date(prevWeekStart.getTime() + 24 * 60 * 60 * 1000);
+  const prevPlan = await WeeklyPlan.findOne({
+    userId,
+    weekStart: { $gte: prevWeekStart, $lt: prevWeekStartRangeEnd },
+  }).sort({ weekStart: -1 }).select('_id items').lean();
   if (!prevPlan) return { rate: null, incompleteItems: [] };
 
   const checklists = await DailyChecklist.find({ userId, 'items.weeklyPlanId': prevPlan._id })

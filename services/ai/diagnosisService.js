@@ -6,9 +6,11 @@ const validator = require('./validator');
 const readinessService = require('./readinessService');
 const missingAnalyzer = require('./missingAnalyzer');
 const gapLinker = require('./gapLinker');
+const retentionService = require('./retentionService');
 const logger = require('../../config/logger');
 
 const GENERIC_FAILURE_MESSAGE = '생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
+const MAX_DONE_DOCS_PER_USER = 10; // portfolioService.js와 동일 상한(Phase 4 §8)
 
 function buildGenerationMeta(meta, promptVersion) {
   return {
@@ -74,6 +76,8 @@ async function generateDiagnosis(docId, userId, context) {
       missing,
       generation: buildGenerationMeta(meta, diagnosisPrompt.VERSION),
     });
+
+    await retentionService.enforceRetention(CareerDiagnosis, userId, MAX_DONE_DOCS_PER_USER);
   } catch (error) {
     logger.error(`[ai] diagnosis generation failed (docId=${docId}): ${error.message}`);
     await CareerDiagnosis.findByIdAndUpdate(docId, {

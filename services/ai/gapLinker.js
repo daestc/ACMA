@@ -9,13 +9,18 @@ function normalize(value) {
   return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 }
 
-// 양방향 부분포함 매칭 — Notice 제목(certSchedule[].certName)이 gap.item보다 길 수도
-// (예: "2026년 정보처리기사 필기") 짧을 수도 있어 한쪽만 보면 놓친다.
-function isNameMatch(a, b) {
-  if (!a || !b) return false;
-  const na = normalize(a);
-  const nb = normalize(b);
-  return na.includes(nb) || nb.includes(na);
+const MIN_CERT_NAME_LENGTH = 3; // "기사"처럼 너무 짧은 이름은 아무 gap에나 우연히 매칭될 위험이 큼
+
+// gap.item(예: "정보처리기사 취득")이 certName(예: "정보처리기사")을 포함하는지만 본다.
+// 예전엔 반대 방향(certName이 gap.item을 포함하는지)도 같이 봤는데, gap.item은
+// "○○ 취득"처럼 항상 자격증명보다 길게 서술하도록 프롬프트 규칙(diagnosis.js)이
+// 이미 강제하고 있어 실제로 반대 방향이 필요한 케이스가 없었다. 반대 방향을 열어두면
+// "기사"처럼 짧은 자격증명이 관련 없는 gap에도 걸리는 부작용만 남는다.
+function isNameMatch(gapItem, certName) {
+  if (!gapItem || !certName) return false;
+  const normalizedCertName = normalize(certName);
+  if (normalizedCertName.length < MIN_CERT_NAME_LENGTH) return false;
+  return normalize(gapItem).includes(normalizedCertName);
 }
 
 function findCertScheduleMatch(gapItem, certSchedule) {
@@ -50,11 +55,18 @@ async function findDirectCertMatch(certName) {
   // 전혀 모르는) 경우에만 탄다. 실기는 필기 합격자만 응시할 수 있으므로, 필기 합격
   // 여부를 확인할 방법이 없는 이상 실기 일정을 다음 행동으로 안내하면 안 된다 —
   // 안전하게 필기 단계(원서접수/시험, 결과발표 제외)만 후보로 삼는다.
-  const upcoming = notices.find(n => {
-    const label = n.details?.examType || n.title;
-    return WRITTEN_STAGE_PATTERN.test(label) && !EXCLUDED_NOTICE_PATTERN.test(n.title);
-  });
+  // 판정 기준은 title 하나로 통일한다 — details.examType는 시드 방식에 따라 비어
+  // 있을 수 있는 선택 필드라, 이걸 필기/실기 구분 기준으로 쓰면서 원서접수 여부는
+  // title로 판단하는 식으로 기준이 갈리면 같은 공고를 두고 서로 다른 답이 나올 수
+  // 있다(예: title엔 "필기"가 있는데 details.examType은 비어 있는 경우).
+  const upcoming = notices.find(n => WRITTEN_STAGE_PATTERN.test(n.title) && !EXCLUDED_NOTICE_PATTERN.test(n.title));
 
+  // endDate는 Notice 스키마상 "접수 마감일"이다(주석: "접수 마감 (이걸로 D-Day 계산)").
+  // 원서접수 공고에선 그대로 마감일이 맞지만, 시험 공고에선 "그 공고 자체의 접수
+  // 마감"으로 endDate=startDate(당일)로 시드되어 있어 우연히 시험일과 같다 — 이
+  // 시드 방식이 바뀌면(예: 시험 공고에 별도 접수기간이 생기면) nextExamDate가 조용히
+  // 틀려진다. isApplication 플래그로 "이 날짜가 원서접수 마감인지"를 반드시 함께
+  // 확인해서 쓸 것 — 여기서 이름만 nextExamDate일 뿐 항상 "시험일"은 아니다.
   return {
     jmcd: cert.jmcd,
     certName: cert.name,

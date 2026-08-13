@@ -83,13 +83,19 @@ function analyzeMissing(context) {
   // hasExpiredLanguage)로 봐야 한다 — 배열 길이만 보면 만료된 것뿐인 경우를 놓친다.
   if (!context?.specs?.hasAnyLanguage) push('language', 'high');
 
-  const hasAnyCert = (context?.certSchedule || []).length > 0 || (context?.specs?.certifications || []).length > 0;
-  if (!hasAnyCert) push('certification', 'high');
+  // readinessService.calcBreakdown의 'certification' 행도 specs.certifications만
+  // 본다 — 기준을 맞춰야 한다. certSchedule은 "아직 못 딴" 목표 자격증의 일정이라
+  // 여기 넣으면 목표만 등록해도 "자격증 있음"으로 잘못 판정된다.
+  if (!(context?.specs?.certifications || []).length) push('certification', 'high');
 
   if (!(context?.specs?.experiences || []).length) push('experience', 'high');
   if ((context?.specs?.skills || []).length < 3) push('skill', 'medium');
   if (!(context?.specs?.awards || []).length) push('award', 'medium');
-  if (context?.academic?.gpa === null || context?.academic?.gpa === undefined) push('gpa', 'medium');
+  // contextBuilder의 compact()가 null/undefined 필드를 아예 제거하므로 gpa는 항상
+  // "실제 값" 아니면 undefined다 — 그래도 존재 여부보다 "숫자로 쓸 수 있는가"를
+  // 직접 검사하는 게 이 판정의 진짜 의도와 맞고, compact()의 구현 디테일에 암묵적으로
+  // 기대지 않아도 된다.
+  if (!Number.isFinite(context?.academic?.gpa)) push('gpa', 'medium');
 
   if (context?.specs?.hasExpiredLanguage) push('languageExpired', 'medium');
 

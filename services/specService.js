@@ -5,6 +5,7 @@ const ARRAY_FIELD = {
   award: 'userAward',
   language: 'userLanguage',
   experience: 'userExperience',
+  skill: 'userSkill',
 };
 
 async function pushSpec(userId, type, item) {

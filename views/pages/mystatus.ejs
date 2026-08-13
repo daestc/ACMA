@@ -92,17 +92,21 @@
               <button class="tab-btn active" onclick="switchStatusTab('cert',this)">자격증</button>
               <button class="tab-btn" onclick="switchStatusTab('activity',this)">대외활동</button>
               <button class="tab-btn" onclick="switchStatusTab('lang',this)">어학성적</button>
+              <button class="tab-btn" onclick="switchStatusTab('skill',this)">스킬</button>
             </div>
             <div id="st-cert">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><span class="card-action">+ 추가</span></div>
               <div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">정보처리기사</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2025.06</span></div>
-            </div> 
+            </div>
             <div id="st-activity" style="display:none;">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>
             </div>
             <div id="st-lang" style="display:none;">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><button type="button" class="btn btn-accent btn-sm" id="language-open-btn">+ 추가</button></div>
               <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px dashed var(--border2);"><div style="font-size:12px;color:var(--text2);font-weight:500;">+ 성적 추가하기 (IELTS, TOEFL, HSK 등)</div></div>
+            </div>
+            <div id="st-skill" style="display:none;">
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🛠 보유 스킬</span><button type="button" class="btn btn-accent btn-sm" id="skill-open-btn">+ 추가</button></div>
             </div>
           </div>
 
@@ -153,6 +157,7 @@
   <%- include('../partials/modals/award-modal') %>
   <%- include('../partials/modals/experience-modal') %>
   <%- include('../partials/modals/language-modal') %>
+  <%- include('../partials/modals/skill-modal') %>
 
 	<script src="/js/common.js"></script>
 	<script src="/js/mystatus.js"></script>
