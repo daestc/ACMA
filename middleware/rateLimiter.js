@@ -30,4 +30,22 @@ const registerLimiter = rateLimit({
   },
 });
 
-module.exports = { loginLimiter, registerLimiter };
+// 비용이 발생하는 AI 생성 API의 짧은 시간 내 반복 호출 방지
+const aiQuizLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator(req) {
+    return String(req.user.id);
+  },
+  handler(_req, res) {
+    res.status(429).json({
+      ok: false,
+      code: 'TOO_MANY_REQUESTS',
+      message: '퀴즈 생성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    });
+  },
+});
+
+module.exports = { loginLimiter, registerLimiter, aiQuizLimiter };

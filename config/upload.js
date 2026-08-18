@@ -10,6 +10,7 @@ const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_IMAGE_SIZE     = 5 * 1024 * 1024; // 5MB
 const MAX_LECTURE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const LECTURE_FILE_EXT      = new Set(['.csv', '.xlsx']);
+const MAX_QUIZ_PDF_SIZE     = 20 * 1024 * 1024; // Claude API 요청 크기를 고려한 20MB
 
 // 업로드 루트 디렉터리 (없으면 생성)
 function ensureDir(dir) {
@@ -66,6 +67,24 @@ function createLectureFileMulter(fieldName) {
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_LECTURE_FILE_SIZE },
     fileFilter: lectureFileFilter,
+  }).single(fieldName);
+}
+
+// PDF 퀴즈 생성용 파일은 디스크에 남기지 않고 메모리에서 바로 Claude로 전달한다.
+function quizPdfFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (ext === '.pdf' && file.mimetype === 'application/pdf') {
+    cb(null, true);
+    return;
+  }
+  cb(new Error('PDF 파일만 업로드할 수 있습니다.'));
+}
+
+function createQuizPdfMulter(fieldName) {
+  return multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_QUIZ_PDF_SIZE, files: 1 },
+    fileFilter: quizPdfFileFilter,
   }).single(fieldName);
 }
 
@@ -157,6 +176,17 @@ const uploadSuggestionImages = [
   runUpload(suggestionImagesMulter, suggestionUploadOptions),
 ];
 
+const quizPdfUploadOptions = {
+  json: true,
+  jsonOk: true,
+  maxFileSizeLabel: '20MB',
+};
+const quizPdfMulter = createQuizPdfMulter('pdf');
+const uploadQuizPdf = [
+  runUpload(quizPdfMulter, quizPdfUploadOptions),
+  requireUploadedFile('PDF 파일', quizPdfUploadOptions),
+];
+
 module.exports = {
   UPLOAD_ROOT,
   removeUploadedFile,
@@ -165,4 +195,5 @@ module.exports = {
   uploadVerificationImageApi,
   uploadLectureCsv,
   uploadSuggestionImages,
+  uploadQuizPdf,
 };

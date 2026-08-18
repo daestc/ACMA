@@ -15,7 +15,7 @@ function getUploadErrorMessage(err) {
 
     switch (err.code) {
         case 'LIMIT_FILE_SIZE':
-            return '파일 크기는 5MB 이하여야 합니다.';
+            return `파일 크기는 ${err.uploadOptions?.maxFileSizeLabel || '5MB'} 이하여야 합니다.`;
         case 'LIMIT_UNEXPECTED_FILE':
             return '허용되지 않은 파일 필드입니다.';
         default:

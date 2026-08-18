@@ -1,15 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { requireLogin } = require('../middleware/auth');
+const { aiQuizLimiter } = require('../middleware/rateLimiter');
+const { uploadQuizPdf } = require('../config/upload');
+const studyController = require('../controllers/studyController');
 
-// 공부 페이지
-router.get('/', requireLogin, (req, res) => {
-  res.render('pages/study', {
-    title:       '공부',
-    currentPage: 'study',
-    pageTitle:   '📖 공부',
-    user:        req.user,
-  });
-});
+router.get('/', requireLogin, studyController.getStudyPage);
+router.post('/quiz/generate', requireLogin, aiQuizLimiter, ...uploadQuizPdf, studyController.generateQuiz);
 
 module.exports = router;

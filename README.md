@@ -12,11 +12,13 @@
 - 캘린더: 일정, 시간표, 날씨 연동
 - 마이스테이터스: 스펙 관리
 - 관리자: 대학별 통계
+- AI 학습: Python으로 추출한 PDF 텍스트 기반 객관식 퀴즈 생성 및 풀이
 - 계획: AI기반 커리큘럼 및 계획 생성
 
 ## 기술 스택
 - Frontend: EJS, Vanilla JS, CSS
 - Backend: Node.js, Express
+- AI Pipeline: Python, pdfplumber, Anthropic Python SDK
 - Database: MongoDB (Mongoose)
 - 외부 API: work24(고용24 직업사전), Q-net(자격증 정보), 기상청(날씨)
 - 아키텍쳐: Router → Controller → Service → Model 
@@ -43,6 +45,9 @@ middleware/   에러처리, 세션 관리, 인증
 ## 설치 및 실행
 ```bash
 npm install
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r python/requirements.txt
 # .env 설정 (아래 참고)
 npm run dev
 ```
@@ -54,6 +59,11 @@ npm run dev
 | qnet_service_key | Q-net API 키 | <br>
 | SESSION_SECRET | 세션 암호화 키 | <br>
 | KMA_SERVICE_KEY | 기상청 API 키 | <br>
+| ANTHROPIC_API_KEY | Claude API 키 (PDF 퀴즈 생성 필수) | <br>
+| ANTHROPIC_MODEL | Claude 모델 ID (선택, 기본 `claude-sonnet-4-6`) | <br>
+| PYTHON_EXECUTABLE | Python 또는 가상환경 실행 파일 경로 | <br>
+
+AI PDF 퀴즈의 구성과 처리 흐름은 [docs/AI_PDF_QUIZ.md](docs/AI_PDF_QUIZ.md)를 참고하세요.
 
 
 ## 팀 구성 / 역할 분담
