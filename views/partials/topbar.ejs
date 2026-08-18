@@ -32,8 +32,7 @@
   </div>
 
   <div class="gh-avatar" onclick="openMyPageModal()">
-    <%= (typeof user !== 'undefined' && user) ? user.name[0] : '김' %>
-  </div>
+  <%= (typeof user !== 'undefined' && user && user.name) ? user.name[0] : '김' %>  </div>
 </div>
 
 <div id="notif-panel" class="notif-panel">

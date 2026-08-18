@@ -22,6 +22,18 @@ function requireLogin(req, res, next) {
   req.user = req.session.user;
   next();
 }
+// 스크랩용
+function isLoggedIn(req, res, next) {
+  if (req.session && req.session.user) {
+    req.user = req.session.user;
+    return next();
+  }
+  // Passport 세션을 사용하는 경우 대비
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+}
 
 /**
  * 대학관계자(승인 완료) 전용
@@ -113,4 +125,4 @@ function refreshDailyUsage(req, res, next) {
   next();
 }
 
-module.exports = { requireLogin, requireStaff, requireAdmin, refreshDailyUsage };
+module.exports = { requireLogin, isLoggedIn, requireStaff, requireAdmin, refreshDailyUsage };

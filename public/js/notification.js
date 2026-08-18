@@ -121,3 +121,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+// 개별 알림 아이템 HTML 템플릿 생성
+function createNotifItem(notice) {
+  const badgeClass = notice.dDayBadgeClass || 'blue';
+  let inlineBadgeStyle = 'color: #3b82f6; background: #dbeafe;'; // blue 기본
+  if (badgeClass === 'red') inlineBadgeStyle = 'color: #ef4444; background: #fee2e2;';
+  if (badgeClass === 'amber') inlineBadgeStyle = 'color: #f59e0b; background: #fef3c7;';
+
+  const WrapperTag = notice.url ? 'a' : 'div';
+  const urlAttribute = notice.url ? `href="${notice.url}" target="_blank"` : '';
+  const cursorStyle = notice.url ? 'cursor: pointer;' : '';
+
+  return `
+    <${WrapperTag} ${urlAttribute} class="notif-item" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-decoration: none; color: inherit; ${cursorStyle}">
+      
+      <div style="font-weight: 600; color: #334155; min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        ${notice.title || '알림'}
+      </div>
+      
+      <div style="font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; ${inlineBadgeStyle}">
+        ${notice.dDayText || 'D-Day'}
+      </div>
+      
+    </${WrapperTag}>
+  `;
+}
