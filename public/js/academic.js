@@ -387,10 +387,81 @@ async function fetchSemesterRecord(semester) {
   }
 }
 
+// 학기 상태 배지 + 마감 버튼 라벨 갱신
+const SEMESTER_STATUS_LABEL = {
+  planned: { text: '계획', badgeClass: 'badge-blue' },
+  in_progress: { text: '진행중', badgeClass: 'badge-amber' },
+  completed: { text: '마감 완료', badgeClass: 'badge-green' },
+};
+
+function renderSemesterStatus(status) {
+  const badge = document.getElementById('semester-status-badge');
+  const btn = document.getElementById('semester-close-btn');
+  const info = SEMESTER_STATUS_LABEL[status] || SEMESTER_STATUS_LABEL.in_progress;
+
+  if (badge) {
+    badge.textContent = info.text;
+    badge.className = 'badge ' + info.badgeClass;
+  }
+  if (btn) {
+    btn.textContent = status === 'completed' ? '마감 취소' : '마감';
+  }
+}
+
+// 마감했다가 취소도 되고, 이미 마감이면 되돌릴 수도 있는 토글 액션
+async function toggleSemesterClose() {
+  const semester = window._ac_currentSemester;
+  const status = window._ac_currentSemesterStatus;
+  if (!semester) return;
+
+  const closing = status !== 'completed';
+  const confirmMessage = closing
+    ? `${formatSemesterLabel(semester)}를 마감하시겠습니까?`
+    : `${formatSemesterLabel(semester)} 마감을 취소하시겠습니까?`;
+  if (!confirm(confirmMessage)) return;
+
+  const btn = document.getElementById('semester-close-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const response = await fetch(closing ? '/academic/closeSemester' : '/academic/reopenSemester', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ semester }),
+      credentials: 'same-origin',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || '처리에 실패했습니다.');
+    }
+
+    window._ac_currentSemesterStatus = result.status;
+    renderSemesterStatus(result.status);
+    const hint = document.getElementById('semester-close-hint');
+    if (hint && result.status === 'completed') hint.style.display = 'none';
+
+    // 이수 현황 탭의 completedSemesters/GPA 집계가 바뀌므로 갱신
+    fetchAcademicTrend();
+    fetchProgress();
+  } catch (error) {
+    alert(error.message || '처리에 실패했습니다.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function populateSemester(semester) {
   const record = await fetchSemesterRecord(semester);
   const list = document.getElementById('subject-list');
   list.innerHTML = '';
+
+  window._ac_currentSemester = semester;
+  window._ac_currentSemesterStatus = record?.status || 'in_progress';
+  renderSemesterStatus(window._ac_currentSemesterStatus);
+
+  const hint = document.getElementById('semester-close-hint');
+  const allGraded = Boolean(record?.subjects?.length) && record.subjects.every(s => s.grade);
+  if (hint) hint.style.display = (allGraded && record.status !== 'completed') ? 'block' : 'none';
 
   if (!record || !record.subjects || !record.subjects.length) {
     // 기본 빈 행 3개

@@ -186,5 +186,16 @@ function initSpecModals() {
     });
   }
 
+  if (document.getElementById('skill-modal')) {
+    modals.skill = createSpecModal({
+      modalId: 'skill-modal', openBtnId: 'skill-open-btn', endpoint: '/spec/skill',
+      addTitle: '스킬 추가', editTitle: '스킬 수정',
+      fields: [
+        { id: 'skill-name', key: 'name', label: '스킬명', required: true },
+        { id: 'skill-level', key: 'level', label: '숙련도', required: true },
+      ],
+    });
+  }
+
   window._specModals = modals; // 항목 클릭 핸들러에서 사용
 }

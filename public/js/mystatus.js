@@ -6,7 +6,7 @@
 
 // ── 자격증 / 대외활동 / 어학성적 탭 ──────────────
 function switchStatusTab(tab, btn) {
-  ['cert', 'activity', 'lang'].forEach(t => {
+  ['cert', 'activity', 'lang', 'skill'].forEach(t => {
     document.getElementById('st-' + t).style.display = 'none';
   });
   document.getElementById('st-' + tab).style.display = 'block';
@@ -250,6 +250,7 @@ async function fetchSpecs() {
     renderAwards(data.awards || []);
     renderLanguages(data.languages || []);
     renderExperiences(data.experiences || []);
+    renderSkills(data.skills || []);
   } catch (err) {
     console.error('fetchSpecs 에러:', err);
   }
@@ -321,6 +322,28 @@ function renderExperiences(experiences) {
       </div></div>`;
   }).join('');
 }
+// ④ 보유 스킬 (#st-skill)
+const SKILL_LEVEL_BADGE = { 하급: 'badge-blue', 중급: 'badge-amber', 고급: 'badge-green' };
+
+function renderSkills(skills) {
+  const box = document.getElementById('st-skill');
+  if (!box) return;
+
+  const header = `<div class="card-header" style="margin-bottom:12px;"><span class="card-title">🛠 보유 스킬</span><button type="button" class="btn btn-accent btn-sm" id="skill-open-btn">+ 추가</button></div>`;
+
+  const list = skills.length
+    ? skills.map(s => {
+        const badgeClass = SKILL_LEVEL_BADGE[s.level] || 'badge-blue';
+        return `<div class="cert-item spec-clickable" data-spec-type="skill" data-spec='${encodeURIComponent(JSON.stringify(s))}' style="cursor:pointer;">
+          <div class="cert-icon">🛠</div>
+          <div class="cert-name">${s.name || ''}</div>
+          <span class="badge ${badgeClass}" style="margin-left:auto;">${s.level || ''}</span></div>`;
+      }).join('')
+    : '<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">등록된 스킬이 없습니다.</div>';
+
+  box.innerHTML = header + list;
+}
+
 document.addEventListener('click', (e) => {
   const item = e.target.closest('.spec-clickable');
   if (!item) return;
@@ -329,13 +352,54 @@ document.addEventListener('click', (e) => {
   window._specModals?.[type]?.openForEdit(data);
 });
 
+// ── AI 진단 요약 (기존 더미 "AI 추천 커리어 로드맵" 자리) ──────────
+async function fetchDiagnosisSummary() {
+  const box = document.getElementById('diag-summary-box');
+  const badge = document.getElementById('diag-summary-badge');
+  if (!box) return;
+
+  try {
+    const res = await fetch('/ai/diagnosis/latest', { credentials: 'same-origin' });
+
+    if (res.status === 404) {
+      box.innerHTML = `
+        <div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;line-height:1.6;">
+          아직 생성된 진단이 없습니다.<br>
+          <a href="/career/diagnosis" class="btn btn-accent btn-sm" style="margin-top:10px;display:inline-block;">진단 생성하러 가기</a>
+        </div>`;
+      return;
+    }
+    if (!res.ok) throw new Error('진단 정보를 불러오지 못했습니다.');
+
+    const data = await res.json();
+    if (data.status !== 'done' || !data.data) {
+      box.innerHTML = `<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">진단을 준비하는 중입니다.</div>`;
+      return;
+    }
+
+    const diagnosis = data.data;
+    if (badge && diagnosis.jobTitle) {
+      badge.textContent = diagnosis.jobTitle;
+      badge.style.display = 'inline-block';
+    }
+
+    box.innerHTML = `
+      <p style="font-size:13px;color:var(--text2);line-height:1.7;">${diagnosis.overview || ''}</p>
+      <a href="/career/diagnosis" class="card-action" style="display:inline-block;margin-top:8px;">진단 전체 보기 →</a>`;
+  } catch (err) {
+    console.error('fetchDiagnosisSummary 에러:', err);
+    box.innerHTML = `<div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">진단 정보를 불러오지 못했습니다.</div>`;
+  }
+}
+
 // 기존의 흩어진 DOMContentLoaded 3개를 이걸로 통일
 document.addEventListener('DOMContentLoaded', () => {
   fetchProgress();
   fetchAcademicTrend();
   fetchUserProfile();
   fetchCareerAndCerts();
-  fetchSpecs();                       // ← 수상·어학·경험 한 번에
+  fetchSpecs();                       // ← 수상·어학·경험·스킬 한 번에
+  fetchDiagnosisSummary();
   if (window.initSpecModals) window.initSpecModals();
 });
 

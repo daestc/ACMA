@@ -33,6 +33,8 @@ const adminRouter = require('./routes/adminRouter');
 const suggestionRouter = require('./routes/suggestionRouter');
 const specRouter    = require('./routes/specRouter');
 const paymentRouter = require('./routes/paymentRouter');
+const aiRouter = require('./routes/ai');
+
 const recruitRouter = require('./routes/recruitRouter');
 
 //DB 연결
@@ -75,6 +77,7 @@ app.use('/user', userRouter);
 app.use('/auth', authRouter);
 app.use('/calendar', calendarRouter);
 app.use('/career', careerRouter);
+app.use('/recruit', recruitRouter);
 app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
@@ -84,7 +87,12 @@ app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);
 app.use('/spec',    specRouter);
 app.use('/payment', paymentRouter);
-app.use('/recruit', recruitRouter);
+
+if (process.env.OPENAI_API_KEY) {
+  app.use('/ai', aiRouter);
+} else {
+  console.warn('OPENAI_API_KEY가 설정되지 않아 /ai 라우트를 등록하지 않습니다.');
+}
 
 // 오류 처리 미들웨어
 app.use(notFoundHandler);

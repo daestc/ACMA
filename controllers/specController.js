@@ -36,7 +36,7 @@ const addExperience = makeHandler('experience', (b) => {
   return { title: b.title, host: b.host, location: b.location, startDate: b.startDate, endDate: b.endDate, note: b.note };
 });
 
-// specController.js — 세 배열 한 번에 내려주기
+// specController.js — 네 배열 한 번에 내려주기
 const getMySpecs = async (req, res) => {
   try {
     const userId = req.session?.user?._id || req.session?.user?.id;
@@ -47,6 +47,7 @@ const getMySpecs = async (req, res) => {
       awards: doc?.userAward || [],
       languages: doc?.userLanguage || [],
       experiences: doc?.userExperience || [],
+      skills: doc?.userSkill || [],
     });
   } catch (err) {
     console.error('스펙 조회 에러:', err);
@@ -104,16 +105,26 @@ const buildExperience = (b) => {
   return { title: b.title, host: b.host, location: b.location, startDate: b.startDate, endDate: b.endDate, note: b.note };
 };
 
+const SKILL_LEVEL_ENUM = ['하급', '중급', '고급'];
+const buildSkill = (b) => {
+  if (!b.name) return { __error: '스킬명은 필수입니다.' };
+  if (!SKILL_LEVEL_ENUM.includes(b.level)) return { __error: '숙련도는 하급/중급/고급 중 하나여야 합니다.' };
+  return { name: b.name, level: b.level };
+};
+
 
 module.exports = {
   addAward: makeHandler('award', buildAward),
   addLanguage: makeHandler('language', buildLanguage),
   addExperience: makeHandler('experience', buildExperience),
+  addSkill: makeHandler('skill', buildSkill),
   updateAward: makeUpdateHandler('award', buildAward),
   updateLanguage: makeUpdateHandler('language', buildLanguage),
   updateExperience: makeUpdateHandler('experience', buildExperience),
+  updateSkill: makeUpdateHandler('skill', buildSkill),
   deleteAward: makeDeleteHandler('award'),
   deleteLanguage: makeDeleteHandler('language'),
   deleteExperience: makeDeleteHandler('experience'),
+  deleteSkill: makeDeleteHandler('skill'),
   getMySpecs,
 };

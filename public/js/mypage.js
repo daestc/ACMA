@@ -222,14 +222,15 @@ async function saveProfile() {
   const studentId = document.getElementById('studentId').value;
   const university = document.getElementById('university').value;
   const major = document.getElementById('major').value;
+  const grade = document.getElementById('grade')?.value || '';
   const enrollmentStatus = document.getElementById('enrollmentStatus').value;
-  console.log('프로필 저장 시도:', { studentId, university, major, enrollmentStatus });
+  console.log('프로필 저장 시도:', { studentId, university, major, grade, enrollmentStatus });
 
   try {
     const response = await fetch('/user/updateProfile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, university, major, enrollmentStatus })
+      body: JSON.stringify({ studentId, university, major, grade, enrollmentStatus })
     });
     const result = await response.json();
     if (result.success) {
@@ -282,6 +283,8 @@ async function fetchUserProfile() {
     studentIdEl.value = user.studentId || '';
     document.getElementById('university').value = user.university || '';
     document.getElementById('major').value = user.major || '';
+    const gradeEl = document.getElementById('grade');
+    if (gradeEl) gradeEl.value = String(user.grade || 1);
     document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';
   } catch (error) {
     console.error('Error fetching profile:', error);

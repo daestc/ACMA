@@ -79,8 +79,9 @@
           <div class="tabs" style="margin-bottom:14px;">
             <button class="tab-btn active" onclick="switchHomeTodo('lecture',this)">강의 일정</button>
             <button class="tab-btn" onclick="switchHomeTodo('todo',this)">할 일</button>
+            <button class="tab-btn" onclick="switchHomeTodo('aiplan',this)">AI 계획</button>
           </div>
-          <div id="ht-lecture"> 
+          <div id="ht-lecture">
             <div class="check-item">
               <span class="check-text">오늘의 강의 불러오는 중...</span>
             </div>
@@ -98,6 +99,10 @@
               <% }) %>
             <% } %>
             <span class="card-action" style="bottom: 0;" onclick="openTodoModal()">편집</span>
+          </div>
+          <div id="ht-aiplan" style="display:none;">
+            <div class="check-item"><span class="check-text">오늘의 AI 계획을 불러오는 중...</span></div>
+            <span class="card-action" style="bottom: 0;" onclick="location.href='/career/plan'">계획 보기</span>
           </div>
         </div>
 

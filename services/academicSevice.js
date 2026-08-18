@@ -1,23 +1,40 @@
 const model = require('../models/Academic_records');
 const UniversityProfile = require('../models/University_profile');
+const { resolveRequirements } = require('./graduationService');
+
+const PASSING_GRADES = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'P'];
+const GRADE_POINTS = {
+  'A+': 4.5, 'A': 4.0,
+  'B+': 3.5, 'B': 3.0,
+  'C+': 2.5, 'C': 2.0,
+  'D+': 1.5, 'D': 1.0,
+  'F': 0,
+};
+const CREDIT_CATEGORY_MAP = {
+  major_required: 'majorRequired',
+  major_elective: 'majorElective',
+  general_required: 'generalRequired',
+  general_elective: 'generalElective',
+  free: 'free',
+};
 
 function calculateSemesterSummary(subjects) {
-  const gradePoints = {
-    'A+': 4.5, 'A': 4.0,
-    'B+': 3.5, 'B': 3.0,
-    'C+': 2.5, 'C': 2.0,
-    'D+': 1.5, 'D': 1.0,
-    'F': 0,
-  };
-
   return subjects.reduce((summary, subject) => {
     const credits = Number(subject.credits) || 0;
-    const gradePoint = gradePoints[subject.grade] ?? null;
+    const grade = subject.grade;
+
+    // P/NP는 GPA 계산(분모/분자) 대상이 아님. P는 취득학점에는 포함.
+    if (grade === 'P' || grade === 'NP') {
+      if (grade === 'P') summary.earnedCredits += credits;
+      return summary;
+    }
+
+    const gradePoint = GRADE_POINTS[grade] ?? null;
 
     summary.attemptedCredits += credits;
     if (gradePoint !== null) {
       summary.semesterPoints += gradePoint * credits;
-      if (subject.grade !== 'F') {
+      if (grade !== 'F') {
         summary.earnedCredits += credits;
       }
     }
@@ -124,6 +141,31 @@ async function updateBulkGrades({ userId, semester, updates }, options = {}) {
   
   return record;
 }
+// 학기 마감 — 학생이 직접 누르는 경우에만 'completed'로 전환한다(자동전환 없음).
+// 마감 후에도 updateBulkGrades로 성적 수정은 계속 가능 — 편집 잠금은 아니다.
+async function closeSemester(userId, semester) {
+  const record = await model.AcademicRecord.findOne({ userId, semester });
+  if (!record) throw new Error('해당 학기 데이터가 없습니다.');
+
+  record.status = 'completed';
+  await record.save();
+  await calcRemainingCredits(userId); // completedSemesters 등 캐시 즉시 갱신
+
+  return record;
+}
+
+// 마감 취소 — 실수로 마감했을 때 되돌리는 용도
+async function reopenSemester(userId, semester) {
+  const record = await model.AcademicRecord.findOne({ userId, semester });
+  if (!record) throw new Error('해당 학기 데이터가 없습니다.');
+
+  record.status = 'in_progress';
+  await record.save();
+  await calcRemainingCredits(userId);
+
+  return record;
+}
+
 // 학기 레코드에서 특정 과목을 제거하고 GPA를 재계산하는 함수
 async function removeSubjectFromRecord({ userId, semester, subjectName }, options = {}) {
   const session = options.session;
@@ -270,8 +312,74 @@ async function saveUniversityProfile(userId, profileData) {
   }
 }
 
+// 영역별 취득 학점 vs 졸업요건 잔여 학점 계산 (CreditSummary 캐시 갱신 포함)
+async function calcRemainingCredits(userId) {
+  const records = await model.AcademicRecord.find({ userId }).select('status subjects').lean();
+
+  const earned = { majorRequired: 0, majorElective: 0, generalRequired: 0, generalElective: 0, free: 0, total: 0 };
+  let attemptedCreditsTotal = 0;
+  let gpaAttemptedCredits = 0;
+  let gpaPoints = 0;
+
+  records.forEach(record => {
+    (record.subjects || []).forEach(subject => {
+      const credits = Number(subject.credits) || 0;
+      const grade = subject.grade;
+      attemptedCreditsTotal += credits;
+
+      // P/NP는 GPA 분모/분자에서 제외 (calculateSemesterSummary와 동일 규칙)
+      if (grade !== 'P' && grade !== 'NP') {
+        const gradePoint = GRADE_POINTS[grade] ?? null;
+        if (gradePoint !== null) {
+          gpaAttemptedCredits += credits;
+          gpaPoints += gradePoint * credits;
+        }
+      }
+
+      if (!PASSING_GRADES.includes(grade)) return;
+
+      const key = CREDIT_CATEGORY_MAP[subject.subjectType] || 'free';
+      earned[key] += credits;
+      earned.total += credits;
+    });
+  });
+
+  const completedSemesters = records.filter(r => r.status === 'completed').length;
+  const cumulativeGPA = gpaAttemptedCredits ? Number((gpaPoints / gpaAttemptedCredits).toFixed(2)) : null;
+
+  await model.CreditSummary.findOneAndUpdate(
+    { userId },
+    {
+      userId,
+      earnedCredits: earned,
+      attemptedCreditsTotal,
+      completedSemesters,
+      cumulativeGPA,
+      lastCalculatedAt: new Date(),
+    },
+    { upsert: true, setDefaultsOnInsert: true },
+  );
+
+  const graduation = await resolveRequirements(userId);
+  if (!graduation.available) {
+    return { available: false, reason: graduation.reason, earned, gpa: cumulativeGPA, requirements: null, remaining: null };
+  }
+
+  const req = graduation.requirements;
+  const remaining = {
+    majorRequired: Math.max(0, req.requiredMajorCredits - earned.majorRequired),
+    majorElective: Math.max(0, req.requiredMajorElective - earned.majorElective),
+    generalRequired: Math.max(0, req.requiredGeneralCredits - earned.generalRequired),
+    generalElective: Math.max(0, req.requiredGeneralElective - earned.generalElective),
+    total: Math.max(0, req.requiredTotalCredits - earned.total),
+  };
+
+  return { available: true, earned, gpa: cumulativeGPA, requirements: req, remaining };
+}
+
 module.exports = {
   saveSemesterRecord,
+  calcRemainingCredits,
   getSemesterRecord,
   editCourse,
   deleteCourse,
@@ -280,5 +388,7 @@ module.exports = {
   getUniversityProfile,
   saveUniversityProfile,
   updateBulkGrades,
-  removeSubjectFromRecord
+  removeSubjectFromRecord,
+  closeSemester,
+  reopenSemester,
 };

@@ -26,12 +26,16 @@ const calendarEventSchema = new Schema(
     color: { type: String, default: '#3B82F6' }, // 달력 표시 색상
 
     isDeleted: { type: Boolean, default: false },
+
+    // 자격증 일정 자동 연동 시 원본 Notice 참조 (멱등 upsert용)
+    sourceNoticeId: { type: Schema.Types.ObjectId, ref: 'Notice', default: null },
   },
   { timestamps: true }
 );
 
 calendarEventSchema.index({ userId: 1, startDate: 1 });
 calendarEventSchema.index({ userId: 1, isDday: 1 });
+calendarEventSchema.index({ userId: 1, sourceNoticeId: 1 });
 
 
 /**
@@ -111,6 +115,9 @@ const dailyChecklistSchema = new Schema(
         isCompleted: { type: Boolean, default: false },
         completedAt: { type: Date, default: null },
         order: { type: Number, default: 0 },
+        source: { type: String, enum: ['manual', 'ai'], default: 'manual' },
+        weeklyPlanId: { type: Schema.Types.ObjectId, ref: 'WeeklyPlan', default: null },
+        planItemIndex: { type: Number, default: null }, // WeeklyPlan.items의 인덱스 (역추적용)
       },
     ],
   },

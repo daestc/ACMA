@@ -15,6 +15,10 @@ router.post('/experience', ctrl.addExperience);
 router.put('/experience/:id', ctrl.updateExperience);
 router.delete('/experience/:id', ctrl.deleteExperience);
 
+router.post('/skill', ctrl.addSkill);
+router.put('/skill/:id', ctrl.updateSkill);
+router.delete('/skill/:id', ctrl.deleteSkill);
+
 router.get('/mine', ctrl.getMySpecs);
 
 module.exports = router;

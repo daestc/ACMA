@@ -92,11 +92,12 @@
               <button class="tab-btn active" onclick="switchStatusTab('cert',this)">자격증</button>
               <button class="tab-btn" onclick="switchStatusTab('activity',this)">대외활동</button>
               <button class="tab-btn" onclick="switchStatusTab('lang',this)">어학성적</button>
+              <button class="tab-btn" onclick="switchStatusTab('skill',this)">스킬</button>
             </div>
             <div id="st-cert">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><span class="card-action">+ 추가</span></div>
               <div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">정보처리기사</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2025.06</span></div>
-            </div> 
+            </div>
             <div id="st-activity" style="display:none;">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>
             </div>
@@ -104,17 +105,19 @@
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><button type="button" class="btn btn-accent btn-sm" id="language-open-btn">+ 추가</button></div>
               <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px dashed var(--border2);"><div style="font-size:12px;color:var(--text2);font-weight:500;">+ 성적 추가하기 (IELTS, TOEFL, HSK 등)</div></div>
             </div>
+            <div id="st-skill" style="display:none;">
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🛠 보유 스킬</span><button type="button" class="btn btn-accent btn-sm" id="skill-open-btn">+ 추가</button></div>
+            </div>
           </div>
 
-          <!-- AI 로드맵 -->
+          <!-- AI 진단 요약 -->
           <div class="card">
-            <div class="card-header"><span class="card-title">🤖 AI 추천 커리어 로드맵</span><span class="badge badge-blue">백엔드 개발자</span></div>
-            <div class="roadmap">
-              <div class="roadmap-item done"><div class="roadmap-title">기초 CS 지식 강화</div><div class="roadmap-desc">자료구조, 알고리즘, 운영체제 이수</div></div>
-              <div class="roadmap-item done"><div class="roadmap-title">데이터베이스 자격증</div><div class="roadmap-desc">SQLD 취득 완료</div></div>
-              <div class="roadmap-item current"><div class="roadmap-title">클라우드 역량 강화</div><div class="roadmap-desc">AWS SAA 준비 중 · 현재 단계</div></div>
-              <div class="roadmap-item"><div class="roadmap-title">실무 프로젝트 경험</div><div class="roadmap-desc">인턴십 또는 팀 프로젝트 참여</div></div>
-              <div class="roadmap-item"><div class="roadmap-title">포트폴리오 완성 및 취업</div><div class="roadmap-desc">GitHub 정리, 이력서 작성, 채용 지원</div></div>
+            <div class="card-header">
+              <span class="card-title">🩺 AI 진로 진단 요약</span>
+              <span class="badge badge-blue" id="diag-summary-badge" style="display:none;"></span>
+            </div>
+            <div id="diag-summary-box">
+              <div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">진단 정보를 불러오는 중...</div>
             </div>
           </div>
         </div>
@@ -153,6 +156,7 @@
   <%- include('../partials/modals/award-modal') %>
   <%- include('../partials/modals/experience-modal') %>
   <%- include('../partials/modals/language-modal') %>
+  <%- include('../partials/modals/skill-modal') %>
 
 	<script src="/js/common.js"></script>
 	<script src="/js/mystatus.js"></script>

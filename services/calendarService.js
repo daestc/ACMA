@@ -1,5 +1,7 @@
 const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
 const UniversitySchedule = require('../models/UniversitySchedule');
+const Notice = require('../models/Notice');
+const { UserCertification } = require('../models/Certifications_jobs');
 const { saveSemesterRecord,removeSubjectFromRecord } = require('./academicSevice');
 
 const {
@@ -40,6 +42,41 @@ async function getUniversitySchedulesAsEvents(university) {
     .lean();
 
   return schedules.map(mapUniversityScheduleToEvent);
+}
+
+// 특정 날짜가 시험기간/방학 등 학사일정 기간에 포함되는지 판정
+async function getAcademicContext(university, date = new Date()) {
+  const univ = normalizeUniversity(university);
+  const filter = univ ? buildStaffUniversityFilter(univ) : null;
+
+  if (!filter) {
+    return { isExamPeriod: false, examType: null, isVacation: false, activeSchedules: [], examSchedules: [] };
+  }
+
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  const schedules = await UniversitySchedule.find(filter).lean();
+
+  const activeSchedules = schedules.filter(schedule => {
+    if (!schedule.startDate) return false;
+    const start = new Date(schedule.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(schedule.endDate || schedule.startDate);
+    end.setHours(0, 0, 0, 0);
+    return start <= target && target <= end;
+  });
+
+  const examSchedule = activeSchedules.find(s => s.type === 'midterm' || s.type === 'final');
+  const vacationSchedule = activeSchedules.find(s => s.type === 'vacation');
+
+  return {
+    isExamPeriod: Boolean(examSchedule),
+    examType: examSchedule ? examSchedule.type : null,
+    isVacation: Boolean(vacationSchedule),
+    activeSchedules,
+    examSchedules: schedules.filter(s => s.type === 'midterm' || s.type === 'final'),
+  };
 }
 
 //일정 가져오기 (개인 일정 + 소속 대학 학교 일정)
@@ -126,6 +163,42 @@ async function deleteEvent(userId,eventId) {
     }
     return deletedEvent;
 };
+
+// 목표(target) 자격증의 원서접수 마감 Notice를 CalendarEvent로 동기화 (멱등)
+async function syncCertificationEventsForUser(userId) {
+    const targetCerts = await UserCertification.find({ userId, status: 'target' })
+        .populate('certificationId', 'jmcd')
+        .lean();
+
+    const jmcds = targetCerts
+        .map(c => c.certificationId?.jmcd)
+        .filter(Boolean);
+
+    if (!jmcds.length) return [];
+
+    const notices = await Notice.find({
+        category: 'certification',
+        jmcd: { $in: jmcds },
+        isPublished: true,
+        endDate: { $ne: null },
+    }).lean();
+
+    return Promise.all(notices.map(notice => CalendarEvent.findOneAndUpdate(
+        { userId, sourceNoticeId: notice._id },
+        {
+            userId,
+            title: notice.title,
+            description: notice.organization || null,
+            startDate: notice.endDate,
+            endDate: notice.endDate,
+            isAllDay: true,
+            category: 'certification',
+            isDday: true,
+            sourceNoticeId: notice._id,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+    )));
+}
 
 //////////////////////시간표 서비스//////////////////////////
 //시간표 불러오기
@@ -226,6 +299,58 @@ async function deleteTimetable(userId, timetableId) {
 
         throw error;
     }
+}
+
+// 요일별 빈 시간 계산 (해당 학기 강의 + 학기 무관 반복 일정을 점유 시간으로 취급)
+async function calcAvailableHours(userId, semester, options = {}) {
+  const dayStart = timeToMinutes(options.dayStart || '08:00');
+  const dayEnd = timeToMinutes(options.dayEnd || '24:00');
+
+  const timetables = await Timetable.find({
+    userId,
+    isActive: true,
+    $or: [{ semester }, { semester: null }],
+  }).lean();
+
+  const busyByDay = Array.from({ length: 7 }, () => []);
+  timetables.forEach(tt => {
+    (tt.schedule || []).forEach(slot => {
+      busyByDay[slot.dayOfWeek].push([timeToMinutes(slot.startTime), timeToMinutes(slot.endTime)]);
+    });
+  });
+
+  const result = {};
+  for (let day = 0; day < 7; day++) {
+    const merged = [];
+    busyByDay[day]
+      .sort((a, b) => a[0] - b[0])
+      .forEach(([start, end]) => {
+        const last = merged[merged.length - 1];
+        if (last && start <= last[1]) {
+          last[1] = Math.max(last[1], end);
+        } else {
+          merged.push([start, end]);
+        }
+      });
+
+    const free = [];
+    let cursor = dayStart;
+    merged.forEach(([start, end]) => {
+      if (start > cursor) free.push([cursor, Math.min(start, dayEnd)]);
+      cursor = Math.max(cursor, end);
+    });
+    if (cursor < dayEnd) free.push([cursor, dayEnd]);
+
+    result[day] = free
+      .filter(([start, end]) => end > start)
+      .map(([start, end]) => ({
+        startTime: minutesToTime(start),
+        endTime: minutesToTime(end),
+        minutes: end - start,
+      }));
+  }
+
+  return result;
 }
 
 // 대학 변경 시 사용자가 추가한 강의 시간표 전체 비활성화
@@ -516,6 +641,13 @@ function timeToMinutes(time) {
   return hour * 60 + minute;
 }
 
+//분 -> "HH:MM" 표시 (24:00까지 허용)
+function minutesToTime(minutes) {
+  const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
+  const minute = String(minutes % 60).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
 //일정 시작,끝 출력
 function isScheduleOverlap(a, b) {
   if (Number(a.dayOfWeek) !== Number(b.dayOfWeek)) {
@@ -792,11 +924,14 @@ module.exports = {getEventsListByUser,
                 createNewEvent,
                 updateEvent,
                 deleteEvent,
-            
+                syncCertificationEventsForUser,
+                getAcademicContext,
+
                 getTimetableListByUser,
                 createNewTimetable,
                 updateTimetable,
                 deleteTimetable,
+                calcAvailableHours,
                 clearUserLectureTimetables,
                 getLectureList,
                 addLectureToTimetable,

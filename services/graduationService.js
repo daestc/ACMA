@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const UniversityGraduation = require('../models/UniversityGraduation');
+const UniversityProfile = require('../models/University_profile');
 
 const DEFAULT_REQUIREMENTS = {
   requiredTotalCredits: 130,
@@ -208,6 +209,29 @@ async function getStaffGraduationForStudent(university, major) {
   };
 }
 
+// 대학 마스터 → 전공 추가요건 → 개인 override(UniversityProfile) 순으로 병합한 최종 졸업요건
+async function resolveRequirements(userId) {
+  const [user, profile] = await Promise.all([
+    User.findById(userId).select('university major').lean(),
+    UniversityProfile.findOne({ userId }).lean(),
+  ]);
+
+  const university = user?.university || null;
+  const major = normalizeMajor(profile?.major || user?.major);
+
+  const base = await getStaffGraduationForStudent(university, major);
+  if (!base.available) return base;
+
+  return {
+    ...base,
+    requirements: mergeGraduationRequirements(
+      base.requirements,
+      null,
+      profile?.GraduationRequirements,
+    ),
+  };
+}
+
 module.exports = {
   DEFAULT_REQUIREMENTS,
   mergeGraduationRequirements,
@@ -217,4 +241,5 @@ module.exports = {
   getMajorAdditionalRequirements,
   saveMajorAdditionalRequirements,
   getStaffGraduationForStudent,
+  resolveRequirements,
 };

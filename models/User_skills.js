@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Schema = mongoose;
+const { Schema } = mongoose;
 
 // 사용자 보유 스펙 스키마
 const UserSkillSchema = new mongoose.Schema({

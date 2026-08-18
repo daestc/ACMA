@@ -142,10 +142,10 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const { studentId, university, major, enrollmentStatus } = req.body;
+    const { studentId, university, major, enrollmentStatus, grade } = req.body;
     const { universityChanged, clearedLectureCount } = await userService.updateProfile(
       user.email,
-      { studentId, university, major, enrollmentStatus },
+      { studentId, university, major, enrollmentStatus, grade },
     );
 
     req.session.user = {
@@ -154,6 +154,7 @@ const updateProfile = async (req, res) => {
       university: university?.trim() || '',
       major,
       enrollmentStatus,
+      grade: grade !== undefined && grade !== null && String(grade).trim() !== '' ? Number(grade) : req.session.user.grade,
     };
 
     console.log('프로필 업데이트 완료!');

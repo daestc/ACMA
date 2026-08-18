@@ -1,7 +1,7 @@
 const academicService = require('../services/academicSevice');
 const User = require('../models/User');
 const {
-  getStaffGraduationForStudent,
+  resolveRequirements,
 } = require('../services/graduationService');
 
 // 학기별 과목 추가, 수정, 삭제
@@ -166,6 +166,46 @@ const deleteCourse = async (req, res) => {
   }
 }
 
+// 학기 마감 — 학생이 직접 버튼을 눌러야만 전환된다(자동전환 없음)
+const closeSemester = async (req, res) => {
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+
+    const semesterInfo = parseSemesterCode(req.body.semester);
+    if (!semesterInfo) return res.status(400).json({ success: false, message: '유효하지 않은 학기 정보입니다.' });
+
+    const record = await academicService.closeSemester(userId, semesterInfo.semester);
+    return res.json({ success: true, status: record.status });
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes('없습니다')) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({ success: false, message: '학기 마감 처리에 실패했습니다.' });
+  }
+};
+
+// 학기 마감 취소
+const reopenSemester = async (req, res) => {
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+
+    const semesterInfo = parseSemesterCode(req.body.semester);
+    if (!semesterInfo) return res.status(400).json({ success: false, message: '유효하지 않은 학기 정보입니다.' });
+
+    const record = await academicService.reopenSemester(userId, semesterInfo.semester);
+    return res.json({ success: true, status: record.status });
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes('없습니다')) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({ success: false, message: '학기 마감 취소 처리에 실패했습니다.' });
+  }
+};
+
 // 특정 학기 레코드 조회
 const getSemesterRecord = async (req, res) => {
   try {
@@ -208,10 +248,7 @@ const getGraduationRequirements = async (req, res) => {
     if (!user) return res.status(404).json({ success: false });
 
     const profile = await academicService.getUniversityProfile(user._id);
-    const graduation = await getStaffGraduationForStudent(
-      user.university,
-      profile?.major || user.major,
-    );
+    const graduation = await resolveRequirements(user._id);
 
     if (!graduation.available) {
       return res.json({
@@ -291,11 +328,7 @@ const getProgress = async (req, res) => {
     });
 
     const profile = await academicService.getUniversityProfile(user);
-    const userDoc = await User.findById(user).select('university major').lean();
-    const graduation = await getStaffGraduationForStudent(
-      userDoc?.university,
-      profile?.major || userDoc?.major,
-    );
+    const graduation = await resolveRequirements(user);
 
     return res.json({
       success: true,
@@ -319,5 +352,7 @@ module.exports = {
   getGraduationRequirements,
   saveGraduationRequirements,
   getProgress,
-  updateBulkGrades
+  updateBulkGrades,
+  closeSemester,
+  reopenSemester,
 };

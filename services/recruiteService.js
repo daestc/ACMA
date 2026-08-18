@@ -37,9 +37,11 @@ exports.getRecommendationKeywords = async(certification, job)=>{
             messages: [
                 { role: 'system', content: 'You are a helpful recruitment assistant designed to output strictly valid JSON.' },
                 { role: 'user', content: prompt }
-            ],            
-            max_tokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
-            temperature: 0.3,
+            ],
+            // gpt-5 계열 모델은 max_tokens를 거부하고 max_completion_tokens만 받는다
+            // (services/ai/aiClient.js에서 이미 겪은 문제 — 여기도 같은 모델을 쓰므로 동일하게
+            // 맞춘다). temperature도 이 모델 계열에선 기본값(1) 외 커스텀 값을 거부해서 아예 뺐다.
+            max_completion_tokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
         });
 
         const resultJson = JSON.parse(response.choices[0].message.content.trim());        
