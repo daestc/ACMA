@@ -91,4 +91,17 @@ function checkDiagnosisReadiness(context) {
     : { ready: false, blockers: ['목표 직무를 설정해 주세요'] };
 }
 
-module.exports = { checkReadiness, checkDiagnosisReadiness };
+/**
+ * 주간 계획 생성 게이트 — 진단과 같은 최소 요건(목표 직무만). 게이트가 없으면
+ * targetJob이 compact()로 지워진 채 LLM에 넘어가 major 등 남은 정보에서 직무를
+ * 추측해버린다(실제로 확인됨 — "컴퓨터공학과"만 보고 정보처리기사·졸업논문 위주
+ * 계획을 만들어냄). 이 서비스는 목표 직무를 기준으로 계획을 짜는 게 존재 이유라
+ * 방향 없이 만든 계획은 의미가 없다.
+ */
+function checkWeeklyPlanReadiness(context) {
+  return context?.targetJob
+    ? { ready: true, blockers: [] }
+    : { ready: false, blockers: ['목표 직무를 설정해 주세요'] };
+}
+
+module.exports = { checkReadiness, checkDiagnosisReadiness, checkWeeklyPlanReadiness };

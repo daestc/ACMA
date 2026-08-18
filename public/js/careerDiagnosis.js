@@ -10,6 +10,7 @@ const ACTION_TYPE_LABEL = {
 
 let currentDiagnosisId = null;
 let dgPollTimer = null;
+let currentTargetJob = null; // loadReadiness()가 채움 — 진단 jobCode와 대조용
 
 function renderReadiness(data) {
   document.getElementById('dg-total-badge').textContent = `총점 ${data.total ?? 0}`;
@@ -139,11 +140,22 @@ function renderGraduation(graduation) {
   }
 }
 
+// 생성 시점 목표 직무(doc.jobCode)와 지금 목표 직무가 다르면 배너를 띄운다 —
+// 포트폴리오와 달리 진단은 PDF 내보내기가 없어 배너만으로 충분하다.
 function renderDiagnosis(doc) {
   currentDiagnosisId = doc._id;
 
   document.getElementById('dg-job-title').textContent = doc.jobTitle ? `목표 직무: ${doc.jobTitle}` : '진로 진단';
   document.getElementById('dg-overview').textContent = doc.overview || '';
+
+  const isStale = doc.jobCode && currentTargetJob?.jobCode && doc.jobCode !== currentTargetJob.jobCode;
+  const mismatchEl = document.getElementById('dg-job-mismatch');
+  if (isStale) {
+    mismatchEl.style.display = 'block';
+    mismatchEl.textContent = `⚠️ 이 진단은 '${doc.jobTitle}' 기준으로 생성되었습니다. 현재 목표 직무는 '${currentTargetJob.title}'입니다. 다시 생성해 주세요.`;
+  } else {
+    mismatchEl.style.display = 'none';
+  }
 
   renderGraduation(doc.graduation);
 
@@ -178,7 +190,10 @@ async function loadLatestDiagnosis() {
 
 async function loadReadiness() {
   const data = await callApi('/ai/diagnosis/scores');
-  if (data.httpStatus === 200) renderReadiness(data);
+  if (data.httpStatus === 200) {
+    currentTargetJob = data.currentJob || null;
+    renderReadiness(data);
+  }
 }
 
 function startDgPolling() {
@@ -227,6 +242,9 @@ async function addGapToPlan(gapId, buttonEl) {
     alert('먼저 이번 주 계획을 생성해 주세요.');
     if (confirm('주간 계획 페이지로 이동할까요?')) window.location.href = '/career/plan';
     buttonEl.disabled = false;
+  } else if (data.httpStatus === 409 && data.reason === 'job_mismatch') {
+    alert(data.message || '목표 직무가 변경되어 추가할 수 없습니다.');
+    buttonEl.disabled = false;
   } else if (data.httpStatus === 409) {
     buttonEl.textContent = '이미 추가됨';
   } else {
@@ -235,7 +253,9 @@ async function addGapToPlan(gapId, buttonEl) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadReadiness();
+document.addEventListener('DOMContentLoaded', async () => {
+  // currentTargetJob이 채워진 뒤에 렌더해야 첫 로드에서도 직무 불일치 배너가 정확히 뜬다.
+  await loadReadiness();
   loadLatestDiagnosis();
+  renderAllBlockedBanner('dg-all-blocked-banner');
 });

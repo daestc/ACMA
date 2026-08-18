@@ -1,9 +1,11 @@
 const { WeeklyPlan, CareerPortfolio, CareerDiagnosis } = require('../models/Ai');
 const { DailyChecklist } = require('../models/Calendar');
+const { Job } = require('../models/Certifications_jobs');
 const contextBuilder = require('../services/ai/contextBuilder');
 const readinessService = require('../services/ai/readinessService');
 const missingAnalyzer = require('../services/ai/missingAnalyzer');
 const planService = require('../services/ai/planService');
+const completionService = require('../services/ai/completionService');
 const portfolioService = require('../services/ai/portfolioService');
 const diagnosisService = require('../services/ai/diagnosisService');
 const kstDate = require('../utils/kstDate');
@@ -53,6 +55,16 @@ async function requestWeeklyPlan(req, res) {
     const existingPending = await WeeklyPlan.findOne({ userId, status: 'pending' }).lean();
     if (existingPending) {
       return res.status(409).json({ success: false, message: '이미 생성 중인 주간 계획이 있습니다.' });
+    }
+
+    // 목표 직무 없이 생성하면 LLM이 major 등 남은 정보로 직무를 추측해버린다(실제 확인됨).
+    // buildWeeklyPlanContext는 weekStart별 가용시간까지 계산하는 무거운 컨텍스트라, 게이트
+    // 판정만을 위해서는 포트폴리오/진단과 같은 가벼운 컨텍스트(targetJob 포함)면 충분하다.
+    const gateContext = await contextBuilder.buildPortfolioContext(userId);
+    const readiness = readinessService.checkWeeklyPlanReadiness(gateContext);
+    if (!readiness.ready) {
+      const missing = missingAnalyzer.analyzeMissing(gateContext);
+      return res.status(400).json({ success: false, blockers: readiness.blockers, missing });
     }
 
     const weekStart = resolveWeekStart(req.body?.weekStart);
@@ -106,6 +118,29 @@ async function getCurrentWeeklyPlan(req, res) {
     return res.json({ status: doc.status, data: doc });
   } catch (error) {
     logger.error(`[ai] getCurrentWeeklyPlan error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+// 최근 완료된 주간계획 목록 + 주별 달성률 (기록 화면용). limit 기본 12(약 3개월치).
+async function getWeeklyPlanHistory(req, res) {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 52);
+    const history = await completionService.getWeeklyPlanHistory(req.user.id, limit);
+    return res.json({ success: true, history });
+  } catch (error) {
+    logger.error(`[ai] getWeeklyPlanHistory error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+// 전체 기간 요약 통계 (연속 실행 주수, 평균 달성률, 카테고리별 실행률).
+async function getWeeklyPlanStats(req, res) {
+  try {
+    const stats = await completionService.getWeeklyPlanStats(req.user.id);
+    return res.json({ success: true, ...stats });
+  } catch (error) {
+    logger.error(`[ai] getWeeklyPlanStats error: ${error.message}`);
     res.status(500).json({ success: false });
   }
 }
@@ -194,6 +229,35 @@ async function toggleChecklistItem(req, res) {
   }
 }
 
+// 포트폴리오·진단·주간계획 3개 AI 기능의 게이트를 한 번에 확인한다. 셋 다 막혀 있으면
+// (진단·주간계획 게이트는 목표 직무 하나만 보므로, 셋 다 막혔다는 건 사실상 항상
+// 목표 직무 미설정이 원인이다) 각 페이지가 "나만 막힌 게 아니라 AI 기능 자체가 다
+// 막혀 있다"는 통합 안내를 띄울 수 있게, 페이지마다 컨텍스트를 3번씩 만드는 대신
+// 여기서 한 번에 계산해 넘긴다.
+async function getReadinessSummary(req, res) {
+  try {
+    const context = await contextBuilder.buildPortfolioContext(req.user.id);
+    const portfolio = readinessService.checkReadiness(context);
+    const diagnosis = readinessService.checkDiagnosisReadiness(context);
+    const weeklyPlan = readinessService.checkWeeklyPlanReadiness(context);
+    const allBlocked = !portfolio.ready && !diagnosis.ready && !weeklyPlan.ready;
+
+    return res.json({
+      success: true,
+      allBlocked,
+      portfolioReady: portfolio.ready,
+      diagnosisReady: diagnosis.ready,
+      weeklyPlanReady: weeklyPlan.ready,
+      commonBlockers: allBlocked
+        ? [...new Set([...portfolio.blockers, ...diagnosis.blockers, ...weeklyPlan.blockers])]
+        : [],
+    });
+  } catch (error) {
+    logger.error(`[ai] getReadinessSummary error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
 // 구현 확인용 테스트 페이지
 function renderTestPage(req, res) {
   res.render('pages/aiTest', { user: req.user, pageTitle: 'AI 기능 테스트' });
@@ -208,12 +272,14 @@ async function getPortfolioReadiness(req, res) {
     const context = await contextBuilder.buildPortfolioContext(req.user.id);
     const readiness = readinessService.checkReadiness(context);
     const missing = missingAnalyzer.analyzeMissing(context);
+    const currentJob = await Job.findOne({ userId: req.user.id, status: 'target' }).select('jobCode title').lean();
     return res.json({
       ready: readiness.ready,
       total: readiness.total,
       breakdown: readiness.breakdown,
       blockers: readiness.blockers,
       missing,
+      currentJob: currentJob ? { jobCode: currentJob.jobCode, title: currentJob.title } : null,
     });
   } catch (error) {
     logger.error(`[ai] getPortfolioReadiness error: ${error.message}`);
@@ -303,6 +369,17 @@ async function renderPortfolioPrintPage(req, res) {
       return res.status(404).render('pages/error', { title: '포트폴리오를 찾을 수 없음', status: 404, error: null });
     }
 
+    // 목표 직무를 바꾼 뒤 옛 포트폴리오를 제출용 PDF로 뽑아내는 사고를 막는다 —
+    // 화면 배너로는 안내가 될 뿐, 인쇄/PDF 경로는 별도 URL이라 서버에서도 막아야 한다.
+    const currentJob = await Job.findOne({ userId: req.user.id, status: 'target' }).select('jobCode').lean();
+    if (doc.jobCode && currentJob?.jobCode && doc.jobCode !== currentJob.jobCode) {
+      return res.status(409).render('pages/error', {
+        title: '목표 직무가 변경됨',
+        status: 409,
+        error: '이 포트폴리오는 이전 목표 직무 기준으로 생성되었습니다. 포트폴리오를 다시 생성한 뒤 이용해 주세요.',
+      });
+    }
+
     return res.render('pages/portfolioPrint', {
       title: `진로 포트폴리오 · ${req.user.name}`,
       user: req.user,
@@ -325,12 +402,14 @@ async function getDiagnosisScores(req, res) {
     const diagnosisReadiness = readinessService.checkDiagnosisReadiness(context);
     const scores = readinessService.checkReadiness(context);
     const missing = missingAnalyzer.analyzeMissing(context);
+    const currentJob = await Job.findOne({ userId: req.user.id, status: 'target' }).select('jobCode title').lean();
     return res.json({
       ready: diagnosisReadiness.ready,
       blockers: diagnosisReadiness.blockers,
       total: scores.total,
       breakdown: scores.breakdown,
       missing,
+      currentJob: currentJob ? { jobCode: currentJob.jobCode, title: currentJob.title } : null,
     });
   } catch (error) {
     logger.error(`[ai] getDiagnosisScores error: ${error.message}`);
@@ -416,6 +495,19 @@ async function addGapToWeeklyPlan(req, res) {
       return res.status(404).json({ success: false, message: '해당 gap을 찾을 수 없습니다.' });
     }
 
+    // 목표 직무를 바꾼 뒤에도 옛 진단 문서는 retention 상한 안에서 그대로 남아 있어,
+    // 브라우저 히스토리/뒤로가기로 옛 진단 화면에 다시 접근해 "계획에 추가"를 누르면
+    // 지금 목표와 무관한 gap이 계획에 꽂힐 수 있다(예: 게임프로그래머 갭이 응용소프트웨어
+    // 엔지니어 계획에 들어감). jobCode는 진단 생성 시점에 이미 스냅샷돼 있으니 비교만 하면 된다.
+    const currentJob = await Job.findOne({ userId, status: 'target' }).select('jobCode').lean();
+    if (diagnosis.jobCode && currentJob?.jobCode && diagnosis.jobCode !== currentJob.jobCode) {
+      return res.status(409).json({
+        success: false,
+        reason: 'job_mismatch',
+        message: '목표 직무가 변경되어 이 진단의 항목은 추가할 수 없습니다. 진단을 다시 생성해 주세요.',
+      });
+    }
+
     const weekStart = resolveWeekStart(req.body?.weekStart);
     const plan = await WeeklyPlan.findOne({ userId, weekStart });
     if (!plan) {
@@ -450,10 +542,13 @@ module.exports = {
   requestWeeklyPlan,
   getWeeklyPlan,
   getCurrentWeeklyPlan,
+  getWeeklyPlanHistory,
+  getWeeklyPlanStats,
   getTodayChecklist,
   redistributeWeeklyPlan,
   getWeeklyPlanChecklist,
   toggleChecklistItem,
+  getReadinessSummary,
   renderTestPage,
   getPortfolioReadiness,
   requestPortfolio,

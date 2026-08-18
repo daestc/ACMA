@@ -18,6 +18,7 @@ const ACADEMIC_PHASE_LABEL = {
 
 let currentPlanId = null;
 let pollTimer = null;
+let currentTargetJob = null; // loadCurrentTargetJob()이 채움 — 계획 jobCode와 대조용
 
 // KST 자정 기준 오늘 날짜(YYYY-MM-DD) — <input type="date"> value로 그대로 쓸 수 있다.
 function todayKstDateString() {
@@ -91,6 +92,17 @@ function renderPlan(plan) {
   document.getElementById('cp-hours-fill').style.width = pct + '%';
 
   document.getElementById('cp-goal').textContent = plan.goal || '';
+
+  // 계획 생성 시점 목표 직무(plan.jobCode)와 지금 목표 직무가 다르면 배너를 띄운다 —
+  // 옛 jobCode 없는 계획(스키마 추가 이전 생성분)은 대조할 수 없으므로 조용히 건너뛴다.
+  const isStale = plan.jobCode && currentTargetJob?.jobCode && plan.jobCode !== currentTargetJob.jobCode;
+  const mismatchEl = document.getElementById('cp-job-mismatch');
+  if (isStale) {
+    mismatchEl.style.display = 'block';
+    mismatchEl.textContent = `⚠️ 이 계획은 '${plan.jobTitle}' 기준으로 생성되었습니다. 현재 목표 직무는 '${currentTargetJob.title}'입니다. 다시 생성하면 반영됩니다.`;
+  } else {
+    mismatchEl.style.display = 'none';
+  }
 
   const itemsEl = document.getElementById('cp-items');
   itemsEl.innerHTML = (plan.items || []).map(renderItem).join('')
@@ -203,6 +215,8 @@ async function generatePlan() {
   if (data.httpStatus === 202 && data.id) {
     currentPlanId = data.id;
     startPolling();
+  } else if (data.httpStatus === 400) {
+    alert(`아직 준비가 부족합니다.\n${(data.blockers || []).join('\n')}`);
   } else if (data.httpStatus === 409) {
     alert('이미 생성 중인 계획이 있습니다.');
   } else {
@@ -220,8 +234,98 @@ async function redistribute() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+async function loadCurrentTargetJob() {
+  const data = await callApi('/ai/portfolio/readiness');
+  if (data.httpStatus === 200) currentTargetJob = data.currentJob || null;
+
+  // 목표 직무 없이 생성하면 서버가 400으로 막지만(POST /ai/weekly-plan), 버튼을 눌러보고
+  // 나서야 아는 것보다 애초에 못 누르게 하는 게 낫다 — 포트폴리오/진단 페이지와 동일한 패턴.
+  const disabledTitle = currentTargetJob ? '' : '목표 직무를 먼저 설정해주세요.';
+  [document.getElementById('cp-generate-btn'), document.getElementById('cp-regenerate-btn')].forEach(btn => {
+    if (!btn) return;
+    btn.disabled = !currentTargetJob;
+    btn.title = disabledTitle;
+  });
+}
+
+// 0~100 퍼센트 값으로 배지 색을 고른다 — fillClassForScore(진행바용, careerAi.js)와
+// 같은 구간 기준이라 화면 전체에서 "70 이상은 초록" 같은 색 언어가 일관된다.
+function pctBadgeClass(pct) {
+  if (pct >= 70) return 'badge-green';
+  if (pct >= 40) return 'badge-blue';
+  if (pct > 0) return 'badge-amber';
+  return 'badge-red';
+}
+
+// completionRate와 같은 방식(슬롯 단위)으로 센 카테고리별 실행률 — planned가 0인
+// 카테고리는 애초에 서버가 안 보내므로 여기서 따로 거를 필요가 없다.
+function renderCategoryStats(byCategory) {
+  if (!byCategory.length) {
+    return '<div style="font-size:12px;color:var(--text2);">아직 카테고리별로 볼 데이터가 없습니다.</div>';
+  }
+  return byCategory.map(c => {
+    const pct = Math.round((c.rate || 0) * 100);
+    const label = CATEGORY_LABEL[c.category] || c.category;
+    return `
+      <div class="progress-wrap" style="margin-bottom:10px;">
+        <div class="progress-header">
+          <span class="progress-label">${escapeHtml(label)}</span>
+          <span class="progress-value">${c.completed}/${c.planned} (${pct}%)</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill ${fillClassForScore(pct)}" style="width:${pct}%"></div></div>
+      </div>`;
+  }).join('');
+}
+
+function renderHistoryItem(plan) {
+  const pct = plan.completionRate == null ? null : Math.round(plan.completionRate * 100);
+  const badgeText = pct == null ? '집계 불가' : `${pct}%`;
+  const badgeClass = pct == null ? 'badge-blue' : pctBadgeClass(pct);
+
+  return `
+    <div class="card" style="padding:12px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text2);">${formatKstDate(plan.weekStart)} ~ ${formatKstDate(plan.weekEnd)}</span>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6;">${escapeHtml(plan.goal || '-')}</p>
+    </div>`;
+}
+
+async function loadStatsAndHistory() {
+  const [statsData, historyData] = await Promise.all([
+    callApi('/ai/weekly-plan/stats'),
+    callApi('/ai/weekly-plan/history?limit=12'),
+  ]);
+
+  if (statsData.httpStatus !== 200 || !statsData.totalWeeks) {
+    document.getElementById('cp-stats-empty').style.display = 'block';
+    document.getElementById('cp-stats-body').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('cp-stats-empty').style.display = 'none';
+  document.getElementById('cp-stats-body').style.display = 'block';
+
+  document.getElementById('cp-stats-total').textContent = `${statsData.totalWeeks}주`;
+  document.getElementById('cp-stats-avg').textContent =
+    statsData.avgCompletionRate == null ? '-' : `${Math.round(statsData.avgCompletionRate * 100)}%`;
+  document.getElementById('cp-stats-streak').textContent = `${statsData.currentStreak}주`;
+
+  document.getElementById('cp-stats-category').innerHTML = renderCategoryStats(statsData.byCategory || []);
+
+  const history = historyData.httpStatus === 200 ? (historyData.history || []) : [];
+  document.getElementById('cp-history-list').innerHTML = history.length
+    ? history.map(renderHistoryItem).join('')
+    : '<div style="font-size:12px;color:var(--text2);">기록이 없습니다.</div>';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   const weekstartInput = document.getElementById('cp-weekstart');
   if (weekstartInput) weekstartInput.value = todayKstDateString();
+  // currentTargetJob이 채워진 뒤에 렌더해야 첫 로드에서도 직무 불일치 배너가 정확히 뜬다.
+  await loadCurrentTargetJob();
   loadCurrentPlan();
+  loadStatsAndHistory();
+  renderAllBlockedBanner('cp-all-blocked-banner');
 });

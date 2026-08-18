@@ -1,4 +1,5 @@
 const { WeeklyPlan } = require('../../models/Ai');
+const { Job } = require('../../models/Certifications_jobs');
 const contextBuilder = require('./contextBuilder');
 const weeklyPlanPrompt = require('./prompts/weeklyPlan');
 const aiClient = require('./aiClient');
@@ -135,9 +136,13 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
       extraNotices.push('이 주에 해당하는 시간표 데이터가 없어 하루 최대 6시간 가용 시간으로 임시 계산했습니다. 실제 여유 시간과 다를 수 있습니다.');
     }
 
+    const targetJob = await Job.findOne({ userId, status: 'target' }).select('jobCode title').lean();
+
     const savedDoc = await WeeklyPlan.findByIdAndUpdate(docId, {
       status: 'done',
       errorMessage: null,
+      jobCode: targetJob?.jobCode || null,
+      jobTitle: targetJob?.title || null,
       goal: sanitized.goal,
       items: sanitized.items,
       computed: {

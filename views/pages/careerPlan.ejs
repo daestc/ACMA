@@ -17,6 +17,8 @@
 		<%- include('../partials/topbar', { pageTitle: '주간 계획', user: user }) %>
 
 		<div class="page-content">
+      <div id="cp-all-blocked-banner" style="display:none;"></div>
+
       <!-- ══ 빈 상태 ══ -->
       <div class="card" id="cp-empty" style="display:none;text-align:center;padding:48px 20px;">
         <div style="font-size:36px;margin-bottom:12px;">📅</div>
@@ -26,7 +28,7 @@
         </p>
         <div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
           <input type="date" id="cp-weekstart" class="input-field" title="계획을 만들 주에 속하는 아무 날짜나 선택 (기본값: 오늘 = 이번 주)">
-          <button class="btn btn-accent" onclick="generatePlan()">계획 생성하기</button>
+          <button class="btn btn-accent" id="cp-generate-btn" onclick="generatePlan()">계획 생성하기</button>
         </div>
       </div>
 
@@ -51,7 +53,7 @@
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-ghost btn-sm" onclick="redistribute()">재분배</button>
-              <button class="btn btn-ghost btn-sm" onclick="generatePlan()">다시 생성</button>
+              <button class="btn btn-ghost btn-sm" id="cp-regenerate-btn" onclick="generatePlan()">다시 생성</button>
             </div>
           </div>
 
@@ -64,6 +66,7 @@
           </div>
 
           <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-top:14px;" id="cp-goal"></p>
+          <div id="cp-job-mismatch" style="display:none;margin-top:12px;padding:10px 14px;background:var(--red-bg);color:var(--red);border-radius:8px;font-size:12px;line-height:1.6;"></div>
         </div>
 
         <div id="cp-items" style="display:flex;flex-direction:column;gap:10px;"></div>
@@ -73,6 +76,38 @@
           <div style="overflow-x:auto;">
             <div id="cp-daily" style="display:flex;gap:10px;min-width:820px;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ 기록 & 통계 (이번 주 계획 유무와 무관하게 항상 표시) ══ -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title" style="margin-bottom:14px;">계획 기록 &amp; 통계</div>
+
+        <div id="cp-stats-empty" style="display:none;font-size:13px;color:var(--text2);">
+          아직 완료된 주간 계획이 없습니다.
+        </div>
+
+        <div id="cp-stats-body" style="display:none;">
+          <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:120px;padding:14px;background:var(--bg3);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:800;" id="cp-stats-total">-</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:4px;">완료된 계획 주 수</div>
+            </div>
+            <div style="flex:1;min-width:120px;padding:14px;background:var(--bg3);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:800;" id="cp-stats-avg">-</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:4px;">평균 달성률</div>
+            </div>
+            <div style="flex:1;min-width:120px;padding:14px;background:var(--bg3);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:800;" id="cp-stats-streak">-</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:4px;">연속 실행 주</div>
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">카테고리별 실행률</div>
+          <div id="cp-stats-category" style="margin-bottom:22px;"></div>
+
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">최근 계획</div>
+          <div id="cp-history-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
       </div>
 		</div>

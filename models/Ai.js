@@ -146,6 +146,12 @@ const weeklyPlanSchema = new Schema({
   status: { type: String, enum: ['pending', 'done', 'failed'], default: 'pending', index: true },
   errorMessage: { type: String, default: null },
 
+  // 포트폴리오·진단과 달리 생성 시점 목표 직무 스냅샷이 없었다 — 나중에 "이 계획이
+  // 어느 직무 기준이었나"를 알 수 없고, 목표 직무 변경 후 옛 gap이 섞여 들어가는지
+  // 대조할 방법도 없었다. planService.generateWeeklyPlan에서 채운다.
+  jobCode: { type: String, default: null },
+  jobTitle: { type: String, default: null },
+
   weekStart: { type: Date, required: true },
   weekEnd: { type: Date, required: true },
 

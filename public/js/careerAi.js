@@ -89,6 +89,34 @@ function renderScoreBreakdown(breakdown) {
   return `<div class="grid-2" style="gap:0 24px;">${rows}</div>`;
 }
 
+// 포트폴리오·진단·주간계획 3개가 전부 막혀 있으면 상단에 통합 안내 배너를 띄운다.
+// 각 페이지가 이미 자기 기능의 blockers를 보여주지만, "이 기능만 막힌 게 아니라
+// AI 기능 자체가 다 막혀 있다"는 걸 알아야 사용자가 여기가 아니라 진로정보부터
+// 채워야 한다는 걸 바로 안다. containerId 자리에 빈 div만 있으면 되고, 안 막혀
+// 있으면 조용히 숨긴다.
+async function renderAllBlockedBanner(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const data = await callApi('/ai/readiness-summary');
+  if (data.httpStatus !== 200 || !data.allBlocked) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const reason = (data.commonBlockers || [])[0] || '목표 직무를 설정해 주세요';
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;background:var(--amber-bg);border-color:var(--amber);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:var(--amber);line-height:1.6;">
+          ⚠️ 주간계획·포트폴리오·진단 3개 AI 기능이 모두 같은 이유로 막혀 있습니다 — ${escapeHtml(reason)}
+        </span>
+        <a href="/career" class="btn btn-accent btn-sm" style="white-space:nowrap;">직무 설정하러 가기</a>
+      </div>
+    </div>`;
+}
+
 // missingAnalyzer.analyzeMissing 결과(key/label/reason/impact/link)를 링크 가능한
 // 리스트로 렌더한다.
 function renderMissingList(missing) {

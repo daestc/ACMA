@@ -17,6 +17,8 @@
 		<%- include('../partials/topbar', { pageTitle: '진로 진단', user: user }) %>
 
 		<div class="page-content">
+      <div id="dg-all-blocked-banner" style="display:none;"></div>
+
       <!-- ══ 준비도 ══ -->
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header">
@@ -56,6 +58,7 @@
             <button class="btn btn-ghost btn-sm" onclick="generateDiagnosis()">다시 생성</button>
           </div>
           <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-top:8px;" id="dg-overview"></p>
+          <div id="dg-job-mismatch" style="display:none;margin-top:12px;padding:10px 14px;background:var(--red-bg);color:var(--red);border-radius:8px;font-size:12px;line-height:1.6;"></div>
         </div>
 
         <div class="card" id="dg-graduation-card" style="margin-bottom:16px;display:none;">
