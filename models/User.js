@@ -160,6 +160,15 @@ const UserSchema = new mongoose.Schema({
       }
     }
   ],
+  // 공고 스크랩
+  scrapedJobs: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Recruit'
+    }],
+  // 희망 직무 및 목표 자격증
+  targetJob: { type: String, default: null, trim: true },
+  targetCertification: { type: String, default: null, trim: true },
+
 
   // ── 알림 설정
   notificationSettings: { type: NotificationSettingsSchema, default: () => ({}) },

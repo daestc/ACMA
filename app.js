@@ -33,7 +33,7 @@ const adminRouter = require('./routes/adminRouter');
 const suggestionRouter = require('./routes/suggestionRouter');
 const specRouter    = require('./routes/specRouter');
 const paymentRouter = require('./routes/paymentRouter');
-
+const recruitRouter = require('./routes/recruitRouter');
 
 //DB 연결
 connectDB();
@@ -63,6 +63,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(refreshDailyUsage);
 
+
 //라우터 등록
 // app.get('/', (req, res)=>{
 //     res.render('index', {title : '메인페이지'});
@@ -83,6 +84,7 @@ app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);
 app.use('/spec',    specRouter);
 app.use('/payment', paymentRouter);
+app.use('/recruit', recruitRouter);
 
 // 오류 처리 미들웨어
 app.use(notFoundHandler);

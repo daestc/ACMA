@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <%- include('../partials/head', { title: '채용정보' }) %>
+</head>
+
+<body>
+  <!-- 사이드바 -->
+  <%- include('../partials/sidebar', { currentPage: 'recruit', user: user }) %>
+  <main class="main-content">
+    <!-- 상단 헤더 -->
+    <%- include('../partials/topbar', { pageTitle: '채용정보', user: user }) %>
+    <div class="page-content">
+
+      <!-- ══ 1. 모집중 / 모집 마감 / 스크랩 / AI 토글 ══ -->
+      <div class="tabs recruit-status-tabs">
+        <a href="/recruit?status=open" class="tab-btn <%= currentStatus === 'open' ? 'active' : '' %>" style="text-decoration: none; display: inline-block;">모집중</a>
+        <a href="/recruit?status=closed" class="tab-btn <%= currentStatus === 'closed' ? 'active' : '' %>" style="text-decoration: none; display: inline-block;">모집 마감</a>
+        <a href="/recruit?status=scrap" class="tab-btn <%= currentStatus === 'scrap' ? 'active' : '' %>" style="text-decoration: none; display: inline-block;">스크랩</a>
+        
+        <!--  AI 버튼 누르면 showAiLoading() 실행 -->
+        <a href="/recruit?status=ai" class="tab-btn <%= currentStatus === 'ai' ? 'active' : '' %>" style="background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; text-decoration: none; display: inline-block;" onclick="showAiLoading()">
+          🚀 AI 추천 공고 
+        </a>
+      </div>
+
+      <form action="/recruit" method="GET" id="filterForm">
+        <input type="hidden" name="status" value="<%= currentStatus %>">
+
+        <!-- ══ 2. 지역 검색 박스 (다중 선택 태그 UI) ══ -->
+        <div class="recruit-region-select" style="margin-bottom: 16px;">
+          <label class="recruit-region-select-label">지역 검색</label>
+          
+          <div class="selected-tags-container" id="selected-regions-container" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+            <% 
+              let currentSelectedRegions = typeof selectedRegions !== 'undefined' ? (typeof selectedRegions === 'string' ? [selectedRegions] : selectedRegions) : [];
+              currentSelectedRegions = currentSelectedRegions.filter(r => r && r !== 'all');
+            %>
+            <% if (currentSelectedRegions.length === 0) { %>
+              <span style="font-size: 13px; color: var(--text2); padding: 4px 0;">전체 지역 (선택된 지역 없음)</span>
+            <% } else { %>
+              <% currentSelectedRegions.forEach(reg => { %>
+                <span class="filter-tag-badge" style="display: inline-flex; align-items: center; background: var(--accent-light, #e0e7ff); color: var(--accent, #4f46e5); padding: 4px 10px; border-radius: 16px; font-size: 12px; font-weight: 600;">
+                  <%= reg %>
+                  <button type="button" onclick="removeRegion('<%= reg %>')" style="background: none; border: none; margin-left: 6px; cursor: pointer; color: inherit; font-weight: bold;">×</button>
+                </span>
+              <% }) %>
+            <% } %>
+          </div>
+
+          <div class="recruit-category-box open" style="margin-top: 8px;">
+            <div class="recruit-category-wrap">
+              <% 
+                const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
+              %>
+              <% regions.forEach((reg) => { %>
+                <label class="category-toggle-btn">
+                  <input type="checkbox" name="region" value="<%= reg %>" 
+                         form="filterForm"
+                         <%= currentSelectedRegions.includes(reg) ? 'checked' : '' %>>
+                  <span class="category-label-text"><%= reg %></span>
+                </label>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ 3. 직업 선택 카테고리 박스 ══ -->
+        <div class="recruit-category-box open" id="recruit-category-box">
+          <div class="recruit-category-wrap">
+            <% categories.forEach((cat) => { %>
+              <label class="category-toggle-btn">
+                <input type="checkbox" name="category" value="<%= cat %>" 
+                       <%= (typeof selectedCategories !== 'undefined' && selectedCategories.includes(cat)) ? 'checked' : '' %>>
+                <span class="category-label-text"><%= cat %></span>
+              </label>
+            <% }) %>
+          </div>
+          
+          <div style="margin-top: 24px; text-align: right;">
+            <button type="submit" class="recruit-submit-btn">조건 검색</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- ══ 4. 채용정보 카드 리스트 ══ -->
+      <div class="recruit-list-head">
+        <h3>이 공고, 놓치지 마세요!</h3>
+      </div>
+
+      <% if (jobs && jobs.length > 0) { %>
+        <div class="recruit-card-grid" id="recruit-card-grid">
+          
+          <% 
+            function getCategoryBadge(cat) {
+              if (!cat) return '기타';
+              return cat.split('·')[0];
+            }
+          %>
+
+          <% jobs.forEach(job => { %>
+            <div class="recruit-card" data-status="<%= currentStatus %>" onclick="window.open('<%= job.url %>', '_blank')">
+              
+              <div class="recruit-job-title"><%= job.title %></div>
+              <div class="recruit-company-name"><%= job.company %></div>
+              
+              <div class="recruit-job-meta">
+                <span class="loc-icon">📍</span>
+                <span><%= job.region || '지역 무관' %></span><span class="dot">·</span>
+                <span><%= job.experience || '경력 무관' %></span><span class="dot">·</span>
+                <span><%= job.education || '학력 무관' %></span>
+              </div>
+              
+              <div class="recruit-card-bottom">
+                <span class="recruit-category-label"><%= getCategoryBadge(job.saraminCategory) %></span>
+                
+                <div class="recruit-bottom-right">
+                  <span class="recruit-dday"><%= job.deadlineText || '상시채용' %></span>
+                  
+                  <% 
+                    const userScraps = (user && user.scrapedJobs) ? user.scrapedJobs.map(id => id.toString()) : [];
+                    const isScrapped = userScraps.includes(job._id.toString());
+                  %>
+                  
+                  <button class="recruit-scrap-btn <%= isScrapped ? 'active' : '' %>" 
+                          data-id="<%= job._id %>" 
+                          onclick="toggleScrap(event, this)" 
+                          aria-label="스크랩">⭐</button>
+                </div>
+              </div>
+              
+            </div>
+          <% }) %>
+        </div>
+
+        <!-- ══ 5. 페이지네이션 ══ -->
+        <% if (totalPages > 1) { %>
+          <% 
+            let queryStr = `&status=${currentStatus}`;
+            if (typeof selectedCategories !== 'undefined' && selectedCategories.length > 0) {
+              selectedCategories.forEach(cat => {
+                queryStr += `&category=${encodeURIComponent(cat)}`;
+              });
+            }
+            if (typeof currentSelectedRegions !== 'undefined' && currentSelectedRegions.length > 0) {
+              currentSelectedRegions.forEach(reg => {
+                queryStr += `&region=${encodeURIComponent(reg)}`;
+              });
+            }
+          %>
+          
+          <div class="pagination">
+            <% if (page > 1) { %>
+              <a href="/recruit?page=<%= page - 1 %><%= queryStr %>" class="page-btn">&laquo; 이전</a>
+            <% } %>
+
+            <% 
+               let startPage = Math.max(1, page - 2);
+               let endPage = Math.min(totalPages, page + 2);
+               if (endPage - startPage < 4) {
+                 if (startPage === 1) endPage = Math.min(totalPages, 5);
+                 else if (endPage === totalPages) startPage = Math.max(1, totalPages - 4);
+               }
+            %>
+            
+            <% for (let i = startPage; i <= endPage; i++) { %>
+              <a href="/recruit?page=<%= i %><%= queryStr %>" class="page-btn <%= page === i ? 'active' : '' %>"><%= i %></a>
+            <% } %>
+
+            <% if (page < totalPages) { %>
+              <a href="/recruit?page=<%= page + 1 %><%= queryStr %>" class="page-btn">다음 &raquo;</a>
+            <% } %>
+          </div>
+        <% } %>
+
+      <!--  상태별 빈 화면 안내 처리 -->
+      <% } else { %>
+        <div class="recruit-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; padding: 40px 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 10px;">
+          
+          <% if (currentStatus === 'closed') { %>
+            <div style="font-size: 40px; margin-bottom: 16px;">⏳</div>
+            <h4 style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">아직 모집 마감된 공고가 없어요!</h4>
+            <p style="font-size: 13px; color: var(--text2);">마감된 공고가 생기면 이곳에서 확인할 수 있습니다.</p>
+            
+          <% } else if (currentStatus === 'scrap') { %>
+            <div style="font-size: 40px; margin-bottom: 16px;">⭐</div>
+            <h4 style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">아직 스크랩 한 공고가 없어요!</h4>
+            <p style="font-size: 13px; color: var(--text2); margin-bottom: 24px;">지금 공고 보러 갈까요?</p>
+            <a href="/recruit?status=open" style="display: inline-block; padding: 10px 24px; background: var(--accent); color: white; font-size: 14px; font-weight: 700; border-radius: 8px; text-decoration: none; transition: background 0.2s;">
+              공고 보러가기 🚀
+            </a>
+
+          <% } else if (currentStatus === 'ai' && aiMissingInfo) { %>
+            <!-- 직무/자격증 정보가 누락된 경우 안내 -->
+            <div style="font-size: 40px; margin-bottom: 16px;">📂</div>
+            <h4 style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">설정한 직무와 자격증 정보가 없습니다.</h4>
+            <p style="font-size: 13px; color: var(--text2); margin-bottom: 24px;">지금 설정하러 갈까요?</p>
+            <a href="/career" style="display: inline-block; padding: 10px 24px; background: var(--accent); color: white; font-size: 14px; font-weight: 700; border-radius: 8px; text-decoration: none; transition: background 0.2s;">
+              직무/자격증 설정하러 가기 🚀
+            </a>
+
+          <% } else if (currentStatus === 'ai' && !aiMissingInfo) { %>
+            <!-- AI 추천 결과가 없을 경우 -->
+            <div style="font-size: 40px; margin-bottom: 16px;">🤖</div>
+            <h4 style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">조건에 맞는 추천 공고를 찾지 못했습니다.</h4>
+            <p style="font-size: 13px; color: var(--text2);">관심 직무나 자격증을 추가해 보시면 어떨까요?</p>
+            
+          <% } else { %>
+            <div style="font-size: 40px; margin-bottom: 16px;">🔍</div>
+            <h4 style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">해당 조건에 맞는 채용 공고가 없습니다.</h4>
+            <p style="font-size: 13px; color: var(--text2);">다른 카테고리나 조건을 선택해 보세요!</p>
+          <% } %>
+          
+        </div>
+      <% } %>
+
+    </div>
+  </main>
+
+  <!-- 모달 -->
+  <%- include('../partials/modals/mypage', { user: user }) %>
+
+  <!--  AI 전용 로딩 오버레이 UI -->
+  <div id="ai-loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255, 255, 255, 0.85); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div style="font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite alternate;">🤖</div>
+    <h3 style="color: var(--text); font-weight: 700; margin-bottom: 10px;">맞춤 공고 찾는 중입니다...</h3>
+    <p style="color: var(--text2); font-size: 14px;">AI가 스펙을 분석하고 있어요. (최대 10~15초 소요)</p>
+  </div>
+
+  <style>
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-15px); }
+    }
+  </style>
+
+  <script src="/js/common.js"></script>
+  <script>
+    //  AI 탭 클릭 시 로딩 화면 출력
+    window.showAiLoading = function() {
+      document.getElementById('ai-loading-overlay').style.display = 'flex';
+    };
+
+    // 지역 태그 삭제 처리
+    window.removeRegion = function(regionName) {
+        const checkboxes = document.querySelectorAll('input[name="region"]');
+        checkboxes.forEach(cb => {
+            if (cb.value === regionName) {
+                cb.checked = false;
+            }
+        });
+        document.getElementById('filterForm').submit();
+    };
+
+    // 스크랩 API 호출
+    async function toggleScrap(event, btn) {
+        event.stopPropagation(); // 카드 클릭(새창 열기) 이벤트 방지
+        
+        const recruitId = btn.dataset.id;
+        if (!recruitId) return;
+
+        try {
+            const response = await fetch(`/recruit/${recruitId}/scrap`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                btn.classList.toggle('active', data.isScrapped);
+                
+                // 현재 '스크랩' 탭에 있는데 별을 해제했다면 카드 숨기기
+                const activeTab = document.querySelector('.recruit-status-tabs .tab-btn.active');
+                if (activeTab && activeTab.dataset.status === 'scrap' && !data.isScrapped) {
+                    btn.closest('.recruit-card').style.display = 'none';
+                }
+            } else {
+                alert(data.message || '로그인이 필요합니다.');
+            }
+        } catch (error) {
+            console.error('스크랩 요청 에러:', error);
+            alert('서버와 통신할 수 없습니다.');
+        }
+    }
+  </script>
+</body>
+
+</html>
