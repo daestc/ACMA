@@ -1,9 +1,20 @@
 const userService = require('../services/userService');
 const noticeController = require("../controller/noticeController");
 const careerService = require('../services/careerService');
+const UniversitySchedule = require('../models/UniversitySchedule'); 
 
+function getDDayLabel(targetDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(targetDate);
+    target.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
 
-// 홈페이지에 표시할 정보 모음(todoList, 습관 트래커, Dday 알림, 공지사항 등)
+    if (diff === 0) return 'D-Day';
+    if (diff > 0) return `D-${diff}`;
+    return `종료`;
+}
+
 const getHomePage = async (req, res) => {
   try {
     if (req.user?.role === 'staff') {
@@ -18,21 +29,17 @@ const getHomePage = async (req, res) => {
       return res.redirect('/login'); 
     }
 
-    //  자격증 리스트 긁어오기
     const myCerts = await careerService.getMyCertifications(loggedInUser.email).catch((err) => {
       console.error(' 자격증 함수 에러:', err.message);
       return []; 
     });
 
-    //  종목 코드 가져오기
     const myTargetCertJmcds = myCerts
         .filter(cert => cert.status === 'target' && cert.certificationId && cert.certificationId.jmcd)
         .map(cert => String(cert.certificationId.jmcd).trim());
     
-  
     const showNotice = await noticeController.fetchHomeNotices();
 
-    // 내 자격증 + 학사일정/장학금 공통 공지
     const userCustomNotices = showNotice.filter(notice => {
         if (notice.category === 'certification') {
             return notice.jmcd && myTargetCertJmcds.includes(String(notice.jmcd).trim());
@@ -43,9 +50,41 @@ const getHomePage = async (req, res) => {
     const user = req.user;
     const todoList = await userService.getTodaytodoList(user.email);
     const {habitList, completedCount} = await userService.getHabitList(user.email);
-
-    //자격증 카테고리만
     const myCertNotices = userCustomNotices.filter(n => n.category === 'certification');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const examSchedules = [];
+    const generalSchedules = [];
+
+    if (user.university) {
+        const rawSchedules = await UniversitySchedule.find({
+            university: user.university,
+            $or: [
+                { endDate: { $gte: today } },
+                { endDate: null, startDate: { $gte: today } },
+                { startDate: { $lte: today }, endDate: { $gte: today } }
+            ]
+        })
+        .sort({ startDate: 1 })
+        .lean();
+
+        // 제목에 '고사'나 '시험'이 들어가면 examSchedules, 아니면 generalSchedules로 분류
+        rawSchedules.forEach(schedule => {
+            const targetDate = schedule.endDate || schedule.startDate;
+            const mappedSchedule = {
+                ...schedule,
+                dDayLabel: getDDayLabel(targetDate)
+            };
+
+            if (mappedSchedule.title.includes('고사') || mappedSchedule.title.includes('시험')) {
+                examSchedules.push(mappedSchedule);
+            } else {
+                generalSchedules.push(mappedSchedule);
+            }
+        });
+    }
     
     res.render('pages/home', {
       user,
@@ -53,10 +92,12 @@ const getHomePage = async (req, res) => {
       habitList,
       completedCount,
       notices: userCustomNotices, 
-      topNotices: userCustomNotices.slice(0, 6), //상위 6개
+      topNotices: userCustomNotices.slice(0, 6),
       urgentNotice: userCustomNotices.filter(n => n.isUrgent === true), 
-      myCertNotices: userCustomNotices.filter(n => n.category === 'certification'), 
+      myCertNotices, 
       ddayCerts: myCertNotices,
+      examSchedules,    
+      generalSchedules, 
       pageTitle: '홈'
     });
 
