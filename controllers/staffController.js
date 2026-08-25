@@ -15,6 +15,16 @@ const getHomePage = async (req, res, next) => {
   }
 };
 
+// 홈 대시보드 (JSON) — getHomePage와 동일한 조회, React StaffHome.jsx용.
+const getHomeData = async (req, res, next) => {
+  try {
+    const dashboard = await staffService.getStaffDashboard(req.user.university);
+    res.json({ ok: true, dashboard });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getSchedulePage = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
@@ -31,6 +41,20 @@ const getSchedulePage = async (req, res, next) => {
       currentPageNum,
       totalPages,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 일정 목록 (JSON, 페이지네이션 포함) — getSchedulePage와 동일한 조회, React StaffSchedule.jsx용.
+const getScheduleData = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const { schedules, total, page: currentPageNum, totalPages } = await staffService.getSchedules(
+      req.user.university,
+      { page },
+    );
+    res.json({ ok: true, schedules, totalSchedules: total, currentPageNum, totalPages });
   } catch (err) {
     next(err);
   }
@@ -80,6 +104,19 @@ const getGraduationPage = async (req, res, next) => {
       requirements: graduation?.requirements || null,
       majors,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 졸업요건 설정 페이지 데이터 (JSON) — getGraduationPage와 동일한 조회, React StaffGraduation.jsx용.
+const getGraduationData = async (req, res, next) => {
+  try {
+    const [graduation, majors] = await Promise.all([
+      staffService.getGraduationRequirements(req.user.university),
+      staffService.getMajorList(req.user.university),
+    ]);
+    res.json({ ok: true, requirements: graduation?.requirements || null, majors });
   } catch (err) {
     next(err);
   }
@@ -249,6 +286,38 @@ const getStudentsPage = async (req, res, next) => {
   }
 };
 
+// 학생 목록 (JSON) — getStudentsPage와 동일한 조회, React StaffStudents.jsx용.
+const getStudentsData = async (req, res, next) => {
+  try {
+    const university = req.user.university;
+    const students = await User.find({ university, role: 'student' })
+      .select('name email studentId major enrollmentStatus planType pointBalance isOnline lastLoginAt lastLogoutAt accountStatus')
+      .sort({ isOnline: -1, lastLoginAt: -1 })
+      .lean();
+
+    const now = Date.now();
+    const dormantThreshold = now - DORMANT_DAYS * 24 * 60 * 60 * 1000;
+
+    const enriched = students.map(s => ({
+      ...s,
+      isDormant: s.lastLoginAt && s.lastLoginAt.getTime() < dormantThreshold,
+    }));
+
+    const totalCount    = students.length;
+    const onlineCount   = students.filter(s => s.isOnline).length;
+    const premiumCount  = students.filter(s => s.planType === 'premium').length;
+    const dormantCount  = enriched.filter(s => s.isDormant).length;
+
+    res.json({
+      ok: true,
+      students: enriched,
+      stats: { totalCount, onlineCount, premiumCount, dormantCount },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getStudentDetail = async (req, res, next) => {
   try {
     const university = req.user.university;
@@ -315,15 +384,19 @@ const resetStudentPassword = async (req, res, next) => {
 
 module.exports = {
   getHomePage,
+  getHomeData,
   getSchedulePage,
+  getScheduleData,
   postSchedule,
   deleteSchedule,
   getGraduationPage,
+  getGraduationData,
   saveGraduation,
   getMajorList,
   getMajorGraduation,
   saveMajorGraduation,
   getStudentsPage,
+  getStudentsData,
   getStudentDetail,
   suspendStudent,
   deleteStudent,

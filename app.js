@@ -37,6 +37,15 @@ const aiRouter = require('./routes/ai');
 
 const recruitRouter = require('./routes/recruitRouter');
 
+// React 프론트엔드(frontend/)가 호출하는 JSON 전용 API 라우터 모음.
+// 기존 EJS 렌더 라우터(noticeRouter 등)와는 별개로 /api 하위에 마운트한다.
+// 주의: noticeApiRouter는 예전부터 파일은 있었지만 여기 등록이 안 돼 있어서
+// 프론트 파일럿(Notice.jsx)의 fetch('/api/notices')가 계속 실패하고 있었음 — 이번에 같이 고침.
+const noticeApiRouter = require('./routes/api/noticeApiRouter');
+const homeApiRouter = require('./routes/api/homeApiRouter');
+const authApiRouter = require('./routes/api/authApiRouter');
+const suggestionApiRouter = require('./routes/api/suggestionApiRouter');
+
 //DB 연결
 connectDB();
 
@@ -73,6 +82,10 @@ app.use(refreshDailyUsage);
 app.use('/notice', noticeRouter);
 app.use('/notification', notificationRouter);
 app.use('/', landingRouter);
+app.use('/api/notices', noticeApiRouter);
+app.use('/api/home', homeApiRouter);
+app.use('/api/auth', authApiRouter);
+app.use('/api/suggestions', suggestionApiRouter);
 app.use('/user', userRouter);
 app.use('/auth', authRouter);
 app.use('/calendar', calendarRouter);

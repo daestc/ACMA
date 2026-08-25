@@ -22,6 +22,21 @@ exports.getLecturePage = async (req, res, next) => {
   }
 };
 
+// 강의 목록 (JSON) — getLecturePage와 동일한 조회, React LectureAdmin.jsx용.
+exports.getLectureData = async (req, res, next) => {
+  try {
+    const { search = '', page = 1 } = req.query;
+    const lectureData = await lectureAdminService.getLectures({
+      search: search.trim(),
+      page: Math.max(1, parseInt(page, 10) || 1),
+      university: req.user.university,
+    });
+    res.json({ ok: true, search: search.trim(), ...lectureData });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // 개별 강의 등록
 exports.postLecture = async (req, res) => {
   const { classification, courseName, section, credits, professor, schedules, year, semester } = req.body;

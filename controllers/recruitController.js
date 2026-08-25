@@ -171,6 +171,161 @@ exports.getRecruitPage = async (req, res) => {
     }
 };
 
+// 3. 채용정보 목록 JSON API (React SPA용)
+// 원본 GET '/'(getRecruitPage)는 SSR 전용이라(EJS 풀 페이지 렌더) 필터/페이지네이션
+// 결과를 JSON으로 받을 방법이 없었다 — React 쪽(Recruit.jsx)이 그대로 fetch해서 쓸 수
+// 있게 새로 추가했다. 아래 쿼리 구성 로직은 getRecruitPage와 의도적으로 동일하게
+// 맞췄다(마이그레이션 대상 동작을 바꾸지 않기 위해) — 대신 res.render 대신 res.json으로
+// 응답하고, 카드별 스크랩 여부(isScrapped)를 서버에서 미리 계산해 내려준다.
+exports.getRecruitList = async (req, res) => {
+    try {
+        let currentUser = req.session && req.session.user ? req.session.user : null;
+        if (currentUser && currentUser.id) {
+            const dbUser = await User.findById(currentUser.id).lean();
+            if (dbUser) {
+                currentUser = { ...currentUser, ...dbUser };
+            }
+        }
+
+        const currentStatus = req.query.status || 'open';
+
+        let selectedRegions = req.query.region || [];
+        if (typeof selectedRegions === 'string') {
+            selectedRegions = [selectedRegions];
+        }
+
+        let selectedCategories = req.query.category || [];
+        if (typeof selectedCategories === 'string') {
+            selectedCategories = [selectedCategories];
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let query = {};
+        let aiMissingInfo = false;
+
+        if (currentStatus === 'open') {
+            query.$and = [
+                { deadlineText: { $ne: '마감' } },
+                { $or: [{ endDate: null }, { endDate: { $gte: today } }] }
+            ];
+        } else if (currentStatus === 'closed') {
+            query.$or = [
+                { deadlineText: '마감' },
+                { endDate: { $lt: today } }
+            ];
+        } else if (currentStatus === 'scrap') {
+            if (currentUser && currentUser.scrapedJobs) {
+                query._id = { $in: currentUser.scrapedJobs };
+            } else {
+                query._id = null;
+            }
+        } else if (currentStatus === 'ai') {
+            if (currentUser) {
+                const userId = currentUser._id || currentUser.id;
+                const careerData = await careerService.getMyCareerAndCertifications(userId);
+
+                const targetJobObj = careerData.targetJob;
+                const certsArray = careerData.certs || [];
+
+                const jobName = targetJobObj && targetJobObj.title ? targetJobObj.title : null;
+
+                const certNames = certsArray.length > 0
+                    ? certsArray
+                        .filter(c => c.certificationId && c.certificationId.name)
+                        .map(c => c.certificationId.name)
+                        .join(', ')
+                    : null;
+
+                if (!jobName && !certNames) {
+                    aiMissingInfo = true;
+                    query._id = null;
+                } else {
+                    const aiResult = await aiService.getRecommendationKeywords(certNames || '무관', jobName || '무관');
+
+                    const queryConditions = [];
+
+                    if (aiResult.categories && aiResult.categories.length > 0) {
+                        queryConditions.push({ saraminCategory: { $in: aiResult.categories } });
+                    }
+                    if (aiResult.keywords && aiResult.keywords.length > 0) {
+                        const regexKeywords = aiResult.keywords.map(kw => new RegExp(kw, 'i'));
+                        queryConditions.push({ title: { $in: regexKeywords } });
+                    }
+
+                    if (queryConditions.length > 0) {
+                        query.$and = [
+                            { deadlineText: { $ne: '마감' } },
+                            { $or: [{ endDate: null }, { endDate: { $gte: today } }] },
+                            { $or: queryConditions }
+                        ];
+                    } else {
+                        query._id = null;
+                    }
+                }
+            } else {
+                query._id = null;
+            }
+        }
+
+        if (selectedRegions.length > 0) {
+            query.region = { $in: selectedRegions.map(r => new RegExp(r, 'i')) };
+        }
+
+        if (selectedCategories.length > 0) {
+            query.saraminCategory = { $in: selectedCategories };
+        }
+
+        let page = parseInt(req.query.page, 10) || 1;
+        let limit = 12;
+        let skip = (page - 1) * limit;
+        let totalPages = 0;
+
+        if (currentStatus === 'ai') {
+            limit = 10;
+            skip = 0;
+            page = 1;
+            totalPages = 1;
+        } else {
+            const totalJobs = await Recruit.countDocuments(query);
+            totalPages = Math.ceil(totalJobs / limit);
+        }
+
+        const jobs = await Recruit.find(query)
+            .lean()
+            .sort({ deadlineText: 1 })
+            .skip(skip)
+            .limit(limit);
+
+        const userScraps = (currentUser && currentUser.scrapedJobs) ? currentUser.scrapedJobs.map(id => id.toString()) : [];
+        const jobsWithScrap = jobs.map(job => ({
+            ...job,
+            isScrapped: userScraps.includes(job._id.toString())
+        }));
+
+        const categories = [
+            '기획·전략', '마케팅·홍보·조사', '회계·세무·재무', '인사·노무·HRD', '총무·법무·사무', 'IT개발·데이터', '디자인',
+            '영업·판매·무역', '고객상담·TM', '구매·자재·물류', '상품기획·MD', '운전·운송·배송', '서비스', '생산',
+            '건설·건축', '의료', '연구·R&D', '교육', '미디어·문화·스포츠', '금융·보험', '공공·복지'
+        ];
+
+        res.json({
+            jobs: jobsWithScrap,
+            categories,
+            selectedCategories,
+            selectedRegions,
+            currentStatus,
+            page,
+            totalPages,
+            aiMissingInfo
+        });
+    } catch (error) {
+        console.error("채용공고 JSON 조회 상세 에러:", error);
+        res.status(500).json({ success: false, message: `서버 오류가 발생했습니다: ${error.message}` });
+    }
+};
+
 // 2. 공고 스크랩 API
 exports.toggleScrap = async (req, res) => {
     try {

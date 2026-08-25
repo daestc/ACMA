@@ -52,6 +52,34 @@ const createSuggestion = async (req, res) => {
   }
 };
 
+// GET /api/suggestions — 학생용 건의 목록 + 카테고리 라벨을 JSON으로 반환.
+// views/pages/suggestions.ejs의 getStudentPage가 SSR로 내려주던 데이터를
+// React(Suggestions.jsx)가 fetch로 받아갈 수 있게 그대로 옮긴 버전.
+const getSuggestionsApi = async (req, res) => {
+  try {
+    const university = req.user?.university?.trim();
+
+    if (!university) {
+      return res.json({
+        ok: true,
+        suggestions: [],
+        categories: suggestionService.CATEGORY_LABELS,
+        hasUniversity: false,
+      });
+    }
+
+    const suggestions = await suggestionService.getStudentSuggestions(req.user.id, university);
+    res.json({
+      ok: true,
+      suggestions,
+      categories: suggestionService.CATEGORY_LABELS,
+      hasUniversity: true,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
 const getStudentSuggestionDetail = async (req, res) => {
   try {
     const suggestion = await suggestionService.getStudentSuggestionById(
@@ -91,6 +119,25 @@ const getStaffPage = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+// 학생 건의 목록 (JSON) — getStaffPage와 동일한 조회, React StaffSuggestions.jsx용.
+const getStaffSuggestionsData = async (req, res) => {
+  try {
+    const statusFilter = req.query.status || '';
+    const allSuggestions = await suggestionService.getUniversitySuggestions(req.user.university);
+    const pendingCount = allSuggestions.filter((s) => s.status === 'pending').length;
+    const suggestions = statusFilter === 'pending' || statusFilter === 'completed'
+      ? allSuggestions.filter((s) => s.status === statusFilter)
+      : allSuggestions;
+
+    res.json({ ok: true, suggestions, statusFilter, pendingCount });
+  } catch (err) {
+    if (err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
   }
 };
 
@@ -137,9 +184,11 @@ const replySuggestion = async (req, res) => {
 
 module.exports = {
   getStudentPage,
+  getSuggestionsApi,
   createSuggestion,
   getStudentSuggestionDetail,
   getStaffPage,
+  getStaffSuggestionsData,
   getStaffSuggestionDetail,
   replySuggestion,
 };

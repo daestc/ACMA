@@ -65,6 +65,75 @@ exports.getPlansPage = async (req, res, next) => {
   }
 };
 
+// ── 플랜 페이지 데이터 JSON (React SPA용) ─────────────────
+// 원본 getPlansPage는 SSR 전용이었다 — 만료 자동 처리/결제완료-User미반영 자동복구
+// 로직은 완전히 동일하게 맞추고 res.json으로만 바꿨다. clientKey(토스 결제위젯용
+// 공개키)도 여기서 같이 내려준다(React가 <script src="tosspayments">를 로드한 뒤
+// 이 키로 TossPayments(clientKey)를 초기화해야 하므로).
+exports.getPlanData = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.session.user.id)
+      .select('planType premiumUntil pointBalance dailyUsage')
+      .lean();
+
+    const now = new Date();
+
+    if (user.planType === 'premium' && user.premiumUntil && now > user.premiumUntil) {
+      await User.findByIdAndUpdate(user._id, { planType: 'free', premiumUntil: null });
+      user.planType = 'free';
+      user.premiumUntil = null;
+      req.session.user.planType = 'free';
+      await new Promise((r, j) => req.session.save(e => e ? j(e) : r()));
+    }
+
+    if (user.planType === 'free') {
+      const donePremium = await Payment.findOne({
+        userId: user._id,
+        type: 'premium',
+        status: 'done',
+        premiumUntil: { $gt: now },
+      }).lean();
+      if (donePremium) {
+        await User.findByIdAndUpdate(user._id, {
+          planType: 'premium',
+          premiumUntil: donePremium.premiumUntil,
+        });
+        user.planType = 'premium';
+        user.premiumUntil = donePremium.premiumUntil;
+        req.session.user.planType = 'premium';
+        await new Promise((r, j) => req.session.save(e => e ? j(e) : r()));
+        logger.info(`프리미엄 자동 복구 | userId=${user._id} | orderId=${donePremium.orderId}`);
+      }
+    }
+
+    res.json({
+      ok: true,
+      user: { ...req.session.user, ...user },
+      clientKey: TOSS_CLIENT_KEY,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── 결제 내역 JSON (React SPA용) ──────────────────────────
+// 원본 getHistoryPage와 동일 쿼리, res.json으로만 응답.
+exports.getHistoryData = async (req, res, next) => {
+  try {
+    const payments = await Payment.find({
+      userId: req.session.user.id,
+      status: 'done',
+    })
+      .sort({ paidAt: -1 })
+      .limit(50)
+      .lean();
+
+    res.json({ ok: true, payments });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── 결제 준비 (프리미엄) ──────────────────────────────────
 exports.checkoutPremium = async (req, res, next) => {
   try {

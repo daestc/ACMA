@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title><%= pageTitle %></title>
+</head>
+<body>
+  <%- include('../partials/sidebar', { currentPage, user }) %>
+
+  <main class="main-content">
+    <%- include('../partials/topbar', { pageTitle, user }) %>
+
+    <div class="page-content">
+      <div class="card" style="padding:32px;text-align:center;max-width:520px;margin:40px auto;">
+        <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">구독이 완료되었습니다</h2>
+        <p style="color:var(--text2);line-height:1.6;margin-bottom:20px;">
+          <strong><%= status.planName %></strong> 플랜이 적용되었습니다.<br>
+          이번 달 AI 한도: <strong><%= status.aiLimit %>회</strong>
+        </p>
+        <a href="/subscription" class="btn btn-accent btn-sm">구독 관리로 이동</a>
+        <a href="/study" class="btn btn-ghost btn-sm" style="margin-left:8px;">공부 페이지</a>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/modals/mypage', { user: user }) %>
+  <script src="/js/common.js"></script>
+</body>
+</html>

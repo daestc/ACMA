@@ -8,14 +8,17 @@ const router = express.Router();
 router.use(requireAdmin);
 // 관리자 통계 페이지
 router.get('/adminStatistics', controller.getAdminStatistics);
+router.get('/adminStatistics/data', controller.getAdminStatisticsData);
 
 router.get('/staff', controller.getStaffApprovalPage);
+router.get('/staff/list', controller.getStaffApprovalData);
 router.get('/staff/:id/verification', controller.getVerificationImage);
 router.post('/staff/:id/approve', controller.approveStaff);
 router.post('/staff/:id/reject', controller.rejectStaff);
 
 // 전체 사용자 관리
 router.get('/users', controller.getUsersPage);
+router.get('/users/list', controller.getUsersData);
 router.get('/users/:id', controller.getUserDetail);
 router.patch('/users/:id/role', controller.changeUserRole);
 router.patch('/users/:id/status', controller.adminChangeStatus);

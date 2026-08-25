@@ -200,6 +200,75 @@ async function fetchHomeNotices(university) {
 }
 
 //공지사항 
+// GET /api/notices?page=&limit=&category=
+// React 프론트엔드(Notice.jsx, 무한스크롤)가 쓰는 JSON 버전. getNoticePage와 필터링
+// 로직(로그인 유저의 목표 자격증 기반 필터, 카테고리 필터)은 동일하게 맞추고
+// EJS 렌더 대신 { notices, hasMore } JSON을 내려준다.
+//
+// 주의: 이 함수는 routes/api/noticeApiRouter.js가 처음 만들어질 때부터 참조되고
+// 있었는데 실제 구현이 없어서(module.exports에도 빠져있었음) 라우터가 마운트되자마자
+// "argument handler must be a function"으로 서버가 죽었다. 이번에 구현해서 채움.
+async function getNoticesApi(req, res) {
+    try {
+        const university = await resolveUserUniversity(req);
+
+        let categoryFilter = req.query.category || '';
+        if (Array.isArray(categoryFilter)) {
+            categoryFilter = categoryFilter[0];
+        }
+
+        let showNotice = await fetchAllData(university);
+        const loggedInUser = req.user || req.session?.user;
+
+        // 로그인 유저가 설정한 목표 자격증(jmcd) 필터링 (getNoticePage와 동일 로직)
+        if (loggedInUser) {
+            const UserCertModel = mongoose.model('UserCertification');
+            const currentUserId = loggedInUser._id || loggedInUser.id || loggedInUser.userDoc?._id;
+
+            const myCerts = await UserCertModel.find({
+                $or: [{ userId: currentUserId }, { user: currentUserId }],
+                status: 'target'
+            }).populate('certificationId', 'jmcd').lean();
+
+            const myTargetJmCds = myCerts
+                .filter(c => c.certificationId && c.certificationId.jmcd)
+                .map(c => String(c.certificationId.jmcd).trim());
+
+            showNotice = showNotice.filter(n => {
+                if (n.category === 'certification') {
+                    const finalJmcd = n.jmcd || n.jmCd;
+                    if (finalJmcd) {
+                        return myTargetJmCds.includes(String(finalJmcd).trim());
+                    }
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // 카테고리 탭 선택 필터링
+        if (categoryFilter) {
+            showNotice = showNotice.filter(n => {
+                const queryClean = String(categoryFilter).trim();
+                return n.category === queryClean || n.categoryName === queryClean;
+            });
+        }
+
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 10));
+        const totalItems = showNotice.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedNotices = showNotice.slice(startIndex, endIndex);
+        const hasMore = endIndex < totalItems;
+
+        res.json({ notices: paginatedNotices, hasMore, totalItems });
+    } catch (error) {
+        console.error('공지사항 API 컨트롤러 에러:', error);
+        res.status(500).json({ error: '공지사항을 불러오지 못했습니다.' });
+    }
+}
+
 async function getNoticePage(req, res) {
     try {
         const user = req.session?.user || null;
@@ -289,5 +358,6 @@ async function getNoticePage(req, res) {
 
 module.exports = {
     getNoticePage,
+    getNoticesApi,
     fetchHomeNotices
 };

@@ -36,6 +36,28 @@ exports.getStaffApprovalPage = async (req, res, next) => {
     next(err);
   }
 };
+// 대학관계자 가입 승인 목록 JSON (React SPA용)
+// 원본 getStaffApprovalPage는 SSR 전용이었다 — 쿼리 로직은 완전히 동일하게 맞추고
+// res.json으로만 바꿨다.
+exports.getStaffApprovalData = async (req, res, next) => {
+  try {
+    const [pendingStaff, processedStaff] = await Promise.all([
+      User.find({ role: 'staff', staffStatus: 'pending' })
+        .select('name email university createdAt verificationImage')
+        .sort({ createdAt: 1 })
+        .lean(),
+      User.find({ role: 'staff', staffStatus: { $in: ['approved', 'rejected'] } })
+        .select('name email university staffStatus updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(30)
+        .lean(),
+    ]);
+    res.json({ ok: true, pendingStaff, processedStaff });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // 관리자 통계 페이지
 exports.getAdminStatistics = async (req, res, next) => {
   try {
@@ -52,6 +74,33 @@ exports.getAdminStatistics = async (req, res, next) => {
     res.render('pages/adminStatistics', {
       user: req.user,
       pageTitle: '통계',
+      stats: {
+        totalStudents,
+        totalStaff,
+        totalUniversities: universities.length,
+        universities,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 관리자 통계 JSON (React SPA용) — getAdminStatistics와 동일 쿼리, res.json으로만 응답.
+exports.getAdminStatisticsData = async (req, res, next) => {
+  try {
+    const [totalStudents, totalStaff, universities] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'staff' }),
+      User.aggregate([
+        { $match: { role: 'student', university: { $ne: null } } },
+        { $group: { _id: '$university', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $project: { _id: 0, name: '$_id', studentCount: '$count' } }
+      ])
+    ]);
+    res.json({
+      ok: true,
       stats: {
         totalStudents,
         totalStaff,
@@ -89,6 +138,44 @@ exports.approveStaff = (req, res) => updateStaffStatus(req, res, 'approved');
 exports.rejectStaff  = (req, res) => updateStaffStatus(req, res, 'rejected');
 
 // ── 전체 사용자 관리 페이지 ─────────────────────────────
+
+exports.getUsersData = async (req, res, next) => {
+  try {
+    const [staffList, studentList] = await Promise.all([
+      User.find({ role: 'staff', staffStatus: 'approved' })
+        .select('name email university isOnline lastLoginAt accountStatus')
+        .sort({ university: 1, name: 1 })
+        .lean(),
+      User.find({ role: 'student' })
+        .select('name email studentId major university enrollmentStatus isOnline lastLoginAt accountStatus')
+        .sort({ university: 1, isOnline: -1, lastLoginAt: -1 })
+        .lean(),
+    ]);
+
+    const univSet = new Set([
+      ...staffList.map(u => u.university).filter(Boolean),
+      ...studentList.map(u => u.university).filter(Boolean),
+    ]);
+    const universities = [...univSet].sort();
+
+    const onlineCount = [...staffList, ...studentList].filter(u => u.isOnline).length;
+
+    res.json({
+      ok: true,
+      universities,
+      staffList,
+      studentList,
+      stats: {
+        univCount:    universities.length,
+        staffCount:   staffList.length,
+        studentCount: studentList.length,
+        onlineCount,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 exports.getUsersPage = async (req, res, next) => {
   try {

@@ -113,7 +113,11 @@ async function getCurrentWeeklyPlan(req, res) {
     if (!doc) return res.status(404).json({ success: false });
 
     if (doc.status !== 'done') {
-      return res.json({ status: doc.status, errorMessage: doc.errorMessage || null });
+      // 버그 수정: 원래는 id가 안 내려가서, 생성 중(pending)에 새로고침하면
+      // careerPlan.js의 currentPlanId가 null로 남아 startPolling()이 즉시 return해버리고
+      // 폴링이 다시는 시작되지 않는 문제가 있었다(사용자가 계속 수동 새로고침해야 함).
+      // React 쪽(CareerPlan.jsx)이 이 id로 폴링을 재개할 수 있도록 추가했다.
+      return res.json({ id: doc._id, status: doc.status, errorMessage: doc.errorMessage || null });
     }
     return res.json({ status: doc.status, data: doc });
   } catch (error) {
