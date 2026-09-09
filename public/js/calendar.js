@@ -26,11 +26,21 @@ let weatherMap = {};
 
 window.timetables = [];
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadCalendarData();
-
+document.addEventListener('DOMContentLoaded', () => {
+  // 외부 데이터 응답을 기다리지 않고 캘린더의 기본 화면부터 표시한다.
   renderCalendar();
   renderTimetable();
+
+  // 일정/시간표와 날씨는 서로 독립적으로 불러온 뒤 준비되는 대로 반영한다.
+  loadCalendarData()
+    .then(() => {
+      renderCalendar();
+      renderTimetable();
+    })
+    .catch(err => {
+      console.error('캘린더 데이터 로드 실패:', err);
+    });
+
   loadWeatherAsync();
 
   document.getElementById('prev-month').addEventListener('click', () => {
