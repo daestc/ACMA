@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <%- include('../partials/head', { title: pageTitle }) %>
+</head>
+
+<body>
+  <main style="max-width: 880px; margin: 0 auto; padding: 32px 20px;">
+    <h1 style="font-size: 20px; margin-bottom: 4px;">🧪 AI 기능 테스트 페이지</h1>
+    <p style="color: var(--text2); font-size: 13px; margin-bottom: 24px;">
+      로그인 세션으로 <code>/ai/*</code> 엔드포인트를 직접 호출해 결과를 확인하는 개발용 페이지입니다.
+      (<%= user.name %>님으로 로그인됨)
+    </p>
+
+    <section class="card" style="padding: 20px; margin-bottom: 20px;">
+      <h2 style="font-size: 16px; margin-bottom: 12px;">📅 주간 계획 (Weekly Plan)</h2>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input id="wp-weekstart" type="date" title="weekStart (선택, 비우면 서버 기본값)">
+        <button class="btn btn-accent btn-sm" onclick="requestWeeklyPlan()">생성 요청</button>
+        <button class="btn btn-ghost btn-sm" onclick="getCurrentWeeklyPlan()">이번 주 조회</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input id="wp-id" type="text" placeholder="WeeklyPlan _id" style="flex: 1; min-width: 220px;">
+        <button class="btn btn-ghost btn-sm" onclick="getWeeklyPlan()">상태 조회</button>
+        <button class="btn btn-ghost btn-sm" onclick="redistribute()">분배 재실행</button>
+        <button class="btn btn-ghost btn-sm" onclick="getChecklist()">체크리스트 확인</button>
+      </div>
+
+      <div id="wp-status" style="font-size: 12px; color: var(--accent); min-height: 16px; margin-bottom: 6px;"></div>
+      <pre id="wp-output" class="ai-test-output">아직 호출 없음</pre>
+    </section>
+
+    <section class="card" style="padding: 20px;">
+      <h2 style="font-size: 16px; margin-bottom: 12px;">💼 진로 포트폴리오 (Career Portfolio)</h2>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <button class="btn btn-ghost btn-sm" onclick="getPortfolioReadiness()">준비도 확인</button>
+        <button class="btn btn-accent btn-sm" onclick="requestPortfolio()">생성 요청</button>
+        <button class="btn btn-ghost btn-sm" onclick="getLatestPortfolio()">최근 것 조회</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input id="pf-id" type="text" placeholder="CareerPortfolio _id" style="flex: 1; min-width: 220px;">
+        <button class="btn btn-ghost btn-sm" onclick="getPortfolio()">상태 조회</button>
+      </div>
+
+      <div id="pf-status" style="font-size: 12px; color: var(--accent); min-height: 16px; margin-bottom: 6px;"></div>
+      <pre id="pf-output" class="ai-test-output">아직 호출 없음</pre>
+    </section>
+
+    <section class="card" style="padding: 20px; margin-top: 20px;">
+      <h2 style="font-size: 16px; margin-bottom: 12px;">🩺 진로 진단 (Diagnosis)</h2>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <button class="btn btn-ghost btn-sm" onclick="getDiagnosisScores()">점수 확인</button>
+        <button class="btn btn-accent btn-sm" onclick="requestDiagnosis()">생성 요청</button>
+        <button class="btn btn-ghost btn-sm" onclick="getLatestDiagnosis()">최근 것 조회</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input id="dg-id" type="text" placeholder="CareerDiagnosis _id" style="flex: 1; min-width: 220px;">
+        <button class="btn btn-ghost btn-sm" onclick="getDiagnosis()">상태 조회</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input id="dg-gap-id" type="text" placeholder="gap _id (상태 조회 결과의 gaps[]._id 참고)" style="flex: 1; min-width: 220px;">
+        <input id="dg-weekstart" type="date" title="대상 주간계획의 weekStart (선택, 비우면 서버 기본값)">
+        <button class="btn btn-ghost btn-sm" onclick="addGapToPlan()">주간계획에 추가</button>
+      </div>
+
+      <div id="dg-status" style="font-size: 12px; color: var(--accent); min-height: 16px; margin-bottom: 6px;"></div>
+      <pre id="dg-output" class="ai-test-output">아직 호출 없음</pre>
+    </section>
+  </main>
+
+  <style>
+    .ai-test-output {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 420px;
+      overflow: auto;
+    }
+    main input[type="text"],
+    main input[type="date"] {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg2);
+      color: var(--text);
+      font-size: 13px;
+    }
+  </style>
+
+  <script>
+    const POLL_INTERVAL_MS = 2000;
+    const POLL_TIMEOUT_MS = 90000;
+
+    function render(elId, payload) {
+      document.getElementById(elId).textContent = JSON.stringify(payload, null, 2);
+    }
+
+    function setStatus(elId, text) {
+      document.getElementById(elId).textContent = text;
+    }
+
+    async function callApi(url, options) {
+      const res = await fetch(url, options);
+      let body;
+      try {
+        body = await res.json();
+      } catch {
+        body = { parseError: true, statusText: res.statusText };
+      }
+      return { httpStatus: res.status, ...body };
+    }
+
+    function pollUntilDone(url, outputElId, statusElId) {
+      const startedAt = Date.now();
+      setStatus(statusElId, '생성 중... (2초마다 자동 갱신)');
+
+      const timer = setInterval(async () => {
+        const data = await callApi(url);
+        render(outputElId, data);
+
+        const finished = data.status === 'done' || data.status === 'failed';
+        const timedOut = Date.now() - startedAt > POLL_TIMEOUT_MS;
+
+        if (finished || timedOut) {
+          clearInterval(timer);
+          setStatus(statusElId, finished
+            ? (data.status === 'done' ? '✅ 완료' : '❌ 실패: ' + (data.errorMessage || ''))
+            : '⏱️ 90초 넘게 pending — 폴링을 멈췄습니다. 수동으로 상태 조회해 보세요.');
+        }
+      }, POLL_INTERVAL_MS);
+    }
+
+    // ── 주간 계획 ──────────────────────────────
+
+    async function requestWeeklyPlan() {
+      const weekStart = document.getElementById('wp-weekstart').value || undefined;
+      setStatus('wp-status', '요청 보내는 중...');
+
+      const data = await callApi('/ai/weekly-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(weekStart ? { weekStart } : {}),
+      });
+      render('wp-output', data);
+
+      if (data.httpStatus === 202 && data.id) {
+        document.getElementById('wp-id').value = data.id;
+        pollUntilDone(`/ai/weekly-plan/${data.id}`, 'wp-output', 'wp-status');
+      } else {
+        setStatus('wp-status', data.httpStatus === 409 ? '⚠️ 이미 생성 중인 계획이 있습니다 (409)' : `응답 코드 ${data.httpStatus}`);
+      }
+    }
+
+    async function getCurrentWeeklyPlan() {
+      const data = await callApi('/ai/weekly-plan/current');
+      render('wp-output', data);
+      setStatus('wp-status', data.httpStatus === 404 ? '이번 주 계획 없음 (404)' : `상태: ${data.status || '-'}`);
+      if (data?.data?._id) document.getElementById('wp-id').value = data.data._id;
+    }
+
+    async function getWeeklyPlan() {
+      const id = document.getElementById('wp-id').value.trim();
+      if (!id) return alert('WeeklyPlan _id를 입력하세요.');
+      const data = await callApi(`/ai/weekly-plan/${id}`);
+      render('wp-output', data);
+      setStatus('wp-status', `상태: ${data.status || '-'} (HTTP ${data.httpStatus})`);
+    }
+
+    async function redistribute() {
+      const id = document.getElementById('wp-id').value.trim();
+      if (!id) return alert('WeeklyPlan _id를 입력하세요.');
+      setStatus('wp-status', '분배 재실행 중...');
+      const data = await callApi(`/ai/weekly-plan/${id}/distribute`, { method: 'POST' });
+      render('wp-output', data);
+      setStatus('wp-status', `HTTP ${data.httpStatus}`);
+    }
+
+    async function getChecklist() {
+      const id = document.getElementById('wp-id').value.trim();
+      if (!id) return alert('WeeklyPlan _id를 입력하세요.');
+      const data = await callApi(`/ai/weekly-plan/${id}/checklist`);
+      render('wp-output', data);
+      setStatus('wp-status', `HTTP ${data.httpStatus} — 이 주간계획이 만든 DailyChecklist 항목`);
+    }
+
+    // ── 진로 포트폴리오 ──────────────────────────
+
+    async function getPortfolioReadiness() {
+      setStatus('pf-status', '준비도 확인 중...');
+      const data = await callApi('/ai/portfolio/readiness');
+      render('pf-output', data);
+      setStatus('pf-status', data.ready
+        ? `✅ 생성 가능 (총점 ${data.total})`
+        : `🚫 아직 부족함 (총점 ${data.total}) — ${(data.blockers || []).join(', ')}`);
+    }
+
+    async function requestPortfolio() {
+      setStatus('pf-status', '요청 보내는 중...');
+      const data = await callApi('/ai/portfolio', { method: 'POST' });
+      render('pf-output', data);
+
+      if (data.httpStatus === 202 && data.id) {
+        document.getElementById('pf-id').value = data.id;
+        pollUntilDone(`/ai/portfolio/${data.id}`, 'pf-output', 'pf-status');
+      } else if (data.httpStatus === 400) {
+        setStatus('pf-status', `🚫 준비 안 됨 — ${(data.blockers || []).join(', ')}`);
+      } else {
+        setStatus('pf-status', data.httpStatus === 409 ? '⚠️ 이미 생성 중인 포트폴리오가 있습니다 (409)' : `응답 코드 ${data.httpStatus}`);
+      }
+    }
+
+    async function getPortfolio() {
+      const id = document.getElementById('pf-id').value.trim();
+      if (!id) return alert('CareerPortfolio _id를 입력하세요.');
+      const data = await callApi(`/ai/portfolio/${id}`);
+      render('pf-output', data);
+      setStatus('pf-status', `상태: ${data.status || '-'} (HTTP ${data.httpStatus})`);
+    }
+
+    async function getLatestPortfolio() {
+      const data = await callApi('/ai/portfolio/latest');
+      render('pf-output', data);
+      setStatus('pf-status', data.httpStatus === 404 ? '완료된 포트폴리오 없음 (404)' : `상태: ${data.status || '-'}`);
+      if (data?.data?._id) document.getElementById('pf-id').value = data.data._id;
+    }
+
+    // ── 진로 진단 ──────────────────────────────
+
+    async function getDiagnosisScores() {
+      setStatus('dg-status', '점수 확인 중...');
+      const data = await callApi('/ai/diagnosis/scores');
+      render('dg-output', data);
+      setStatus('dg-status', data.ready
+        ? `✅ 생성 가능 (총점 ${data.total})`
+        : `🚫 아직 부족함 (총점 ${data.total}) — ${(data.blockers || []).join(', ')}`);
+    }
+
+    async function requestDiagnosis() {
+      setStatus('dg-status', '요청 보내는 중...');
+      const data = await callApi('/ai/diagnosis', { method: 'POST' });
+      render('dg-output', data);
+
+      if (data.httpStatus === 202 && data.id) {
+        document.getElementById('dg-id').value = data.id;
+        pollUntilDone(`/ai/diagnosis/${data.id}`, 'dg-output', 'dg-status');
+      } else if (data.httpStatus === 400) {
+        setStatus('dg-status', `🚫 준비 안 됨 — ${(data.blockers || []).join(', ')}`);
+      } else {
+        setStatus('dg-status', data.httpStatus === 409 ? '⚠️ 이미 생성 중인 진단이 있습니다 (409)' : `응답 코드 ${data.httpStatus}`);
+      }
+    }
+
+    async function getDiagnosis() {
+      const id = document.getElementById('dg-id').value.trim();
+      if (!id) return alert('CareerDiagnosis _id를 입력하세요.');
+      const data = await callApi(`/ai/diagnosis/${id}`);
+      render('dg-output', data);
+      setStatus('dg-status', `상태: ${data.status || '-'} (HTTP ${data.httpStatus})`);
+    }
+
+    async function getLatestDiagnosis() {
+      const data = await callApi('/ai/diagnosis/latest');
+      render('dg-output', data);
+      setStatus('dg-status', data.httpStatus === 404 ? '완료된 진단 없음 (404)' : `상태: ${data.status || '-'}`);
+      if (data?.data?._id) document.getElementById('dg-id').value = data.data._id;
+    }
+
+    async function addGapToPlan() {
+      const diagnosisId = document.getElementById('dg-id').value.trim();
+      const gapId = document.getElementById('dg-gap-id').value.trim();
+      if (!diagnosisId || !gapId) return alert('CareerDiagnosis _id와 gap _id를 모두 입력하세요.');
+
+      const weekStart = document.getElementById('dg-weekstart').value || undefined;
+      setStatus('dg-status', '주간계획에 추가하는 중...');
+
+      const data = await callApi(`/ai/diagnosis/${diagnosisId}/gaps/${gapId}/to-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(weekStart ? { weekStart } : {}),
+      });
+      render('dg-output', data);
+
+      if (data.httpStatus === 200) {
+        setStatus('dg-status', `✅ WeeklyPlan(${data.weeklyPlanId})의 ${data.itemIndex}번 항목으로 추가됨`);
+      } else if (data.httpStatus === 404) {
+        setStatus('dg-status', `🚫 ${data.message || '대상 주간계획을 찾을 수 없습니다'}`);
+      } else if (data.httpStatus === 409) {
+        setStatus('dg-status', `⚠️ ${data.message || '이미 추가된 항목입니다'}`);
+      } else {
+        setStatus('dg-status', `응답 코드 ${data.httpStatus}`);
+      }
+    }
+  </script>
+</body>
+</html>

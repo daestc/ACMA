@@ -133,14 +133,37 @@ const saveIsCompleted = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const user = req.session.user;
-    if (!user) return res.json({success: false});
+    if (!user) return res.json({ success: false });
 
-    const {studentId, university, major, enrollmentStatus} = req.body;
-    await userService.updateProfile(user.email, { studentId, university, major, enrollmentStatus });
+    if (user.role === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: '대학관계자는 학사정보를 수정할 수 없습니다.',
+      });
+    }
+
+    const { studentId, university, major, enrollmentStatus, grade } = req.body;
+    const { universityChanged, clearedLectureCount } = await userService.updateProfile(
+      user.email,
+      { studentId, university, major, enrollmentStatus, grade },
+    );
+
+    req.session.user = {
+      ...req.session.user,
+      studentId,
+      university: university?.trim() || '',
+      major,
+      enrollmentStatus,
+      grade: grade !== undefined && grade !== null && String(grade).trim() !== '' ? Number(grade) : req.session.user.grade,
+    };
 
     console.log('프로필 업데이트 완료!');
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      universityChanged,
+      clearedLectureCount,
+    });
   } catch (error) {
     console.error(error.message);
     res.json({ success: false });
@@ -159,5 +182,17 @@ const getProfile = async (req, res) => {
     res.json({ success: false });
   }
 };
+// 수상경력 정보 가져오기
+const getMyAwards = async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.json({ success: false });
+    const awards = await userService.getMyAwards(user.email);
+    res.json({ success: true, awards });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false });
+  }
+};
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile};
+module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile, getMyAwards};

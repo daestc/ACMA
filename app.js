@@ -10,10 +10,15 @@ const MongoStore = require('connect-mongo');
 const passport    = require('./config/passport');
 const connectDB   = require('./config/database');
 
+const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
+const { refreshDailyUsage } = require('./middleware/auth');
+
 // app 생성
 const app = express();
 
 //라우터 import
+const noticeRouter = require('./routes/noticeRouter');
+const notificationRouter = require('./routes/notificationRouter');
 const landingRouter = require('./routes/landingRouter');
 const userRouter = require('./routes/userRouter');
 const calendarRouter = require('./routes/calendarRouter');
@@ -21,11 +26,25 @@ const careerRouter = require('./routes/careerRouter');
 const academicRouter = require('./routes/academicRouter');
 const authRouter = require('./routes/authRouter');
 const mystatusRouter = require('./routes/mystatusRouter');
-const noticeRouter = require('./routes/noticeRouter');
 const studyRouter = require('./routes/studyRouter');
 const alertRouter = require('./routes/alertRouter');
+const staffRouter = require('./routes/staffRouter');
+const adminRouter = require('./routes/adminRouter');
+const suggestionRouter = require('./routes/suggestionRouter');
+const specRouter    = require('./routes/specRouter');
+const paymentRouter = require('./routes/paymentRouter');
+const aiRouter = require('./routes/ai');
 
+const recruitRouter = require('./routes/recruitRouter');
 
+// React 프론트엔드(frontend/)가 호출하는 JSON 전용 API 라우터 모음.
+// 기존 EJS 렌더 라우터(noticeRouter 등)와는 별개로 /api 하위에 마운트한다.
+// 주의: noticeApiRouter는 예전부터 파일은 있었지만 여기 등록이 안 돼 있어서
+// 프론트 파일럿(Notice.jsx)의 fetch('/api/notices')가 계속 실패하고 있었음 — 이번에 같이 고침.
+const noticeApiRouter = require('./routes/api/noticeApiRouter');
+const homeApiRouter = require('./routes/api/homeApiRouter');
+const authApiRouter = require('./routes/api/authApiRouter');
+const suggestionApiRouter = require('./routes/api/suggestionApiRouter');
 
 //DB 연결
 connectDB();
@@ -37,6 +56,7 @@ app.set('views', path.join(__dirname, "views"));
 // 미들웨어
 app.use(helmet({ contentSecurityPolicy: false })); // CSP는 EJS 인라인 스크립트와 충돌하므로 비활성
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -52,21 +72,45 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(refreshDailyUsage);
+
 
 //라우터 등록
 // app.get('/', (req, res)=>{
 //     res.render('index', {title : '메인페이지'});
 // });
-app.use('/', noticeRouter);
+app.use('/notice', noticeRouter);
+app.use('/notification', notificationRouter);
 app.use('/', landingRouter);
+app.use('/api/notices', noticeApiRouter);
+app.use('/api/home', homeApiRouter);
+app.use('/api/auth', authApiRouter);
+app.use('/api/suggestions', suggestionApiRouter);
 app.use('/user', userRouter);
 app.use('/auth', authRouter);
 app.use('/calendar', calendarRouter);
 app.use('/career', careerRouter);
+app.use('/recruit', recruitRouter);
 app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
+app.use('/suggestions', suggestionRouter);
 app.use('/', alertRouter);
+app.use('/staff', staffRouter);
+app.use('/admin', adminRouter);
+app.use('/spec',    specRouter);
+app.use('/payment', paymentRouter);
+
+if (process.env.OPENAI_API_KEY) {
+  app.use('/ai', aiRouter);
+} else {
+  console.warn('OPENAI_API_KEY가 설정되지 않아 /ai 라우트를 등록하지 않습니다.');
+}
+
+// 오류 처리 미들웨어
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 
 //서버 시작
 app.listen(3000, ()=>{

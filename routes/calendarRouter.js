@@ -1,17 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const calendarController = require('../controllers/calendarController');
+const User = require('../models/User');
 
 // 로그인 여부 체크 미들웨어
 const { requireLogin } = require('../middleware/auth');
 
 // 캘린더 페이지
-router.get('/', requireLogin, (req, res) => {
+router.get('/', requireLogin, async (req, res) => {
+  const userDoc = await User.findById(req.user.id)
+    .select('name email university major role')
+    .lean();
+
   res.render('pages/calendar', {
     title:       '캘린더',
     currentPage: 'calendar',
     pageTitle:   '📅 캘린더',
-    user:        req.user,
+    user:        {
+      ...req.user,
+      university: userDoc?.university || req.user.university || null,
+    },
   });
 });
 
@@ -26,6 +34,9 @@ router.get('/timetables', requireLogin, calendarController.getTimetableList); //
 router.post('/timetables',requireLogin, calendarController.createTimetable); //시간표 생성
 router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
 router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
+router.get('/lectures', requireLogin, calendarController.getLectureList); // 강의 목록
+router.get('/universities', requireLogin, calendarController.getAvailableUniversities); // 등록 가능한 대학 목록
+router.post('/timetables/lecture', requireLogin, calendarController.addLectureToTimetable);// 강의를 내 시간표에 추가
 
 //날씨 api(일정페이지에 사용)
 router.get('/weather', requireLogin, calendarController.getWeather);

@@ -47,6 +47,66 @@ const searchCareers = async (req, res) => {
     res.status(500).json({ error: 'Failed to search careers' });
   }
 };
+// 전체 직무를 한 번에 모아오는 용도(/career/search-all) — 사용자가 카테고리를
+// 고르지 않고도 진입 즉시 전체 직무를 보고 실시간으로 검색/필터할 수 있게 해달라는
+// 요청으로 추가했다. searchCareers(선택한 카테고리만)와 달리 존재하는 모든
+// categoryId에 대해 외부 Work24 오픈 API를 카테고리 단위로 호출해서 병합한다 — 이
+// 외부 API 자체가 카테고리 없이 "전체"를 한 번에 주는 엔드포인트가 없어서(searchCareers
+// 참고: categoryId가 필수) 이 방법 말고는 진짜 "전체 직무"를 가져올 수단이 없다.
+// 카테고리 수가 많을 수 있어(정확한 개수는 DB에 있는 값이라 코드만으로는 알 수 없음)
+// 동시 요청 수를 제한하고, 개별 카테고리 실패는 건너뛰고 계속 진행한다. 매 요청마다
+// 카테고리 수만큼 외부 API를 다시 부르면 느리고 부담이 커서, 결과를 서버 메모리에
+// 잠깐(10분) 캐시해 재방문 시 즉시 응답하게 했다 — 서버 재시작 전까지만 유지되는
+// 캐시라 운영 환경에서는 Redis 등으로 바꾸는 게 맞지만, 지금 규모에선 충분하다.
+let allCareersCache = null; // { data, fetchedAt }
+const ALL_CAREERS_CACHE_MS = 10 * 60 * 1000;
+
+const searchAllCareers = async (req, res) => {
+  try {
+    const force = req.query.refresh === '1';
+    if (!force && allCareersCache && (Date.now() - allCareersCache.fetchedAt) < ALL_CAREERS_CACHE_MS) {
+      return res.json({ items: allCareersCache.data, total: allCareersCache.data.length, cached: true });
+    }
+
+    const categories = await careerService.getCategories();
+    const categoryIds = [...new Set(categories.map(cat => cat.categoryId).filter(Boolean))];
+
+    const CONCURRENCY = 8;
+    const collected = [];
+    let cursor = 0;
+    let failedCount = 0;
+
+    async function worker() {
+      while (cursor < categoryIds.length) {
+        const categoryId = categoryIds[cursor++];
+        try {
+          const items = await careerService.searchCareers(null, categoryId);
+          collected.push(...items);
+        } catch (err) {
+          failedCount++;
+          console.error(`전체 직무 로딩 중 categoryId=${categoryId} 실패:`, err.message);
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, categoryIds.length) }, worker));
+
+    const seenCodes = new Set();
+    const merged = [];
+    collected.forEach(career => {
+      if (!career.jobCode || seenCodes.has(career.jobCode)) return;
+      seenCodes.add(career.jobCode);
+      merged.push(career);
+    });
+
+    allCareersCache = { data: merged, fetchedAt: Date.now() };
+    res.json({ items: merged, total: merged.length, categoryCount: categoryIds.length, failedCount, cached: false });
+  } catch (error) {
+    console.error('전체 직무 검색 에러:', error);
+    res.status(500).json({ error: 'Failed to fetch all careers' });
+  }
+};
+
 // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
 const getCareerDetails = async (req, res) => {
   try {
@@ -236,10 +296,26 @@ const removeJob = async (req, res) => {
   }
 };
 
+//선택한 목표 직무와 모든 자격증 프로필 상단에 표시하기
+const getMyCareerAndCertifications = async (req, res) => {
+  try {
+    const userId = req.session.user._id || req.session.user.email;
+    const { targetJob, certs } = await careerService.getMyCareerAndCertifications(userId);
+    res.json({
+      success: true,
+      career: targetJob,
+      certifications: certs,
+    });
+  } catch (error) {
+    console.error('Error fetching career and certifications:', error);
+    res.status(500).json({ error: 'Failed to fetch career and certifications' });
+  }
+};
 
 module.exports = {
   getCategories,
   searchCareers,
+  searchAllCareers,
   getCareerDetails,
   saveCareerDetails,
   getMyCareer,
@@ -251,4 +327,5 @@ module.exports = {
   removeCertification,
   getMyJobs,
   removeJob,
+  getMyCareerAndCertifications
 };

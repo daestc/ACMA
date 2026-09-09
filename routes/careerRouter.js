@@ -3,7 +3,6 @@ const router = express.Router();
 const careerController = require('../controllers/careerController');
 const { requireLogin } = require('../middleware/auth');
 
-
 // 진로정보 페이지 
 router.get('/', requireLogin, (req, res) => {
   res.render('pages/career', {
@@ -13,11 +12,49 @@ router.get('/', requireLogin, (req, res) => {
     user:        req.user,
   });
 });
+// 채용정보 페이지 — 실제 구현은 recruitController.getRecruitPage(app.js: app.use('/recruit', recruitRouter))에
+// 있다. 여기 있던 건 화면 확인용 더미 렌더였는데, recruit.ejs가 currentStatus 등 실제 구현이 넘기는
+// 데이터를 요구하도록 바뀌면서 더미 쪽이 깨졌다(currentStatus is not defined) — /career/recruit로
+// 들어오는 기존 링크(사이드바 등)를 위해 진짜 라우트로 보낸다.
+router.get('/recruit', requireLogin, (req, res) => {
+  const qs = req.originalUrl.split('?')[1];
+  res.redirect(`/recruit${qs ? `?${qs}` : ''}`);
+});
+// 주간 계획 페이지 (AI, /ai/weekly-plan* 연동)
+router.get('/plan', requireLogin, (req, res) => {
+  res.render('pages/careerPlan', {
+    title:       '주간 계획',
+    currentPage: 'careerPlan',
+    pageTitle:   '📅 주간 계획',
+    user:        req.user,
+  });
+});
+// 진로 포트폴리오 페이지 (AI, /ai/portfolio* 연동)
+router.get('/portfolio', requireLogin, (req, res) => {
+  res.render('pages/careerPortfolio', {
+    title:       '진로 포트폴리오',
+    currentPage: 'careerPortfolio',
+    pageTitle:   '💼 진로 포트폴리오',
+    user:        req.user,
+  });
+});
+// 진로 진단 페이지 (AI, /ai/diagnosis* 연동)
+router.get('/diagnosis', requireLogin, (req, res) => {
+  res.render('pages/careerDiagnosis', {
+    title:       '진로 진단',
+    currentPage: 'careerDiagnosis',
+    pageTitle:   '🩺 진로 진단',
+    user:        req.user,
+  });
+});
+
 // 직무 관련 라우터
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 router.get('/categories', careerController.getCategories);
 // 진로 검색db에서 대분류, 중분류, 소분류에 따른 직무 이름 가져오기
 router.get('/search', careerController.searchCareers);
+// 카테고리 선택 없이 진입 즉시 전체 직무를 불러와 실시간 검색/필터하기 위한 전체 조회
+router.get('/search-all', careerController.searchAllCareers);
 // 선택한 직무에서 직업코드를 가져와 상세 직무 정보 가져오기
 router.get('/detail/:jobCode', careerController.getCareerDetails);
 // 직무 선택하여 db에 저장하기 
@@ -43,5 +80,7 @@ router.get('/my-certs', requireLogin, careerController.getMyCertifications);
 // 자격증 삭제하기
 router.delete('/remove-cert/:userCertId', requireLogin, careerController.removeCertification);
 
+// 현재 선택한 목표 직무와 목표 자격증 프로필 상단에 표시하기
+router.get('/my-career-and-certs', requireLogin, careerController.getMyCareerAndCertifications);
 
 module.exports = router;

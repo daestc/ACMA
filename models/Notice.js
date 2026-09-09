@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const noticeSchema = new mongoose.Schema(
@@ -16,6 +17,7 @@ const noticeSchema = new mongoose.Schema(
 
     // 2. 기본 정보
     title: { type: String, required: true, trim: true },
+    jmcd: { type: String, default: null },
     organization: { type: String }, // 기관/기업명
     content: { type: String },      // 상세 내용
     link: { type: String },         // 원문 링크
@@ -57,5 +59,6 @@ const noticeSchema = new mongoose.Schema(
 // 조회 성능 최적화
 noticeSchema.index({ category: 1, endDate: 1 }); 
 noticeSchema.index({ scrapCount: -1 });
+noticeSchema.index({ jmcd: 1, startDate: 1 })
 
 module.exports = mongoose.model('Notice', noticeSchema);

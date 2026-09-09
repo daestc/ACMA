@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
 // 사용자 보유 스펙 스키마
 const UserSkillSchema = new mongoose.Schema({
@@ -14,27 +15,20 @@ const UserSkillSchema = new mongoose.Schema({
       }
     }
   ],
-
-  // 보유 자격증
-  userId: { type: Schema.Types.ObjectId, ref: 'UserCertification'},
-
   // 보유 어학점수
   userLanguage: [
-    {
-      language: {
-        type: String,
-        enum: ['english', 'japanese', 'chinese', 'other'],
-        default: 'english',
-        // english  영어 (TOEIC, TOEFL, IELTS, OPIc)
-        // japanese 일본어 (JLPT)
-        // chinese  중국어 (HSK)
-        // other    기타
-      },
-      score:       { type: String, default: null }, // 점수 또는 등급 (예: '850', 'N2', '5급')
-      acquiredDate:{ type: Date,   default: null }, // 취득일
-      expiryDate:  { type: Date,   default: null }, // 유효기간 만료일
-    }
-  ],
+  {
+    language: {
+      type: String,
+      enum: ['english', 'japanese', 'chinese', 'other'],
+      default: 'english',
+    },
+    testName: { type: String, default: null }, // ← 추가: TOEIC, TOEFL, JLPT 등
+    score:       { type: String, default: null },
+    acquiredDate:{ type: Date,   default: null },
+    expiryDate:  { type: Date,   default: null },
+  }
+],
 
   // 보유 수상경력
   userAward: [
@@ -53,7 +47,7 @@ const UserSkillSchema = new mongoose.Schema({
       host: { type: String, default: null }, // 주최 기관
       location: { type: String, default: null }, // 장소
       startDate: { type: Date, default: null}, // 시작일
-      endDate: { type: Date, default: startDate}, // 종료일
+      endDate: { type: Date, default: null}, // 종료일
       note: { type: String, default: null }, // 활동 설명
     }
   ]

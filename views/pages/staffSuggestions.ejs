@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title><%= pageTitle %></title>
+  <style>
+    .filter-chip {
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .filter-chip.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .suggestion-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .suggestion-row:hover { background: var(--bg2); }
+    .status-pending { background: var(--amber-bg); color: var(--amber); }
+    .status-completed { background: var(--green-bg); color: var(--green); }
+    .suggestion-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .suggestion-modal-backdrop.open { display: flex; }
+    .suggestion-modal {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 90vh;
+      overflow: auto;
+      padding: 24px;
+    }
+    .sg-image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .sg-image-grid img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/sidebar', { currentPage, user }) %>
+
+  <main class="main-content staff-content">
+    <%- include('../partials/topbar', { pageTitle, user }) %>
+
+    <div class="page-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="/staff/suggestions" class="filter-chip <%= !statusFilter ? 'active' : '' %>">전체</a>
+          <a href="/staff/suggestions?status=pending" class="filter-chip <%= statusFilter === 'pending' ? 'active' : '' %>">처리중 (<%= pendingCount %>)</a>
+          <a href="/staff/suggestions?status=completed" class="filter-chip <%= statusFilter === 'completed' ? 'active' : '' %>">처리완료</a>
+        </div>
+        <span class="badge badge-blue"><%= user.university %></span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📬 학생 건의 목록</span>
+          <span style="font-size:12px;color:var(--text2);"><%= suggestions.length %>건</span>
+        </div>
+
+        <% if (suggestions.length === 0) { %>
+          <p style="font-size:13px;color:var(--text2);padding:24px 0;text-align:center;">표시할 건의가 없습니다.</p>
+        <% } else { %>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <% suggestions.forEach(item => { %>
+              <div class="suggestion-row" onclick="openStaffSuggestion('<%= item._id %>')">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                  <div style="min-width:0;flex:1;">
+                    <div style="font-size:14px;font-weight:700;"><%= item.title %></div>
+                    <div style="font-size:12px;color:var(--text2);margin-top:4px;">
+                      <span class="badge badge-blue" style="font-size:10px;padding:2px 8px;"><%= item.categoryName %></span>
+                      <span style="margin-left:6px;"><%= item.authorName %></span>
+                      <span style="margin-left:6px;"><%= new Date(item.createdAt).toLocaleDateString('ko-KR') %></span>
+                      <% if (item.hasImages) { %><span style="margin-left:6px;">📷</span><% } %>
+                    </div>
+                  </div>
+                  <span class="badge <%= item.status === 'completed' ? 'status-completed' : 'status-pending' %>" style="font-size:11px;padding:4px 10px;white-space:nowrap;">
+                    <%= item.statusName %>
+                  </span>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </main>
+
+  <div id="st-sg-modal-backdrop" class="suggestion-modal-backdrop" onclick="closeStaffSuggestionModal(event)">
+    <div class="suggestion-modal" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 id="st-sg-modal-title" style="font-size:18px;font-weight:700;margin:0;">건의 상세</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeStaffSuggestionModal()">✕</button>
+      </div>
+      <div id="st-sg-modal-meta" style="font-size:12px;color:var(--text2);margin-bottom:12px;"></div>
+      <div id="st-sg-modal-images" class="sg-image-grid" style="display:none;"></div>
+      <div id="st-sg-modal-content" style="font-size:14px;line-height:1.6;white-space:pre-wrap;margin-bottom:16px;background:var(--bg2);padding:12px;border-radius:var(--radius-sm);"></div>
+
+      <div id="st-sg-reply-section">
+        <div id="st-sg-existing-reply" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;">등록된 답변</div>
+          <div id="st-sg-existing-reply-text" style="font-size:14px;line-height:1.6;white-space:pre-wrap;"></div>
+          <div id="st-sg-existing-reply-meta" style="font-size:11px;color:var(--text2);margin-top:8px;"></div>
+        </div>
+
+        <div id="st-sg-reply-form">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">답변 작성</label>
+          <textarea class="input-field" id="st-sg-reply" rows="5" placeholder="학생에게 전달할 답변을 입력해주세요." style="width:100%;resize:vertical;"></textarea>
+          <button class="btn btn-accent" id="st-sg-reply-btn" style="width:100%;justify-content:center;margin-top:10px;" onclick="submitStaffReply()">답변 등록 · 처리완료</button>
+          <div id="st-sg-msg" style="display:none;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;margin-top:10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('../partials/modals/mypage', { user: user }) %>
+  <script src="/js/common.js"></script>
+  <script src="/js/staffSuggestions.js"></script>
+</body>
+</html>

@@ -1,9 +1,24 @@
 const calendarService = require('../services/calendarService');
+const User = require('../models/User');
+
+async function resolveUserUniversity(req) {
+  const user = await User.findById(req.user.id).select('university').lean();
+  return user?.university?.trim() || req.user?.university?.trim() || null;
+}
+
+function noUniversityResponse(res) {
+  return res.status(400).json({
+    ok: false,
+    code: 'NO_UNIVERSITY',
+    message: '대학등록이 필요합니다',
+  });
+}
 
 const getEventsList = async(req,res) => { //라우터에서 요청한 스케쥴리스트 서비스에 요청
     try {
         const userId = req.user.id; //사용자 id
-        const eventsList = await calendarService.getEventsListByUser(userId)// 유저id를 가지고 일정 리스트를 서비스로 넘김
+        const university = await resolveUserUniversity(req);
+        const eventsList = await calendarService.getEventsListByUser(userId, university);
         
         res.json(eventsList); //받은 json 보내기
     } catch (error) {
@@ -81,6 +96,7 @@ const createTimetable = async(req,res) => {
     try {
         const userId = req.user.id;
         const newTimetable = await calendarService.createNewTimetable(userId, req.body);
+
         res.status(201).json(newTimetable); //요청 성공시 json반환 
     } catch (error) {
         res.status(400).json({
@@ -125,10 +141,79 @@ const deletedTimetable = async (req,res)=>{
     }
 };
 
+//Lecture 리스트 불러오기 (검색)
+const getLectureList = async (req,res) => {
+    try {
+        const university = await resolveUserUniversity(req);
+        if (!university) {
+            return noUniversityResponse(res);
+        }
+
+        const lectures = await calendarService.getLectureList({
+            ...req.query,
+            university,
+        });
+        res.json(lectures);
+    } catch (error) {
+        if (error.code === 'NO_UNIVERSITY') {
+            return noUniversityResponse(res);
+        }
+        res.status(500).json({
+            message: "강의 목록 조회 실패",
+            error : error.message
+        });
+    }
+};
+
+const addLectureToTimetable = async (req,res) => {
+    try {
+        const university = await resolveUserUniversity(req);
+        if (!university) {
+            return noUniversityResponse(res);
+        }
+
+        const userId = req.user.id; //사용자 id
+        const {lectureId, color} = req.body; //사용자가 선택한 lecture의 id
+
+        const timetable = await calendarService.addLectureToTimetable(
+            userId,
+            lectureId,
+            color,
+            university,
+        );
+
+        res.status(201).json(timetable);
+    } catch (error) {
+        if (error.code === 'NO_UNIVERSITY') {
+            return noUniversityResponse(res);
+        }
+        res.status(400).json({
+            message: '강의 시간표 추가 실패',
+            error: error.message
+        });
+    }
+};
+
+const getAvailableUniversities = async (req, res) => {
+    try {
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const result = await calendarService.getAvailableUniversities({ page, limit });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({
+            message: '등록 가능한 대학 목록 조회 실패',
+            error: error.message,
+        });
+    }
+};
+
 //날씨 컨트롤러
 const getWeather = async (req, res) => {
   try {
-    const weatherList = await calendarService.getShortWeather();
+    //쿼리로 위경도가 오면 해당 위치, 없으면 .env 기본 좌표(서울) 사용
+    const { lat, lon } = req.query;
+    const weatherList = await calendarService.getShortWeather(lat, lon);
     res.json(weatherList);
   } catch (error) {
     res.status(500).json({
@@ -148,6 +233,9 @@ module.exports = {
     createTimetable,
     updatedTimetable,
     deletedTimetable,
+    getLectureList,
+    addLectureToTimetable,
+    getAvailableUniversities,
 
     getWeather
 };

@@ -46,22 +46,6 @@ const StudySchema = new mongoose.Schema({
       // 퀴즈 문제 및 정답은 별도의 서브컬렉션 또는 파일로 관리하는 것을 고려할 수 있음
     },
   ],
-  // 일별 학습 시간 기록
-  dailyStudyRecords: [
-    {
-      date: Date, // 학습 날짜
-      hours: Number, // 학습 시간 (시)
-      minutes: Number, // 학습 시간 (분)
-    },
-  ],
-  // 과목별 누적 학습 시간 기록
-  subjectStudyRecords: [
-    {
-      subject: String, // 과목명
-      totalHours: Number, // 총 학습 시간 (시)
-      totalMinutes: Number, // 총 학습 시간 (분)
-    },
-  ],
   // 생성일자
   createdAt: {
     type: Date,

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title><%= title %></title>
+</head>
+
+<body>
+<% if (status === 403) { %>
+	<!-- 403: 알림창 띄우고 이전 페이지로 -->
+	<div id="forbidden-msg" data-message="<%= error || '접근 권한이 없습니다.' %>" hidden></div>
+	<script>
+		alert(document.getElementById('forbidden-msg').dataset.message);
+		if (history.length > 1) {
+			history.back();
+		} else {
+			location.href = '/';
+		}
+	</script>
+<% } else { %>
+	<!-- 404 / 500: 에러 페이지 -->
+	<div class="auth-wrap">
+		<div class="auth-card" style="text-align:center;">
+			<div class="auth-logo" style="justify-content:center;">
+				<div class="logo-icon">A</div>
+				<div class="logo-text">AcadMe</div>
+			</div>
+			<div style="font-size:72px;font-weight:800;font-family:'DM Sans',sans-serif;color:var(--accent);line-height:1;margin-bottom:14px;">
+				<%= status %>
+			</div>
+			<h2><%= title %></h2>
+			<p class="auth-sub" style="margin-bottom:0;">
+				<% if (status === 404) { %>
+					요청하신 페이지가 존재하지 않거나, 이동 또는 삭제되었습니다.
+				<% } else { %>
+					일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.
+				<% } %>
+			</p>
+			<% if (error) { %>
+				<div class="auth-error" style="margin-top:16px;text-align:left;"><%= error %></div>
+			<% } %>
+			<div style="display:flex;gap:10px;justify-content:center;margin-top:28px;">
+				<button class="btn btn-ghost" onclick="history.length > 1 ? history.back() : location.href='/'">← 뒤로가기</button>
+				<button class="btn btn-accent" onclick="location.href='/'">홈으로</button>
+			</div>
+		</div>
+	</div>
+<% } %>
+</body>
+
+</html>

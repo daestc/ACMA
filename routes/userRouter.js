@@ -25,7 +25,8 @@ router.post('/saveIsCompleted', requireLogin, userController.saveIsCompleted);
 router.post('/updateProfile', requireLogin, userController.updateProfile);
 // user 정보 가져오기
 router.get('/profile', requireLogin, userController.getProfile);
-
+// 수상경력 정보 가져오기
+router.get('/my-awards', requireLogin, userController.getMyAwards);
 
 
 module.exports = router;

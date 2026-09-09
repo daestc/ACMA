@@ -1,0 +1,130 @@
+/* box-sizing / body 전역 리셋은 이제 public/css/style.css(링크됨)가 담당한다. */
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.app-topbar-title { display: flex; align-items: center; gap: 8px; }
+
+.pilot-badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-weight: 600;
+}
+
+.ejs-link { color: #64748b; font-size: 0.85rem; text-decoration: none; }
+.ejs-link:hover { color: #1e293b; text-decoration: underline; }
+
+.app-main { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
+
+.notice-page h1 { margin: 0 0 4px; font-size: 1.4rem; }
+.page-desc { color: #94a3b8; font-size: 0.9rem; margin: 0 0 20px; }
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.chip {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+.chip:hover { background: #f1f5f9; }
+.chip.active { color: #1e293b; font-weight: 700; background: #f1f5f9; }
+
+.notice-list {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.notice-item {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.notice-item:last-child { border-bottom: none; }
+
+.notice-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.notice-body { flex: 1; min-width: 0; }
+.notice-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1e293b;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notice-meta { display: flex; align-items: center; gap: 10px; }
+.notice-date { color: #94a3b8; font-size: 0.8rem; }
+
+.badge {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.badge-purple { background: #f3e8ff; color: #7e22ce; }
+.badge-success { background: #dcfce7; color: #15803d; }
+.badge-gray { background: #f1f5f9; color: #64748b; }
+
+.dday-badge {
+  margin-left: 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.dday-red { background: #fee2e2; color: #dc2626; }
+.dday-amber { background: #fef3c7; color: #b45309; }
+.dday-blue { background: #dbeafe; color: #1d4ed8; }
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.error-text { color: #dc2626; text-align: center; padding: 12px; }
+.loading-text, .end-text {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding: 16px 0;
+}
+
+.scroll-sentinel { height: 1px; }

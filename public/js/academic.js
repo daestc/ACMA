@@ -193,7 +193,7 @@ async function fetchProgress() {
     const profile = json.profile || {};
     window._ac_progress = { totals, profile };
 
-    const req = profile?.GraduationRequirements || {};
+    const req = json.graduationRequirements || window._ac_graduationRequirements || {};
     const map = [
       { key: 'major_required', pv: 'pv-major-req', pf: 'pf-major-req', rightPv: 'pv-right-major-req', rightPf: 'pf-right-major-req', reqKey: 'requiredMajorCredits' },
       { key: 'major_elective', pv: 'pv-major-el', pf: 'pf-major-el', rightPv: 'pv-right-major-el', rightPf: 'pf-right-major-el', reqKey: 'requiredMajorElective' },
@@ -273,21 +273,22 @@ function buildSubjectRow(subject = {}) {
   const row = document.createElement('div');
   row.className = 'subject-row';
   row.innerHTML = `
-    <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;">
-    <select class="select-field" name="subjectType" style="min-width:120px;">
+    <input class="input-field" name="subjectName" placeholder="과목명" style="flex:2;" readonly>
+    <select class="select-field" name="subjectType" style="min-width:120px; pointer-events: none; background-color: #f3f4f6;" tabindex="-1">
       <option value="major_required">전필</option>
       <option value="major_elective">전선</option>
       <option value="general_required">교필</option>
       <option value="general_elective">교선</option>
       <option value="free">일선</option>
     </select>
-    <select class="select-field" name="credits">
-      <option value="3">3학점</option><option value="2">2학점</option><option value="1">1학점</option>
+    <select class="select-field" name="credits" style="pointer-events: none; background-color: #f3f4f6;" tabindex="-1">
+      <option value="3">3학점</option>
+      <option value="2">2학점</option>
+      <option value="1">1학점</option>
     </select>
     <select class="select-field" name="grade" onchange="calcGPA()">
       <option value="A+">A+</option><option value="A">A</option><option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option><option value="C">C</option><option value="D+">D+</option><option value="D">D</option><option value="F">F</option>
-    </select>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.subject-row').remove(); calcGPA()">✕</button>`;
+    </select>`;
 
   // populate values after element creation
   setTimeout(() => {
@@ -320,10 +321,12 @@ async function saveAcademicData() {
 
   const payload = {
     semester: semesterSelect?.value || '2026-1',
-    subjectName: subjects.map(subject => subject.subjectName),
-    subjectType: subjects.map(subject => subject.subjectType),
-    credits: subjects.map(subject => subject.credits),
-    grade: subjects.map(subject => subject.grade),
+    subjects: subjects.map(subject => ({
+      subjectName: subject.subjectName,
+      subjectType: subject.subjectType,
+      credits: subject.credits,
+      grade: subject.grade
+    }))
   };
 
   const button = document.querySelector('#ac-gpa .btn-accent');
@@ -336,7 +339,7 @@ async function saveAcademicData() {
       button.textContent = '저장 중...';
     }
 
-    const response = await fetch('/academic/addCourse', {
+    const response = await fetch('/academic/updateBulkGrades', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -384,10 +387,81 @@ async function fetchSemesterRecord(semester) {
   }
 }
 
+// 학기 상태 배지 + 마감 버튼 라벨 갱신
+const SEMESTER_STATUS_LABEL = {
+  planned: { text: '계획', badgeClass: 'badge-blue' },
+  in_progress: { text: '진행중', badgeClass: 'badge-amber' },
+  completed: { text: '마감 완료', badgeClass: 'badge-green' },
+};
+
+function renderSemesterStatus(status) {
+  const badge = document.getElementById('semester-status-badge');
+  const btn = document.getElementById('semester-close-btn');
+  const info = SEMESTER_STATUS_LABEL[status] || SEMESTER_STATUS_LABEL.in_progress;
+
+  if (badge) {
+    badge.textContent = info.text;
+    badge.className = 'badge ' + info.badgeClass;
+  }
+  if (btn) {
+    btn.textContent = status === 'completed' ? '마감 취소' : '마감';
+  }
+}
+
+// 마감했다가 취소도 되고, 이미 마감이면 되돌릴 수도 있는 토글 액션
+async function toggleSemesterClose() {
+  const semester = window._ac_currentSemester;
+  const status = window._ac_currentSemesterStatus;
+  if (!semester) return;
+
+  const closing = status !== 'completed';
+  const confirmMessage = closing
+    ? `${formatSemesterLabel(semester)}를 마감하시겠습니까?`
+    : `${formatSemesterLabel(semester)} 마감을 취소하시겠습니까?`;
+  if (!confirm(confirmMessage)) return;
+
+  const btn = document.getElementById('semester-close-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const response = await fetch(closing ? '/academic/closeSemester' : '/academic/reopenSemester', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ semester }),
+      credentials: 'same-origin',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || '처리에 실패했습니다.');
+    }
+
+    window._ac_currentSemesterStatus = result.status;
+    renderSemesterStatus(result.status);
+    const hint = document.getElementById('semester-close-hint');
+    if (hint && result.status === 'completed') hint.style.display = 'none';
+
+    // 이수 현황 탭의 completedSemesters/GPA 집계가 바뀌므로 갱신
+    fetchAcademicTrend();
+    fetchProgress();
+  } catch (error) {
+    alert(error.message || '처리에 실패했습니다.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function populateSemester(semester) {
   const record = await fetchSemesterRecord(semester);
   const list = document.getElementById('subject-list');
   list.innerHTML = '';
+
+  window._ac_currentSemester = semester;
+  window._ac_currentSemesterStatus = record?.status || 'in_progress';
+  renderSemesterStatus(window._ac_currentSemesterStatus);
+
+  const hint = document.getElementById('semester-close-hint');
+  const allGraded = Boolean(record?.subjects?.length) && record.subjects.every(s => s.grade);
+  if (hint) hint.style.display = (allGraded && record.status !== 'completed') ? 'block' : 'none';
 
   if (!record || !record.subjects || !record.subjects.length) {
     // 기본 빈 행 3개
@@ -437,133 +511,46 @@ function calcSim() {
   }
 }
 
-// ── 졸업요건 설정 ─────────────────────────────────
-// 졸업요건 입력 → 서버 저장 → DB 업데이트 → 진도 프로그레스에 반영
-function addGradCert() { 
-  const inp = document.getElementById('gr-cert-input');
-  const val = inp.value.trim();
-  if (!val) return;
+// ── 졸업요건 (읽기 전용) ─────────────────────────────────
+window._ac_graduationRequirements = null;
 
+function showGradEmptyState(message) {
+  const empty = document.getElementById('gr-empty-state');
+  const content = document.getElementById('gr-readonly-content');
+  const msg = document.getElementById('gr-empty-message');
+
+  if (empty) empty.style.display = 'block';
+  if (content) content.style.display = 'none';
+  if (msg) msg.textContent = message || '졸업요건 정보가 없습니다.';
+  window._ac_graduationRequirements = null;
+}
+
+function showGradReadonlyContent() {
+  const empty = document.getElementById('gr-empty-state');
+  const content = document.getElementById('gr-readonly-content');
+  if (empty) empty.style.display = 'none';
+  if (content) content.style.display = 'block';
+}
+
+function updateGradMajorBadge(profile) {
+  const badge = document.getElementById('gr-major-badge');
+  if (!badge) return;
+  badge.textContent = profile?.major || profile?.university || '-';
+}
+
+function renderGradCertChips(certifications = []) {
   const list = document.getElementById('gr-cert-list');
-  const tag  = document.createElement('div');
-  tag.className = 'gr-cert-chip';
-  tag.style.cssText = 'display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;';
-  tag.innerHTML = `${val} <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>`;
-  list.appendChild(tag);
-  inp.value = '';
-}
-// 졸업요건 입력값 → 서버 저장용 객체 변환
-function getGradReqPayload() {
-  const certList = Array.from(document.querySelectorAll('#gr-cert-list .gr-cert-chip'));
-  const certs = certList.map(el => String(el.childNodes[0]?.textContent || el.textContent || '').trim()).filter(Boolean);
-  const languageType = document.getElementById('gr-lang-type')?.value || '없음';
-  const languageScore = document.getElementById('gr-lang-score')?.value?.trim() || '';
+  const empty = document.getElementById('gr-cert-empty');
+  if (!list) return;
 
-  return {
-    major: document.querySelector('.badge.badge-blue')?.textContent?.trim() || '',
-    GraduationRequirements: {
-      requiredTotalCredits: Number(document.getElementById('gr-total')?.value) || 130,
-      requiredMajorCredits: Number(document.getElementById('gr-major-req')?.value) || 42,
-      requiredMajorElective: Number(document.getElementById('gr-major-el')?.value) || 40,
-      requiredGeneralCredits: Number(document.getElementById('gr-gen-req')?.value) || 20,
-      requiredGeneralElective: Number(document.getElementById('gr-gen-el')?.value) || 28,
-      requiresGraduationWork: document.getElementById('gr-grad-work')?.classList.contains('on') ?? true,
-      requiredCapstonDesign: document.getElementById('gr-capstone-design')?.classList.contains('on') ?? false,
-      requiredCertifications: certs,
-      requiredLanguageScore: languageType === '없음' ? null : `${languageType}${languageScore ? ` ${languageScore}` : ''}`.trim(),
-      requiredInternship: document.getElementById('gr-internship')?.value || null,
-      requiredNCProgram: document.getElementById('gr-nc-program')?.value || null,
-      requiredVolunteer: document.getElementById('gr-volunteer')?.value === ''
-        ? null
-        : Number(document.getElementById('gr-volunteer')?.value) || 0,
-    },
-  };
-}
+  const certs = Array.isArray(certifications) ? certifications.filter(Boolean) : [];
+  if (empty) empty.style.display = certs.length ? 'none' : 'block';
 
-function setGradSaveStatus(message, isSuccess = false) {
-  const statusEl = document.getElementById('gr-save-status');
-  if (statusEl) {
-    statusEl.textContent = message;
-    statusEl.style.color = isSuccess ? 'var(--green)' : 'var(--text2)';
-  }
-}
-
-async function saveGradReq() {
-  const button = document.querySelector('#ac-grad .btn.btn-accent');
-  const originalText = button ? button.textContent : '저장';
-  const payload = getGradReqPayload();
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = '저장 중...';
-    }
-    setGradSaveStatus('졸업요건을 저장하는 중입니다...');
-
-    const response = await fetch('/academic/graduation-requirements', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      credentials: 'same-origin',
-    });
-
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-      throw new Error(result.message || '졸업요건 저장에 실패했습니다.');
-    }
-
-    setGradSaveStatus('졸업요건을 저장했습니다.', true);
-    if (button) {
-      button.textContent = '✓ 저장됨';
-      setTimeout(() => {
-        button.textContent = originalText;
-      }, 1500);
-    }
-  } catch (error) {
-    console.error(error);
-    setGradSaveStatus(error.message || '졸업요건 저장에 실패했습니다.');
-  } finally {
-    if (button) {
-      button.disabled = false;
-      if (button.textContent === '저장 중...') {
-        button.textContent = originalText;
-      }
-    }
-  }
-}
-// 졸업요건 초기화 (기본값으로 리셋)
-function resetGradReq() {
-  const total = document.getElementById('gr-total');
-  const majorReq = document.getElementById('gr-major-req');
-  const majorEl = document.getElementById('gr-major-el');
-  const genReq = document.getElementById('gr-gen-req');
-  const genEl = document.getElementById('gr-gen-el');
-  const gradWork = document.getElementById('gr-grad-work');
-  const capstoneDesign = document.getElementById('gr-capstone-design');
-  const langType = document.getElementById('gr-lang-type');
-  const langScore = document.getElementById('gr-lang-score');
-  const certList = document.getElementById('gr-cert-list');
-  const internship = document.getElementById('gr-internship');
-  const ncProgram = document.getElementById('gr-nc-program');
-  const volunteer = document.getElementById('gr-volunteer');
-
-  if (total) total.value = 130;
-  if (majorReq) majorReq.value = 42;
-  if (majorEl) majorEl.value = 40;
-  if (genReq) genReq.value = 20;
-  if (genEl) genEl.value = 28;
-  gradWork?.classList.add('on');
-  capstoneDesign?.classList.remove('on');
-  if (langType) langType.value = 'TOEIC';
-  if (langScore) langScore.value = '';
-  if (certList) certList.innerHTML = '';
-  if (internship) internship.value = '';
-  if (ncProgram) ncProgram.value = '';
-  if (volunteer) volunteer.value = '';
-  updateGradPreview();
+  list.innerHTML = certs.map(cert => `
+    <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
+      ${cert}
+    </div>
+  `).join('');
 }
 // 졸업요건 입력값 → 미리보기 업데이트
 function updateGradPreview() {
@@ -665,10 +652,7 @@ function applyGraduationRequirements(profile) {
 
   if (certList) {
     const certifications = Array.isArray(requirements.requiredCertifications) ? requirements.requiredCertifications : [];
-    certList.innerHTML = certifications.map(cert => `
-      <div class="gr-cert-chip" style="display:flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:600;">
-        ${cert} <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</span>
-      </div>`).join('');
+    renderGradCertChips(certifications);
   }
 
   if (internship) {
@@ -693,16 +677,29 @@ async function fetchGraduationRequirements() {
       throw new Error('졸업요건을 불러오지 못했습니다.');
     }
     const result = await response.json();
-    if (result.success && result.profile) {
-      applyGraduationRequirements(result.profile);
+    if (!result.success) return;
+
+    if (!result.available) {
+      showGradEmptyState(result.message || '졸업요건 정보가 없습니다.');
+      return;
+    }
+
+    showGradReadonlyContent();
+    updateGradMajorBadge(result.profile);
+    applyGraduationRequirements(result.profile);
+    window._ac_graduationRequirements = result.profile?.GraduationRequirements || null;
+    updateGradPreview();
+
+    if (window._ac_progress?.totals) {
+      fetchProgress();
     }
   } catch (error) {
     console.error(error);
+    showGradEmptyState('졸업요건을 불러오지 못했습니다.');
   }
 }
 
 // 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', updateGradPreview);
 document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
 document.addEventListener('DOMContentLoaded', fetchGraduationRequirements);
 document.addEventListener('DOMContentLoaded', fetchProgress);

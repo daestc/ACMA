@@ -49,17 +49,56 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
-  // 학번
-  studentId: { type: String, default: null, trim: true },
+  // 회원 역할 ('student' = 학생 | 'staff' = 대학관계자 | 'admin' = 관리자)
+  role: {
+    type: String,
+    enum: ['student', 'staff', 'admin'],
+    default: 'student',
+  },
+  // 대학관계자 승인 상태 (staff 가입 시 'pending', 관리자 승인 후 'approved')
+  staffStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: null,
+  },
+  // 대학관계자 인증 사진 경로 (public/upload/...)
+  verificationImage: {
+    type: String,
+    default: null,
+  },
+  // 학생 정보
+  studentId: { type: String, default: null, trim: true }, // 학번
   // 소속 대학교
   university: { type: String, default: null, trim: true },
   // 전공
   major: { type: String, default: null, trim: true },
   // 재학 상태
   enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업'], default: '재학' },
+  // 계정 상태
+  accountStatus: { type: String, enum: ['active', 'dormant', 'suspended'], default: 'active' },
+  // 접속 현황
+  isOnline:     { type: Boolean, default: false },
+  lastLoginAt:  { type: Date, default: null },
+  lastLogoutAt: { type: Date, default: null },
+  loginHistory: [{
+    action: { type: String, enum: ['login', 'logout'] },
+    at:     { type: Date },
+    ip:     { type: String },
+    _id:    false,
+  }],
+  // 구독 플랜
+  planType:      { type: String, enum: ['free', 'premium'], default: 'free' },
+  premiumUntil:  { type: Date, default: null },
+  // 포인트 잔액 (원 단위)
+  pointBalance: { type: Number, default: 0, min: 0 },
+  // 일일 AI 기능 사용량
+  dailyUsage: {
+    quiz:    { count: { type: Number, default: 0 }, date: { type: String, default: '' } },
+    summary: { count: { type: Number, default: 0 }, date: { type: String, default: '' } },
+  },
   // 보안
   passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
-
+  
   // AI 기반 직무 적합도 점수
   careerAptitude: {
     certificationRatio: { type: Number, min: 0, max: 100 }, // 보유 자격증 일치율
@@ -121,6 +160,15 @@ const UserSchema = new mongoose.Schema({
       }
     }
   ],
+  // 공고 스크랩
+  scrapedJobs: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Recruit'
+    }],
+  // 희망 직무 및 목표 자격증
+  targetJob: { type: String, default: null, trim: true },
+  targetCertification: { type: String, default: null, trim: true },
+
 
   // ── 알림 설정
   notificationSettings: { type: NotificationSettingsSchema, default: () => ({}) },

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <%- include('../partials/head', { title: title }) %>
+  <link href="/css/portfolio-print.css" rel="stylesheet">
+</head>
+
+<body>
+  <!-- 화면 미리보기 전용 툴바 — 인쇄 시 숨김 (4-B-2 PDF 렌더와 CSS 공유하므로 절대 손대지 말 것) -->
+  <div class="no-print pp-toolbar">
+    <div class="pp-toolbar-inner">
+      <div class="pp-toolbar-brand">
+        <div class="pp-logo">A</div>
+        <span>AcadMe · 진로 포트폴리오</span>
+      </div>
+      <% if ((portfolio.gapAnalysis || []).length > 0) { %>
+        <label class="pp-gap-toggle">
+          <input type="checkbox" id="gap-toggle-input" onchange="toggleGapSection()">
+          개선 필요 항목(gapAnalysis) 포함하기
+        </label>
+      <% } %>
+      <button class="pp-print-btn" onclick="window.print()">🖨 인쇄 / PDF로 저장</button>
+    </div>
+    <p class="pp-toolbar-hint">
+      인쇄 대화상자에서 <strong>추가 설정 → 배경 그래픽</strong>을 켜고 <strong>머리글/바닥글</strong>을 끄면 더 깔끔한 PDF로 저장됩니다.
+    </p>
+  </div>
+
+  <main class="pp-page">
+    <header class="pp-doc-header">
+      <div class="pp-doc-title">진로 포트폴리오</div>
+      <div class="pp-doc-meta">
+        <div class="pp-doc-meta-row"><span class="pp-doc-meta-label">이름</span><span><%= user.name %></span></div>
+        <% if (portfolio.jobTitle) { %>
+          <div class="pp-doc-meta-row"><span class="pp-doc-meta-label">목표 직무</span><span><%= portfolio.jobTitle %></span></div>
+        <% } %>
+        <div class="pp-doc-meta-row"><span class="pp-doc-meta-label">작성일</span><span><%= createdAtStr %></span></div>
+      </div>
+    </header>
+
+    <% if (portfolio.summary) { %>
+      <section class="pp-section pp-summary">
+        <h2>요약</h2>
+        <p class="pp-body-text"><%= portfolio.summary %></p>
+      </section>
+    <% } %>
+
+    <% (portfolio.sections || []).forEach(sec => { %>
+      <section class="pp-section">
+        <h2><%= sec.heading %></h2>
+        <p class="pp-body-text"><%= sec.body %></p>
+      </section>
+    <% }) %>
+
+    <% if ((portfolio.gapAnalysis || []).length > 0) { %>
+      <section class="pp-section pp-gap-section" id="gap-section">
+        <h2>개선이 필요한 항목</h2>
+        <ul class="pp-gap-list">
+          <% portfolio.gapAnalysis.forEach(gap => { %>
+            <li>
+              <span class="pp-gap-item"><%= gap.item %></span>
+              <% if (gap.reason) { %><span class="pp-gap-reason"><%= gap.reason %></span><% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+
+    <footer class="pp-doc-footer">ACMA에서 생성됨 · <%= createdAtStr %> · AI생성물로 부정확한 결과가 나올 수 있으니 참고용으로 사용하시길 권장합니다.</footer>
+  </main>
+
+  <script>
+    function toggleGapSection() {
+      const section = document.getElementById('gap-section');
+      const input = document.getElementById('gap-toggle-input');
+      if (!section || !input) return;
+      section.classList.toggle('pp-gap-visible', input.checked);
+    }
+  </script>
+</body>
+
+</html>

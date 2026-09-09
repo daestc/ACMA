@@ -8,7 +8,11 @@ let selectedHabitId = null; // 현재 수정 중인 습관 id
 let pendingChanges = {}; // habitList에서 변경된 값만 모아두기
 
 // 페이지 로드 시 진행률 초기화
-document.addEventListener('DOMContentLoaded', updateHabitSummary);
+document.addEventListener('DOMContentLoaded', () => {
+  updateHabitSummary();
+  loadTodayLectures();
+  loadTodayAiPlan();
+});
 
 // 페이지 이탈시 isCompleted 수정 사항 DB 반영
 document.addEventListener('visibilitychange', function() {
@@ -24,20 +28,189 @@ document.addEventListener('visibilitychange', function() {
     pendingChanges = {}; // 저장 후 변경사항 초기화
   }
 });
+let urgentNotices = []; 
 
-// ── 강의 일정 / 할 일 탭 전환 ────────────────────
+
+
+// ── 강의 일정 / 할 일 / AI 계획 탭 전환 ────────────────────
 function switchHomeTodo(tab, btn) {
-  document.getElementById('ht-lecture').style.display = 'none';
-  document.getElementById('ht-todo').style.display    = 'none';
+  ['lecture', 'todo', 'aiplan'].forEach(t => {
+    document.getElementById('ht-' + t).style.display = 'none';
+  });
   document.getElementById('ht-' + tab).style.display  = 'block';
-
-  // // 할일 탭 이면 수정버튼 활성화
-  // if(tab === "todo") {document.getElementById('todo-refactor').style.display = 'block';}
-  // else {document.getElementById('todo-refactor').style.display = 'none';}
-  
 
   btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+// ── 오늘의 AI 계획(주간 계획에서 분해된 항목) 불러오기 ────────────
+function homeEscapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+async function loadTodayAiPlan() {
+  const box = document.getElementById('ht-aiplan');
+  if (!box) return;
+
+  try {
+    const res = await fetch('/ai/weekly-plan/today', { credentials: 'same-origin' });
+    const data = await res.json();
+
+    if (!data.success || !data.items || data.items.length === 0) {
+      box.innerHTML = `
+        <div class="check-item todo-exam"><span class="check-text">오늘 배정된 AI 계획이 없습니다</span></div>
+        <span class="card-action" style="bottom: 0;" onclick="location.href='/career/plan'">계획 만들기</span>`;
+      return;
+    }
+
+    const itemsHtml = data.items
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map(item => `
+        <div class="check-item" data-id="${item._id}">
+          <div class="check-box ${item.isCompleted ? 'checked' : ''}" onclick="toggleAiPlanItem('${item._id}', this)">${item.isCompleted ? '✓' : ''}</div>
+          <span class="check-text ${item.isCompleted ? 'done' : ''}">${homeEscapeHtml(item.content)}</span>
+        </div>`)
+      .join('');
+
+    box.innerHTML = `${itemsHtml}<span class="card-action" style="bottom: 0;" onclick="location.href='/career/plan'">전체 보기</span>`;
+  } catch (err) {
+    console.error('loadTodayAiPlan failed', err);
+    box.innerHTML = '<div class="check-item"><span class="check-text">오늘의 AI 계획을 불러오지 못했습니다.</span></div>';
+  }
+}
+
+// 서버에 즉시 반영(AI 계획 항목은 다른 주간계획 화면과 상태를 공유하므로 pendingChanges
+// 방식의 지연 저장이 아니라 클릭 즉시 저장한다).
+async function toggleAiPlanItem(itemId, boxEl) {
+  try {
+    const res = await fetch(`/ai/weekly-plan/checklist/${itemId}/toggle`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    boxEl.classList.toggle('checked', data.isCompleted);
+    boxEl.textContent = data.isCompleted ? '✓' : '';
+    const textEl = boxEl.nextElementSibling;
+    if (textEl) textEl.classList.toggle('done', data.isCompleted);
+  } catch (err) {
+    console.error('toggleAiPlanItem failed', err);
+  }
+}
+
+// ── 오늘의 강의 불러오기 ────────────────────
+async function loadTodayLectures() { 
+  const lectureBox = document.getElementById('ht-lecture');
+  if(!lectureBox) {
+    console.log('오늘의 강의 실패');
+    return;
+  }
+
+  try {
+    const res = await fetch('/calendar/timetables');
+
+    if (!res.ok) {
+      lectureBox.innerHTML = `
+        <div class="check-item">
+          <span class="check-text">오늘의 강의를 불러오지 못했습니다.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const timetables = await res.json(); //불러온 db json변환
+
+    const today = new Date();
+    const todayDayOfWeek = today.getDay();
+
+    const todayLectures = []; //오늘 강의를 담을 변수
+
+    timetables.forEach(item => { //오늘 강의 추출
+      if (!isTodayInSemester(today, item.semester)) return;
+
+      (item.schedule || []).forEach(sch => {
+        if(Number(sch.dayOfWeek) !== todayDayOfWeek) return;
+
+        todayLectures.push({
+          title: item.title,
+          location: item.location,
+          professorName: item.professorName,
+          startTime: sch.startTime,
+          endTime: sch.endTime,
+          color: item.color || '#60A5FA'
+        });
+      });
+    });
+
+    todayLectures.sort((a,b) => a.startTime.localeCompare(b.startTime)); //정렬
+
+    if (todayLectures.length === 0) { //오늘 강의가 없는경우
+      lectureBox.innerHTML = `
+        <div class="check-item">
+          <span class="check-text">오늘 등록된 강의가 없습니다.</span>
+        </div>
+      `;
+      return;
+    }
+
+    lectureBox.innerHTML = todayLectures.map(lecture => `
+      <div class="check-item home-lecture-item">
+        <span class="selected-event-dot" style="background:${lecture.color}"></span>
+        <span class="check-text">
+          ${escapeHtml(lecture.title)}
+          <small style="display:block;color:var(--text2);margin-top:2px;">
+            ${escapeHtml(lecture.location || '장소 미정')}
+            ${lecture.professorName ? ` · ${escapeHtml(lecture.professorName)}` : ''}
+          </small>
+        </span>
+        <span class="check-time">${lecture.startTime} ~ ${lecture.endTime}</span>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    lectureBox.innerHTML = `
+      <div class="check-item">
+        <span class="check-text">오늘의 강의를 불러오지 못했습니다.</span>
+      </div>
+    `;
+  }
+}
+
+// ── 현재 학기 계산  ────────────────────
+function isTodayInSemester(date, semester) {
+  if (!semester) return true;
+
+  const match = String(semester).match(/^(\d{4})-([12])$/);
+  if (!match) return true;
+
+  const year = Number(match[1]);
+  const term = Number(match[2]);
+
+  let start;
+  let end;
+
+  if (term === 1) {
+    start = new Date(year, 2, 1);
+    end = new Date(year, 5, 30, 23, 59, 59);
+  } else {
+    start = new Date(year, 8, 1);
+    end = new Date(year, 11, 31, 23, 59, 59);
+  }
+
+  return date >= start && date <= end;
+}
+
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── 모달 열기 / 닫기 ─────────────────────────────
@@ -152,6 +325,9 @@ async function addTodoItem() {
 
     // 모달에서 사용할 todo 항목 복사
     const itemModal = itemHome.cloneNode(true);
+
+    const modalCheckBox = itemModal.querySelector('.check-box');
+    modalCheckBox.classList.add('delete-todo');
 
     // 마지막 자식 앞에 추가
     list.insertBefore(itemHome, list.lastElementChild);
@@ -550,5 +726,32 @@ async function deleteHabit(id) {
   renderHabitEditList();
   updateHabitSummary();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  //  화면에 있는 모든 슬라이더 컨테이너를 찾음 (자격증, 시험, 학사일정)
+  const sliderContainers = document.querySelectorAll('.slider-container');
+  
+  sliderContainers.forEach(container => {
+    const items = container.querySelectorAll('.slider-item');
+    
+    // 항목이 없거나 1개뿐이면 돌릴 필요가 없으니 패스!
+    if (items.length <= 1) return; 
+
+    let currentIndex = 0;
+    
+    // 3초(3000ms)마다 번갈아가면서 보여주기
+    setInterval(() => {
+      // 현재 켜져있는 거 끄기
+      items[currentIndex].classList.remove('active');
+      
+      // 다음 순서로 넘어가기 (마지막이면 다시 처음으로 0)
+      currentIndex = (currentIndex + 1) % items.length;
+      
+      // 다음 거 켜기
+      items[currentIndex].classList.add('active');
+    }, 3000); 
+  });
+});
+
 
 

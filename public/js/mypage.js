@@ -222,18 +222,26 @@ async function saveProfile() {
   const studentId = document.getElementById('studentId').value;
   const university = document.getElementById('university').value;
   const major = document.getElementById('major').value;
+  const grade = document.getElementById('grade')?.value || '';
   const enrollmentStatus = document.getElementById('enrollmentStatus').value;
-  console.log('프로필 저장 시도:', { studentId, university, major, enrollmentStatus });
+  console.log('프로필 저장 시도:', { studentId, university, major, grade, enrollmentStatus });
 
   try {
     const response = await fetch('/user/updateProfile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, university, major, enrollmentStatus })
+      body: JSON.stringify({ studentId, university, major, grade, enrollmentStatus })
     });
     const result = await response.json();
     if (result.success) {
-      alert('프로필이 성공적으로 업데이트되었습니다.');
+      if (result.universityChanged && result.clearedLectureCount > 0) {
+        alert(`프로필이 업데이트되었습니다.\n대학 변경으로 시간표 강의 ${result.clearedLectureCount}개가 삭제되었습니다.`);
+      } else if (result.universityChanged) {
+        alert('프로필이 업데이트되었습니다.\n대학 정보가 변경되어 기존 강의 시간표가 초기화되었습니다.');
+      } else {
+        alert('프로필이 성공적으로 업데이트되었습니다.');
+      }
+      fetchUserProfile();
     } else {
       alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.');
     }
@@ -250,14 +258,33 @@ async function fetchUserProfile() {
     const data = await response.json();
     const user = data.user;
     if (!user) throw new Error('사용자 정보가 없습니다.');
-    document.getElementById('profile-avatar').textContent = user.name ? user.name.charAt(0) : '';
-    document.getElementById('profile-name').textContent = `${user.name || ''}`;
-    document.getElementById('profile-meta').textContent = `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''}`;
 
-    // 폼에 사용자 정보 채워넣기
-    document.getElementById('studentId').value = user.studentId || '';
+    const avatarEl = document.getElementById('profile-avatar');
+    if (avatarEl) {
+      const editBtn = avatarEl.querySelector('.avatar-edit');
+      avatarEl.textContent = user.name ? user.name.charAt(0) : '';
+      if (editBtn) avatarEl.appendChild(editBtn);
+    }
+    document.getElementById('profile-name').textContent = `${user.name || ''}`;
+
+    if (user.role === 'staff') {
+      document.getElementById('profile-meta').textContent = `${user.email || ''} · 대학관계자`;
+      const staffUniversity = document.getElementById('staff-university');
+      if (staffUniversity) staffUniversity.value = user.university || '등록된 소속 대학 없음';
+      return;
+    }
+
+    document.getElementById('profile-meta').textContent =
+      `${user.university || ''} · ${user.major || ''} · ${user.studentId || ''}`;
+
+    const studentIdEl = document.getElementById('studentId');
+    if (!studentIdEl) return;
+
+    studentIdEl.value = user.studentId || '';
     document.getElementById('university').value = user.university || '';
     document.getElementById('major').value = user.major || '';
+    const gradeEl = document.getElementById('grade');
+    if (gradeEl) gradeEl.value = String(user.grade || 1);
     document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';
   } catch (error) {
     console.error('Error fetching profile:', error);

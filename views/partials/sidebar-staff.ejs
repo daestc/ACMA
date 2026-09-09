@@ -1,0 +1,54 @@
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="app-sidebar" data-role="staff" style="width:52px"
+       onmouseenter="sbExpand()" onmouseleave="sbCollapse()">
+
+  <!-- 로고 -->
+  <div class="sb-logo-row">
+    <div class="s-logo">A</div>
+    <span class="s-logo-text">AcadMe</span>
+  </div>
+
+  <!-- nav -->
+  <div class="sb-scroll">
+
+    <!-- 메인 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">🏠</span>
+      <span class="sb-cat-name">메인</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/staff/home" class="sb-mi <%= currentPage === 'staffHome' ? 'active' : '' %>"><span class="sb-mi-dot"></span>홈</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 학사관리 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">🏫</span>
+      <span class="sb-cat-name">학사관리</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/staff/lectures"   class="sb-mi <%= currentPage === 'lectureAdmin'    ? 'active' : '' %>"><span class="sb-mi-dot"></span>강의 관리</a>
+      <a href="/staff/schedules"  class="sb-mi <%= currentPage === 'staffSchedule'   ? 'active' : '' %>"><span class="sb-mi-dot"></span>학교 일정 등록</a>
+      <a href="/staff/graduation" class="sb-mi <%= currentPage === 'staffGraduation' ? 'active' : '' %>"><span class="sb-mi-dot"></span>졸업요건 설정</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 학생관리 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">👥</span>
+      <span class="sb-cat-name">학생관리</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/staff/students"    class="sb-mi <%= currentPage === 'staffStudents'    ? 'active' : '' %>"><span class="sb-mi-dot"></span>학생 목록</a>
+      <a href="/staff/suggestions" class="sb-mi <%= currentPage === 'staffSuggestions' ? 'active' : '' %>"><span class="sb-mi-dot"></span>학생 건의</a>
+    </div>
+
+  </div>
+
+  <!-- 하단 로그아웃 -->
+  <div class="sidebar-footer">
+    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span><span class="sb-item-label">로그아웃</span></div>
+  </div>
+
+</aside>

@@ -22,22 +22,20 @@
 
         <!-- 사람인 포트폴리오 배너 -->
         <div class="portfolio-banner">
-          <div class="portfolio-name">김민준</div>
-          <div class="portfolio-meta">한국대학교 컴퓨터공학과 3학년 · GPA 3.80 / 4.5 · 이수 92학점</div>
+          <div class="portfolio-name" id="profile-name">...</div>
+          <div class="portfolio-meta" id="profile-meta">...</div>
           <div class="portfolio-tags">
-            <span class="portfolio-tag">백엔드 개발자 목표</span>
-            <span class="portfolio-tag">정보처리기사 취득</span>
-            <span class="portfolio-tag">SQLD 취득</span>
-            <span class="portfolio-tag">TOEIC 준비중</span>
+            <span class="portfolio-tag" id="profile-job">...</span>
+            <span class="portfolio-tag" id="profile-certification">...</span>
           </div>
         </div>
 
         <!-- ① 학업 현황 요약 통계 카드 (홈에서 이동) -->
         <div class="grid-4" style="margin-bottom:16px;">
-          <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-label">현재 평점</div><div class="stat-value" id="credit-avg">3.8</div><div class="stat-sub">/ 4.5 만점</div></div>
-          <div class="stat-card green"><div class="stat-icon">📚</div><div class="stat-label">이수 학점</div><div class="stat-value" id="credit-earned">92</div><div class="stat-sub">/ 130 학점</div></div>
-          <div class="stat-card amber"><div class="stat-icon">📝</div><div class="stat-label">이번 주 공부</div><div class="stat-value" id="study-time">14h</div><div class="stat-sub">목표: 20h</div></div>
-          <div class="stat-card purple"><div class="stat-icon">🏅</div><div class="stat-label">취득 자격증</div><div class="stat-value" id="certificates">3</div><div class="stat-sub">목표: 5개</div></div>
+          <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-label">현재 평점</div><div class="stat-value" id="credit-avg">...</div></div>
+          <div class="stat-card green"><div class="stat-icon">📚</div><div class="stat-label">이수 학점</div><div class="stat-value" id="credit-earned">...</div></div>
+          <div class="stat-card amber"><div class="stat-icon">📝</div><div class="stat-label">이번 주 목표달성</div><div class="stat-value" id="study-time">...</div></div>
+          <div class="stat-card purple"><div class="stat-icon">🏅</div><div class="stat-label">취득 자격증</div><div class="stat-value" id="certificates">...</div></div>
         </div>
 
         <!-- ② 이수 현황 (학사관리에서 이동) -->
@@ -86,96 +84,7 @@
               </div>
             </div>
         </div>
-
-        <!-- ③ 직무 적합도 그래프 -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span class="card-title">💼 직무 적합도 분석 — 백엔드 개발자</span>
-            <span class="badge badge-blue">내 프로필 기반</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;">
-            <!-- 도넛 차트 + 총점 -->
-            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-              <div style="position:relative;width:160px;height:160px;">
-                <svg width="160" height="160" viewBox="0 0 160 160">
-                  <circle cx="80" cy="80" r="60" fill="none" stroke="#e5e8f0" stroke-width="18"/>
-                  <!-- 78% arc: 2πr * 0.78 ≈ 293.8, 총 둘레 2π*60≈376.9 -->
-                  <circle cx="80" cy="80" r="60" fill="none" stroke="#3d5af1" stroke-width="18"
-                    stroke-dasharray="293 377" stroke-dashoffset="94" stroke-linecap="round"
-                    style="transform:rotate(-90deg);transform-origin:80px 80px;transition:stroke-dasharray 1s ease;"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                  <div style="font-size:30px;font-weight:800;font-family:'DM Sans';color:var(--accent);">78%</div>
-                  <div style="font-size:11px;color:var(--text2);font-weight:600;">종합 적합도</div>
-                </div>
-              </div>
-              <div style="text-align:center;">
-                <div style="font-size:13px;font-weight:700;color:var(--text);">백엔드 개발자</div>
-                <div style="font-size:11px;color:var(--text2);margin-top:2px;">정보통신 · 소프트웨어 개발</div>
-              </div>
-            </div>
-            <!-- 항목별 수평 바 차트 -->
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">항목별 세부 점수</div>
-              <!-- 자격증 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">🏅 보유 자격증 일치율</span>
-                  <span style="color:var(--green);font-weight:700;">95%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:95%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 전공 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">🎓 전공 관련성</span>
-                  <span style="color:var(--accent);font-weight:700;">88%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:88%;background:linear-gradient(90deg,var(--accent),#7b96ff);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- GPA -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">📊 GPA 달성률</span>
-                  <span style="color:var(--accent);font-weight:700;">84%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:84%;background:linear-gradient(90deg,var(--accent),#7b96ff);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 역량 점수 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">⚡ 직무 역량 점수</span>
-                  <span style="color:var(--purple);font-weight:700;">72%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:72%;background:linear-gradient(90deg,var(--purple),#a78bfa);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 이수 학점 -->
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                  <span style="font-weight:600;">📚 이수 학점 달성률</span>
-                  <span style="color:var(--amber);font-weight:700;">71%</span>
-                </div>
-                <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:71%;background:linear-gradient(90deg,var(--amber),#fbbf24);border-radius:4px;"></div>
-                </div>
-              </div>
-              <!-- 부족한 항목 안내 -->
-              <div style="margin-top:6px;padding:10px 12px;background:var(--amber-bg);border-radius:var(--radius-sm);border:1px solid #fde68a;">
-                <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:3px;">⚠ 보완 추천</div>
-                <div style="font-size:11px;color:var(--text2);">TOEIC 취득 · AWS SAA 준비 · 이수 학점 38학점 추가 필요</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        <div class="grid-2" style="margin-bottom:16px;"></div>
         <div class="grid-2" style="margin-bottom:16px;">
           <!-- 자격증 / 대외활동 / 어학성적 탭 -->
           <div class="card">
@@ -183,76 +92,32 @@
               <button class="tab-btn active" onclick="switchStatusTab('cert',this)">자격증</button>
               <button class="tab-btn" onclick="switchStatusTab('activity',this)">대외활동</button>
               <button class="tab-btn" onclick="switchStatusTab('lang',this)">어학성적</button>
+              <button class="tab-btn" onclick="switchStatusTab('skill',this)">스킬</button>
             </div>
             <div id="st-cert">
               <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏅 자격증</span><span class="card-action">+ 추가</span></div>
               <div class="cert-item"><div class="cert-icon">📋</div><div class="cert-name">정보처리기사</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2025.06</span></div>
-              <div class="cert-item"><div class="cert-icon">🖥️</div><div class="cert-name">SQLD</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2024.12</span></div>
-              <div class="cert-item"><div class="cert-icon">🌐</div><div class="cert-name">TOEIC</div><span class="badge badge-amber">준비중</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">목표 650</span></div>
-              <div class="cert-item"><div class="cert-icon">☁️</div><div class="cert-name">AWS SAA</div><span class="badge badge-blue">목표</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2026.08</span></div>
             </div>
             <div id="st-activity" style="display:none;">
-              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><span class="card-action">+ 추가</span></div>
-              <div class="activity-item"><div class="activity-dot" style="background:var(--accent);"></div><div class="activity-body"><div class="activity-title">교내 해커톤 최우수상</div><div class="activity-meta">한국대학교 · 2025.11 · 교내</div></div></div>
-              <div class="activity-item"><div class="activity-dot" style="background:var(--green);"></div><div class="activity-body"><div class="activity-title">SW 마에스트로 13기 수료</div><div class="activity-meta">과학기술정보통신부 · 2025.08 · 대외</div></div></div>
-              <div class="activity-item"><div class="activity-dot" style="background:var(--amber);"></div><div class="activity-body"><div class="activity-title">오픈소스 기여 활동</div><div class="activity-meta">GitHub · 2025.03 ~ 현재 · 대외</div></div></div>
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🏆 수상 및 대외활동</span><button type="button" class="btn btn-accent btn-sm" id="award-open-btn">+ 수상경력 추가</button></div>
             </div>
             <div id="st-lang" style="display:none;">
-              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><span class="card-action">+ 추가</span></div>
-              <div class="cert-item"><div class="cert-icon" style="background:var(--sky-bg);">🇺🇸</div><div class="cert-name">TOEIC</div><span class="badge badge-amber">준비중</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">목표 650점</span></div>
-              <div class="cert-item"><div class="cert-icon" style="background:var(--green-bg);">🇯🇵</div><div class="cert-name">JLPT N3</div><span class="badge badge-green">취득</span><span style="font-size:11px;color:var(--text2);margin-left:4px;">2024.07</span></div>
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🌍 어학 성적</span><button type="button" class="btn btn-accent btn-sm" id="language-open-btn">+ 추가</button></div>
               <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px dashed var(--border2);"><div style="font-size:12px;color:var(--text2);font-weight:500;">+ 성적 추가하기 (IELTS, TOEFL, HSK 등)</div></div>
             </div>
+            <div id="st-skill" style="display:none;">
+              <div class="card-header" style="margin-bottom:12px;"><span class="card-title">🛠 보유 스킬</span><button type="button" class="btn btn-accent btn-sm" id="skill-open-btn">+ 추가</button></div>
+            </div>
           </div>
 
-          <!-- AI 로드맵 -->
+          <!-- AI 진단 요약 -->
           <div class="card">
-            <div class="card-header"><span class="card-title">🤖 AI 추천 커리어 로드맵</span><span class="badge badge-blue">백엔드 개발자</span></div>
-            <div class="roadmap">
-              <div class="roadmap-item done"><div class="roadmap-title">기초 CS 지식 강화</div><div class="roadmap-desc">자료구조, 알고리즘, 운영체제 이수</div></div>
-              <div class="roadmap-item done"><div class="roadmap-title">데이터베이스 자격증</div><div class="roadmap-desc">SQLD 취득 완료</div></div>
-              <div class="roadmap-item current"><div class="roadmap-title">클라우드 역량 강화</div><div class="roadmap-desc">AWS SAA 준비 중 · 현재 단계</div></div>
-              <div class="roadmap-item"><div class="roadmap-title">실무 프로젝트 경험</div><div class="roadmap-desc">인턴십 또는 팀 프로젝트 참여</div></div>
-              <div class="roadmap-item"><div class="roadmap-title">포트폴리오 완성 및 취업</div><div class="roadmap-desc">GitHub 정리, 이력서 작성, 채용 지원</div></div>
+            <div class="card-header">
+              <span class="card-title">🩺 AI 진로 진단 요약</span>
+              <span class="badge badge-blue" id="diag-summary-badge" style="display:none;"></span>
             </div>
-          </div>
-        </div>
-
-        <!-- 스킬 (보유 능력) -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span class="card-title">⚡ 스킬 (보유 능력)</span>
-            <button class="btn btn-ghost btn-sm">+ 스킬 추가</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <!-- 카테고리별 스킬 그룹 -->
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">언어</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                <div class="skill-tag" style="--lv:#3d5af1;">Java <span class="skill-lv" style="color:#3d5af1;">고급</span></div>
-                <div class="skill-tag" style="--lv:#3d5af1;">JavaScript <span class="skill-lv" style="color:#3d5af1;">고급</span></div>
-                <div class="skill-tag" style="--lv:#059669;">Python <span class="skill-lv" style="color:#059669;">중급</span></div>
-                <div class="skill-tag" style="--lv:#d97706;">C++ <span class="skill-lv" style="color:#d97706;">입문</span></div>
-              </div>
-            </div>
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">프레임워크 & 라이브러리</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                <div class="skill-tag">Spring Boot <span class="skill-lv" style="color:#3d5af1;">고급</span></div>
-                <div class="skill-tag">Node.js <span class="skill-lv" style="color:#059669;">중급</span></div>
-                <div class="skill-tag">React <span class="skill-lv" style="color:#059669;">중급</span></div>
-                <div class="skill-tag">JPA/Hibernate <span class="skill-lv" style="color:#059669;">중급</span></div>
-              </div>
-            </div>
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">데이터베이스 & 도구</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                <div class="skill-tag">MySQL <span class="skill-lv" style="color:#3d5af1;">고급</span></div>
-                <div class="skill-tag">MongoDB <span class="skill-lv" style="color:#059669;">중급</span></div>
-                <div class="skill-tag">Redis <span class="skill-lv" style="color:#d97706;">입문</span></div>
-                <div class="skill-tag">Git <span class="skill-lv" style="color:#3d5af1;">고급</span></div>
-                <div class="skill-tag">Docker <span class="skill-lv" style="color:#059669;">중급</span></div>
-              </div>
+            <div id="diag-summary-box">
+              <div style="padding:14px 10px;font-size:13px;color:var(--text2);text-align:center;">진단 정보를 불러오는 중...</div>
             </div>
           </div>
         </div>
@@ -262,12 +127,7 @@
           <div class="card-header">
             <span class="card-title">🗂 경험 / 활동 / 교육</span>
             <div style="display:flex;gap:6px;">
-              <div class="tabs" style="margin-bottom:0;">
-                <button class="tab-btn active" onclick="switchExpTab('work',this)">경험</button>
-                <button class="tab-btn" onclick="switchExpTab('activity',this)">활동</button>
-                <button class="tab-btn" onclick="switchExpTab('education',this)">교육</button>
-              </div>
-              <button class="btn btn-ghost btn-sm">+ 추가</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="experience-open-btn">+ 추가</button>
             </div>
           </div>
 
@@ -277,20 +137,6 @@
               <div class="exp-dot" style="background:var(--accent);"></div>
               <div class="exp-body">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                  <div>
-                    <div class="exp-title">카카오 서버 개발 인턴십</div>
-                    <div class="exp-meta">카카오 · 검색플랫폼팀 · 백엔드 인턴 · hybrid</div>
-                    <div class="exp-period">2025.07 ~ 2025.08 · 2개월</div>
-                  </div>
-                  <div style="display:flex;gap:4px;flex-shrink:0;">
-                    <span class="badge badge-blue">Java</span>
-                    <span class="badge badge-blue">Spring</span>
-                    <span class="badge badge-sky">Redis</span>
-                  </div>
-                </div>
-                <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-                  <div class="exp-ach">• API 응답속도 40% 개선 — 평균 320ms → 190ms</div>
-                  <div class="exp-ach">• 신규 검색 필터 API 3개 개발</div>
                 </div>
               </div>
             </div>
@@ -298,194 +144,23 @@
               <div class="exp-dot" style="background:var(--purple);"></div>
               <div class="exp-body">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                  <div>
-                    <div class="exp-title">교내 해커톤 프로젝트 — 학사관리 앱</div>
-                    <div class="exp-meta">한국대학교 · 팀 프로젝트 (4인)</div>
-                    <div class="exp-period">2025.11 · 2박 3일</div>
-                  </div>
-                  <div style="display:flex;gap:4px;flex-shrink:0;">
-                    <span class="badge badge-purple">Node.js</span>
-                    <span class="badge badge-blue">React</span>
-                  </div>
-                </div>
-                <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-                  <div class="exp-ach">• 최우수상 수상</div>
-                  <div class="exp-ach">• 백엔드 API 및 DB 설계 담당</div>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- 활동 탭 -->
-          <div id="exp-activity" style="display:none;">
-            <div class="exp-item">
-              <div class="exp-dot" style="background:var(--green);"></div>
-              <div class="exp-body">
-                <div class="exp-title">SW 마에스트로 13기</div>
-                <div class="exp-meta">과학기술정보통신부 · 대외활동</div>
-                <div class="exp-period">2025.04 ~ 2025.08 · 5개월</div>
-                <div class="exp-ach" style="margin-top:6px;">• 팀 프로젝트 리더로 서비스 기획 및 출시</div>
-              </div>
-            </div>
-            <div class="exp-item">
-              <div class="exp-dot" style="background:var(--accent);"></div>
-              <div class="exp-body">
-                <div class="exp-title">멋쟁이사자처럼 12기</div>
-                <div class="exp-meta">한국대학교 · 동아리 · 기술 멘토</div>
-                <div class="exp-period">2025.03 ~ 현재 진행 중</div>
-                <div class="exp-ach" style="margin-top:6px;">• 30명 대상 Node.js 세션 진행 (4회)</div>
-              </div>
-            </div>
-            <div class="exp-item" style="border-bottom:none;">
-              <div class="exp-dot" style="background:var(--amber);"></div>
-              <div class="exp-body">
-                <div class="exp-title">오픈소스 기여 (GitHub)</div>
-                <div class="exp-meta">대외활동</div>
-                <div class="exp-period">2025.03 ~ 현재 진행 중</div>
-                <div class="exp-ach" style="margin-top:6px;">• Spring Boot 이슈 수정 PR 2건 merge</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 교육 탭 -->
-          <div id="exp-education" style="display:none;">
-            <div class="exp-item">
-              <div class="exp-dot" style="background:var(--sky);"></div>
-              <div class="exp-body">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                  <div>
-                    <div class="exp-title">실전 Spring Boot — 인프런</div>
-                    <div class="exp-meta">인프런 · 온라인 강의 · 김영한 강사</div>
-                    <div class="exp-period">2025.09 ~ 2025.10 · 수료</div>
-                  </div>
-                  <span class="badge badge-green">수료</span>
-                </div>
-              </div>
-            </div>
-            <div class="exp-item">
-              <div class="exp-dot" style="background:var(--amber);"></div>
-              <div class="exp-body">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                  <div>
-                    <div class="exp-title">AWS Solutions Architect 준비 과정</div>
-                    <div class="exp-meta">패스트캠퍼스 · 온라인 강의</div>
-                    <div class="exp-period">2026.02 ~ 현재 · 수강중</div>
-                  </div>
-                  <span class="badge badge-amber">수강중</span>
-                </div>
-              </div>
-            </div>
-            <div class="exp-item" style="border-bottom:none;">
-              <div class="exp-dot" style="background:var(--green);"></div>
-              <div class="exp-body">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                  <div>
-                    <div class="exp-title">한국대학교 컴퓨터공학과</div>
-                    <div class="exp-meta">대학교 · 주전공 · 3학년 재학 중</div>
-                    <div class="exp-period">2021.03 ~ 현재</div>
-                  </div>
-                  <span class="badge badge-green">재학중</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ④ 활동 히스토리 및 통계 -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">📈 활동 히스토리 및 통계</span>
-            <div class="tabs" style="margin-bottom:0;">
-              <button class="tab-btn active" id="hist-tab-study" onclick="switchHistTab('study',this)">공부 기록</button>
-              <button class="tab-btn" id="hist-tab-quiz" onclick="switchHistTab('quiz',this)">퀴즈 기록</button>
-              <button class="tab-btn" id="hist-tab-login" onclick="switchHistTab('login',this)">로그인 기록</button>
-            </div>
-          </div>
-
-          <!-- 공부 기록 -->
-          <div id="hist-study">
-            <div class="grid-2" style="gap:16px;">
-              <div>
-                <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">이번 주 일별 공부 시간</div>
-                <div class="study-bars">
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:35%;"></div><div class="study-bar-label">월</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:80%;"></div><div class="study-bar-label">화</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:50%;"></div><div class="study-bar-label">수</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:95%;"></div><div class="study-bar-label">목</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:60%;"></div><div class="study-bar-label">금</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar" style="height:20%;"></div><div class="study-bar-label">토</div></div>
-                  <div class="study-bar-wrap"><div class="study-bar today" style="height:45%;"></div><div class="study-bar-label">일</div></div>
-                </div>
-              </div>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">과목별 누적 학습 시간</div>
-                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">자료구조</span><span class="progress-value">4h 20m</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:80%"></div></div></div>
-                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">알고리즘</span><span class="progress-value">4h 50m</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:90%"></div></div></div>
-                <div class="progress-wrap"><div class="progress-header"><span class="progress-label">운영체제</span><span class="progress-value">3h 12m</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:60%"></div></div></div>
-                <div class="progress-wrap" style="margin-bottom:0;"><div class="progress-header"><span class="progress-label">정보처리기사</span><span class="progress-value">2h 00m</span></div><div class="progress-track"><div class="progress-fill fill-purple" style="width:37%"></div></div></div>
-              </div>
-            </div>
-            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:24px;">
-              <div style="text-align:center;"><div style="font-size:20px;font-weight:800;font-family:'DM Sans';color:var(--accent);">14h 22m</div><div style="font-size:11px;color:var(--text2);">이번 주 총 공부</div></div>
-              <div style="text-align:center;"><div style="font-size:20px;font-weight:800;font-family:'DM Sans';color:var(--green);">+12%</div><div style="font-size:11px;color:var(--text2);">전주 대비</div></div>
-              <div style="text-align:center;"><div style="font-size:20px;font-weight:800;font-family:'DM Sans';color:var(--amber);">3h 4m</div><div style="font-size:11px;color:var(--text2);">일평균</div></div>
-              <div style="text-align:center;"><div style="font-size:20px;font-weight:800;font-family:'DM Sans';color:var(--purple);">알고리즘</div><div style="font-size:11px;color:var(--text2);">최다 공부 과목</div></div>
-            </div>
-          </div>
-
-          <!-- 퀴즈 기록 -->
-          <div id="hist-quiz" style="display:none;">
-            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-              <thead><tr style="border-bottom:2px solid var(--border);">
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">퀴즈 세트</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">풀이 시간</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">소요 시간</th>
-                <th style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;padding:8px 10px;text-align:left;">정답률</th>
-              </tr></thead>
-              <tbody>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px;">자료구조 — 트리 & 그래프</td><td style="padding:10px;color:var(--text2);">오늘 09:30</td><td style="padding:10px;color:var(--text2);">12분</td><td style="padding:10px;"><strong style="color:var(--green);">85%</strong></td></tr>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px;">운영체제 — 프로세스 관리</td><td style="padding:10px;color:var(--text2);">어제 21:15</td><td style="padding:10px;color:var(--text2);">18분</td><td style="padding:10px;"><strong style="color:var(--amber);">72%</strong></td></tr>
-                <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px;">자료구조 — 정렬 알고리즘</td><td style="padding:10px;color:var(--text2);">04.15 20:00</td><td style="padding:10px;color:var(--text2);">9분</td><td style="padding:10px;"><strong style="color:var(--green);">91%</strong></td></tr>
-                <tr><td style="padding:10px;">알고리즘 — 동적 프로그래밍</td><td style="padding:10px;color:var(--text2);">04.14 16:40</td><td style="padding:10px;color:var(--text2);">22분</td><td style="padding:10px;"><strong style="color:var(--red);">61%</strong></td></tr>
-              </tbody>
-            </table></div>
-          </div>
-
-          <!-- 로그인 기록 -->
-          <div id="hist-login" style="display:none;">
-            <div style="display:flex;flex-direction:column;gap:0;">
-              <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--border);">
-                <div style="width:32px;height:32px;background:var(--accent-bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">💻</div>
-                <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Chrome · Windows 11</div><div style="font-size:11px;color:var(--text2);">오늘 09:12 · 125.xxx.xxx</div></div>
-                <span class="badge badge-green">현재 세션</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--border);">
-                <div style="width:32px;height:32px;background:var(--bg3);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📱</div>
-                <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Safari · iPhone 16</div><div style="font-size:11px;color:var(--text2);">어제 22:45 · 125.xxx.xxx</div></div>
-                <span class="badge badge-blue">성공</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--border);">
-                <div style="width:32px;height:32px;background:var(--bg3);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">💻</div>
-                <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Chrome · MacOS</div><div style="font-size:11px;color:var(--text2);">04.15 14:30 · 211.xxx.xxx</div></div>
-                <span class="badge badge-blue">성공</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:14px;padding:11px 0;">
-                <div style="width:32px;height:32px;background:var(--red-bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">⚠️</div>
-                <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Chrome · Windows 10</div><div style="font-size:11px;color:var(--text2);">04.14 11:20 · 203.xxx.xxx</div></div>
-                <span class="badge badge-red">실패</span>
-              </div>
-            </div>
-          </div>
-        </div>
 		</div>
-
 	</main>
 
 	<!-- 모달 -->
 	<%- include('../partials/modals/mypage', { user: user }) %>
+  <%- include('../partials/modals/award-modal') %>
+  <%- include('../partials/modals/experience-modal') %>
+  <%- include('../partials/modals/language-modal') %>
+  <%- include('../partials/modals/skill-modal') %>
 
 	<script src="/js/common.js"></script>
 	<script src="/js/mystatus.js"></script>
+  <script src="/js/spec-modals.js"></script>
 </body>
 
 </html>

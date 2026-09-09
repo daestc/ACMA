@@ -1,47 +1,128 @@
 <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
 
-<aside class="sidebar" id="app-sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-header-left">
-      <div class="s-logo">A</div>
-      <span class="s-logo-text">AcadMe</span>
-    </div>
-    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+<% if (user && user.role === 'staff') { %>
+  <%- include('./sidebar-staff', { currentPage, user }) %>
+<% } else { %>
+
+<aside class="sidebar" id="app-sidebar" style="width:52px"
+       onmouseenter="sbExpand()" onmouseleave="sbCollapse()">
+
+  <!-- 로고 -->
+  <div class="sb-logo-row">
+    <div class="s-logo">A</div>
+    <span class="s-logo-text">AcadMe</span>
   </div>
 
-  <div class="sidebar-user">
-    <div class="user-info">
-      <div class="user-avatar"><%= user ? user.name[0] : '' %></div>
-      <div>
-        <div class="user-name"><%= user ? user.name : '' %></div>
-        <div class="user-role"><%= user ? user.major : '' %></div>
-      </div>
+  <!-- nav -->
+  <div class="sb-scroll">
+
+    <!-- 메인 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">🏠</span>
+      <span class="sb-cat-name">메인</span>
     </div>
+    <div class="sb-sub-list">
+      <a href="/home"     class="sb-mi <%= currentPage==='home'     ?'active':'' %>"><span class="sb-mi-dot"></span>홈</a>
+      <a href="/calendar" class="sb-mi <%= currentPage==='calendar' ?'active':'' %>"><span class="sb-mi-dot"></span>캘린더</a>
+      <a href="/mystatus" class="sb-mi <%= currentPage==='mystatus' ?'active':'' %>"><span class="sb-mi-dot"></span>MyStatus</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 학업 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">📚</span>
+      <span class="sb-cat-name">학업</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/notice"      class="sb-mi <%= currentPage==='notice'      ?'active':'' %>"><span class="sb-mi-dot"></span>공지사항</a>
+      <a href="/academic"    class="sb-mi <%= currentPage==='academic'    ?'active':'' %>"><span class="sb-mi-dot"></span>학사관리</a>
+      <a href="/study"       class="sb-mi <%= currentPage==='study'       ?'active':'' %>"><span class="sb-mi-dot"></span>공부</a>
+      <a href="/suggestions" class="sb-mi <%= currentPage==='suggestions' ?'active':'' %>"><span class="sb-mi-dot"></span>건의 게시판</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 진로 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">💼</span>
+      <span class="sb-cat-name">진로 및 채용</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/career" class="sb-mi <%= currentPage==='career' ?'active':'' %>"><span class="sb-mi-dot"></span>진로정보</a>
+      <a href="/recruit" class="sb-mi <%= currentPage==='recruit' ?'active':'' %>"><span class="sb-mi-dot"></span>채용정보</a>
+      <a href="/career/plan" class="sb-mi <%= currentPage==='careerPlan' ?'active':'' %>"><span class="sb-mi-dot"></span>주간 계획</a>
+      <a href="/career/portfolio" class="sb-mi <%= currentPage==='careerPortfolio' ?'active':'' %>"><span class="sb-mi-dot"></span>포트폴리오</a>
+      <a href="/career/diagnosis" class="sb-mi <%= currentPage==='careerDiagnosis' ?'active':'' %>"><span class="sb-mi-dot"></span>진단</a>
+    </div>
+    <div class="sb-divider"></div>
+
+    <!-- 플랜 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">💳</span>
+      <span class="sb-cat-name">플랜</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/payment" class="sb-mi <%= currentPage==='payment' ?'active':'' %>"><span class="sb-mi-dot"></span>구독 플랜</a>
+    </div>
+
+    <% if (user && user.role === 'admin') { %>
+    <div class="sb-divider"></div>
+    <!-- 관리 -->
+    <div class="sb-cat-row">
+      <span class="sb-cat-icon">⚙️</span>
+      <span class="sb-cat-name">관리</span>
+    </div>
+    <div class="sb-sub-list">
+      <a href="/admin/users"           class="sb-mi <%= currentPage==='adminUsers'      ?'active':'' %>"><span class="sb-mi-dot"></span>사용자 관리</a>
+      <a href="/admin/staff"           class="sb-mi <%= currentPage==='adminStaff'      ?'active':'' %>"><span class="sb-mi-dot"></span>가입 승인</a>
+      <a href="/admin/adminStatistics" class="sb-mi <%= currentPage==='adminStatistics' ?'active':'' %>"><span class="sb-mi-dot"></span>통계</a>
+    </div>
+    <% } %>
+
   </div>
 
-  <nav class="sidebar-nav">
-    <div class="nav-section">
-      <div class="nav-label">메인</div>
-      <a href="/home"     class="nav-item <%= currentPage === 'home'     ? 'active' : '' %>"><span class="nav-icon">🏠</span>홈</a>
-      <a href="/calendar" class="nav-item <%= currentPage === 'calendar' ? 'active' : '' %>"><span class="nav-icon">📅</span>캘린더</a>
-      <a href="/mystatus" class="nav-item <%= currentPage === 'mystatus' ? 'active' : '' %>"><span class="nav-icon">⭐</span>MyStatus</a>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">학업</div>
-      <a href="/notice"   class="nav-item <%= currentPage === 'notice'   ? 'active' : '' %>">
-        <span class="nav-icon">📢</span>공지사항
-        <span class="nav-badge">3</span>
-      </a>
-      <a href="/academic" class="nav-item <%= currentPage === 'academic' ? 'active' : '' %>"><span class="nav-icon">🎓</span>학사관리</a>
-      <a href="/study"    class="nav-item <%= currentPage === 'study'    ? 'active' : '' %>"><span class="nav-icon">📖</span>공부</a>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">진로</div>
-      <a href="/career"   class="nav-item <%= currentPage === 'career'   ? 'active' : '' %>"><span class="nav-icon">💼</span>진로정보</a>
-    </div>
-  </nav>
-
+  <!-- 하단 플랜 + 로그아웃 -->
   <div class="sidebar-footer">
-    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span>로그아웃</div>
+    <div class="sb-plan-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;">내 플랜</span>
+        <% if (user && user.planType === 'premium') { %>
+          <span style="font-size:11px;background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:20px;">프리미엄</span>
+        <% } else { %>
+          <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">무료</span>
+        <% } %>
+      </div>
+      <% if (user && user.planType !== 'premium') {
+        const today = new Date().toISOString().slice(0, 10);
+        const quizUsed = (user.dailyUsage?.quiz?.date === today) ? (user.dailyUsage.quiz.count || 0) : 0;
+        const sumUsed  = (user.dailyUsage?.summary?.date === today) ? (user.dailyUsage.summary.count || 0) : 0;
+        const quizPct  = Math.min(100, Math.round(quizUsed / 10 * 100));
+        const sumPct   = Math.min(100, Math.round(sumUsed  / 5  * 100));
+      %>
+        <div style="margin-bottom:5px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
+            <span>퀴즈</span><span style="color:var(--text1);font-weight:600;"><%= quizUsed %> / 10</span>
+          </div>
+          <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:<%= quizPct %>%;background:#534AB7;border-radius:2px;"></div>
+          </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
+            <span>요약</span><span style="color:var(--text1);font-weight:600;"><%= sumUsed %> / 5</span>
+          </div>
+          <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:<%= sumPct %>%;background:#1D9E75;border-radius:2px;"></div>
+          </div>
+        </div>
+        <a href="/payment" class="sb-upgrade-link">업그레이드 →</a>
+      <% } else if (user) { %>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5;">퀴즈 · 요약 무제한 이용 중</div>
+        <a href="/payment" class="sb-upgrade-link">플랜 관리</a>
+      <% } %>
+    </div>
+    <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span><span class="sb-item-label">로그아웃</span></div>
   </div>
+
 </aside>
+
+<% } %>

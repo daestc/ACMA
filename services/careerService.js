@@ -4,6 +4,7 @@ const { parseStringPromise } = require('xml2js');
 const { Certification, UserCertification, PassRate } = require('../models/Certifications_jobs');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const calendarService = require('./calendarService');
 
 // 진로 검색db에서 대분류, 중분류, 소분류 가져오기
 async function getCategories() {
@@ -333,12 +334,13 @@ async function saveCertification(jmcd, userId, status = 'wish') {
       // 기존 레코드의 status만 업데이트
       existingUserCert.status = status;
       await existingUserCert.save();
-      
+
       // 업데이트된 문서 반환 (populate 포함)
       const updatedUserCert = await UserCertification.findById(existingUserCert._id)
         .populate('certificationId', 'name jmcd field1 field2 seriesName')
         .populate('userId', 'name email');
-      
+
+      await syncCertificationEventsIfTarget(userId_ObjectId, status);
       return updatedUserCert;
     }
 
@@ -357,10 +359,21 @@ async function saveCertification(jmcd, userId, status = 'wish') {
       .populate('certificationId', 'name jmcd field1 field2 seriesName')
       .populate('userId', 'name email');
 
+    await syncCertificationEventsIfTarget(userId_ObjectId, status);
     return savedUserCert;
   } catch (error) {
     console.error('Error saving certification:', error);
     throw error;
+  }
+}
+
+// 목표(target) 자격증이면 원서접수 마감 일정을 캘린더에 동기화 — 실패해도 자격증 저장은 유지
+async function syncCertificationEventsIfTarget(userId, status) {
+  if (status !== 'target') return;
+  try {
+    await calendarService.syncCertificationEventsForUser(userId);
+  } catch (error) {
+    console.error('Error syncing certification calendar events:', error.message);
   }
 }
 // 자격증 별 합격률 DB에서 합격률 정보 가져오기
@@ -487,6 +500,20 @@ async function getMyJobs(userId) {
   }
 };
 
+//선택한 목표 직무와 모든 자격증 가져오기
+async function getMyCareerAndCertifications(userId) {
+  try {
+    const [jobs, certs] = await Promise.all([
+      getMyJobs(userId),
+      getMyCertifications(userId)
+    ]);
+    const targetJob = jobs.find(job => job.status === 'target') || null;
+    return { targetJob, certs };
+  } catch (error) {    console.error('Error fetching career and certifications:', error);
+    throw new Error('Failed to fetch career and certifications');
+  }
+};
+
 // 선택한 직무 삭제하기
 async function deleteJob(jobId, userId) {
   try {
@@ -533,4 +560,5 @@ module.exports = {
   deleteCertification, // 선택한 자격증 삭제하기
   getMyJobs, // 현재 선택한 직무 목록 가져오기
   deleteJob, // 선택한 직무 삭제하기
+  getMyCareerAndCertifications, // 선택한 목표 직무와 목표 자격증 가져오기
 };

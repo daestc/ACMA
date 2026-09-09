@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<%- include('../partials/head') %>
+	<title>관리자 통계</title>
+</head>
+
+<body>
+
+	<!-- 사이드바 -->
+	<%- include('../partials/sidebar', { currentPage: 'adminStatistics', user: user }) %>
+
+	<main class="main-content">
+
+		<!-- 상단 헤더 -->
+		<%- include('../partials/topbar', { pageTitle: '관리자 통계', user: user }) %>
+
+		<div class="page-content">
+
+			<!-- 요약 통계 카드 -->
+			<div class="grid-4" style="margin-bottom:24px;">
+				<div class="stat-card blue">
+					<div class="stat-icon">🏫</div>
+					<div class="stat-label">등록된 대학교</div>
+					<div class="stat-value"><%= stats.totalUniversities ?? 0 %></div>
+					<div class="stat-sub">개 대학</div>
+				</div>
+				<div class="stat-card green">
+					<div class="stat-icon">👥</div>
+					<div class="stat-label">전체 학생 수</div>
+					<div class="stat-value"><%= (stats.totalStudents ?? 0).toLocaleString() %></div>
+					<div class="stat-sub">명 등록</div>
+				</div>
+				<div class="stat-card amber">
+					<div class="stat-icon">📊</div>
+					<div class="stat-label">대학당 평균 학생</div>
+					<div class="stat-value">
+						<%= stats.totalUniversities ? Math.round((stats.totalStudents || 0) / stats.totalUniversities).toLocaleString() : 0 %>
+					</div>
+					<div class="stat-sub">명 평균</div>
+				</div>
+				<div class="stat-card purple">
+					<div class="stat-icon">🥇</div>
+					<div class="stat-label">최다 학생 대학</div>
+					<div class="stat-value" style="font-size:18px;line-height:1.4;">
+						<% if (stats.universities && stats.universities.length) { %>
+							<%= stats.universities[0].name %>
+						<% } else { %>
+							-
+						<% } %>
+					</div>
+					<div class="stat-sub">
+						<% if (stats.universities && stats.universities.length) { %>
+							<%= (stats.universities[0].studentCount || 0).toLocaleString() %>명
+						<% } %>
+					</div>
+				</div>
+			</div>
+
+			<!-- 대학교별 학생 분포 -->
+			<div class="card" style="margin-bottom:24px;">
+				<div class="card-header">
+					<div class="card-title">대학교별 학생 분포</div>
+					<span class="badge badge-blue">
+						총 <%= stats.universities ? stats.universities.length : 0 %>개 대학
+					</span>
+				</div>
+
+				<% if (stats.universities && stats.universities.length) { %>
+					<%
+						const maxCount = Math.max(...stats.universities.map(u => u.studentCount || 0), 1);
+						const fillColors = ['fill-blue', 'fill-green', 'fill-amber', 'fill-purple'];
+					%>
+					<% stats.universities.forEach((uni, index) => { %>
+						<div class="progress-wrap">
+							<div class="progress-header">
+								<span class="progress-label"><%= uni.name %></span>
+								<span class="progress-value"><%= (uni.studentCount || 0).toLocaleString() %>명</span>
+							</div>
+							<div class="progress-track">
+								<div class="progress-fill <%= fillColors[index % fillColors.length] %>"
+								     style="width:<%= Math.round(((uni.studentCount || 0) / maxCount) * 100) %>%"></div>
+							</div>
+						</div>
+					<% }) %>
+				<% } else { %>
+					<div style="padding:30px 0;text-align:center;color:var(--text2);font-size:13px;">
+						등록된 대학교 데이터가 없습니다.
+					</div>
+				<% } %>
+			</div>
+
+			<!-- 대학교별 상세 테이블 -->
+			<div class="card">
+				<div class="card-header">
+					<div class="card-title">대학교별 상세 현황</div>
+				</div>
+
+				<div style="overflow-x:auto;">
+					<table style="width:100%;border-collapse:collapse;">
+						<thead>
+							<tr style="border-bottom:2px solid var(--border);">
+								<th style="font-size:11px;font-weight:700;color:var(--text2);padding:10px;text-align:left;text-transform:uppercase;letter-spacing:.5px;">순위</th>
+								<th style="font-size:11px;font-weight:700;color:var(--text2);padding:10px;text-align:left;text-transform:uppercase;letter-spacing:.5px;">대학교</th>
+								<th style="font-size:11px;font-weight:700;color:var(--text2);padding:10px;text-align:right;text-transform:uppercase;letter-spacing:.5px;">학생 수</th>
+								<th style="font-size:11px;font-weight:700;color:var(--text2);padding:10px;text-align:right;text-transform:uppercase;letter-spacing:.5px;">비율</th>
+							</tr>
+						</thead>
+						<tbody>
+							<% if (stats.universities && stats.universities.length) { %>
+								<% stats.universities.forEach((uni, index) => { %>
+									<tr style="border-bottom:1px solid var(--border); <%= index % 2 === 1 ? 'background:var(--bg3);' : '' %>">
+										<td style="padding:10px;font-size:13px;color:var(--text2);"><%= index + 1 %></td>
+										<td style="padding:10px;font-size:13px;font-weight:600;color:var(--text);"><%= uni.name %></td>
+										<td style="padding:10px;font-size:13px;text-align:right;color:var(--text);"><%= (uni.studentCount || 0).toLocaleString() %></td>
+										<td style="padding:10px;font-size:13px;text-align:right;color:var(--text2);">
+											<%= stats.totalStudents ? (((uni.studentCount || 0) / stats.totalStudents) * 100).toFixed(1) : 0 %>%
+										</td>
+									</tr>
+								<% }) %>
+							<% } else { %>
+								<tr>
+									<td colspan="4" style="padding:20px 10px;text-align:center;font-size:13px;color:var(--text2);">
+										데이터가 없습니다.
+									</td>
+								</tr>
+							<% } %>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</main>
+    <%- include('../partials/modals/mypage', { user: user }) %>
+	<script src="/js/common.js"></script>
+</body>
+
+</html>

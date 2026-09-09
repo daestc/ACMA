@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title>결제 내역</title>
+</head>
+<body>
+
+<%- include('../partials/sidebar', { currentPage: 'payment', user }) %>
+
+<main class="main-content">
+  <%- include('../partials/topbar', { pageTitle: '결제 내역', user }) %>
+
+  <div class="page-content">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">결제 내역</h2>
+        <p style="font-size:14px;color:var(--text2);">최근 50건의 결제 내역</p>
+      </div>
+      <a href="/payment" style="font-size:13px;color:var(--text2);text-decoration:none;">← 플랜 페이지</a>
+    </div>
+
+    <% if (payments.length === 0) { %>
+    <div style="text-align:center;padding:60px 0;color:var(--text2);font-size:14px;">결제 내역이 없습니다.</div>
+    <% } else { %>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--bg3);">
+            <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">결제일시</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">상품명</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">결제수단</th>
+            <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">금액</th>
+            <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);">구분</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% payments.forEach((p, i) => { %>
+          <tr style="border-bottom:<%= i < payments.length-1 ? '1px solid var(--border)' : 'none' %>;">
+            <td style="padding:12px 16px;color:var(--text2);font-size:12px;">
+              <%= p.paidAt ? new Date(p.paidAt).toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-' %>
+            </td>
+            <td style="padding:12px 16px;font-weight:600;"><%= p.orderName %></td>
+            <td style="padding:12px 16px;color:var(--text2);"><%= p.method || '-' %></td>
+            <td style="padding:12px 16px;text-align:right;font-weight:700;"><%= p.amount.toLocaleString() %>원</td>
+            <td style="padding:12px 16px;text-align:center;">
+              <% if (p.type === 'premium') { %>
+                <span style="font-size:11px;background:#EEEDFE;color:#3C3489;padding:2px 10px;border-radius:20px;">프리미엄</span>
+              <% } else { %>
+                <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 10px;border-radius:20px;">포인트</span>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+  </div>
+</main>
+
+<%- include('../partials/modals/mypage', { user: user }) %>
+<script src="/js/common.js"></script>
+</body>
+</html>

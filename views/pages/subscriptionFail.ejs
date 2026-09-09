@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title><%= pageTitle %></title>
+</head>
+<body>
+  <%- include('../partials/sidebar', { currentPage, user }) %>
+
+  <main class="main-content">
+    <%- include('../partials/topbar', { pageTitle, user }) %>
+
+    <div class="page-content">
+      <div class="card" style="padding:32px;text-align:center;max-width:520px;margin:40px auto;">
+        <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">결제에 실패했습니다</h2>
+        <p style="color:var(--text2);line-height:1.6;margin-bottom:20px;">
+          <%= message %>
+          <% if (code) { %><br><span style="font-size:12px;">코드: <%= code %></span><% } %>
+        </p>
+        <a href="/subscription" class="btn btn-accent btn-sm">다시 시도</a>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/modals/mypage', { user: user }) %>
+  <script src="/js/common.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!-- 경험/활동/교육 추가 모달 -->
+<div class="spec-modal" id="experience-modal" hidden>
+  <div class="spec-modal-content" role="dialog" aria-modal="true" aria-labelledby="experience-modal-title">
+    <div class="spec-modal-header">
+      <h3 id="experience-modal-title">경험 / 활동 / 교육 추가</h3>
+      <button type="button" class="spec-modal-close" data-modal-close aria-label="닫기">&times;</button>
+    </div>
+
+    <div class="spec-modal-form">
+      <div class="spec-field">
+        <label for="experience-title">활동명 <span class="spec-required">*</span></label>
+        <input type="text" id="experience-title" placeholder="예: 교내 캡스톤 프로젝트" />
+      </div>
+
+      <div class="spec-field">
+        <label for="experience-host">주최 기관</label>
+        <input type="text" id="experience-host" placeholder="예: OO대학교 SW중심대학사업단" />
+      </div>
+
+      <div class="spec-field">
+        <label for="experience-location">장소</label>
+        <input type="text" id="experience-location" placeholder="예: 서울" />
+      </div>
+
+      <div class="spec-field">
+        <label for="experience-start">시작일</label>
+        <input type="date" id="experience-start" />
+      </div>
+
+      <div class="spec-field">
+        <label for="experience-end">종료일</label>
+        <input type="date" id="experience-end" />
+      </div>
+
+      <div class="spec-field">
+        <label for="experience-note">활동 설명</label>
+        <textarea id="experience-note" placeholder="활동 내용을 간단히 적어주세요"></textarea>
+      </div>
+
+      <p class="spec-error" data-modal-error hidden></p>
+
+      <div class="spec-modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-delete hidden style="margin-right:auto;color:var(--red);">삭제</button>
+        <button type="button" class="btn btn-ghost" data-modal-cancel>취소</button>
+        <button type="button" class="btn btn-accent" data-modal-submit>저장</button>
+      </div>
+    </div>
+  </div>
+</div>

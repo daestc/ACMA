@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <%- include('../partials/head') %>
+  <title>학생 관리</title>
+</head>
+<body>
+
+<%- include('../partials/sidebar', { currentPage: 'staffStudents', user }) %>
+
+<main class="main-content staff-content">
+  <%- include('../partials/topbar', { pageTitle: '학생 관리', user }) %>
+
+  <div class="page-content">
+
+    <!-- 헤더 -->
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">학생 관리</h2>
+      <p style="font-size:14px;color:var(--text2);"><%= user.university %> · 소속 학생 계정 현황</p>
+    </div>
+
+    <!-- 통계 카드 -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">전체 학생</div>
+        <div style="font-size:24px;font-weight:700;"><%= stats.totalCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">현재 접속 중</div>
+        <div style="font-size:24px;font-weight:700;color:#1D9E75;"><%= stats.onlineCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">프리미엄 구독</div>
+        <div style="font-size:24px;font-weight:700;color:#534AB7;"><%= stats.premiumCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">휴면 대상 (6개월↑)</div>
+        <div style="font-size:24px;font-weight:700;color:#B45309;"><%= stats.dormantCount %><span style="font-size:14px;font-weight:400;color:var(--text2);margin-left:2px;">명</span></div>
+      </div>
+    </div>
+
+    <!-- 검색 + 필터 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <input type="text" id="search-input" placeholder="이름, 학번, 전공으로 검색"
+        style="flex:1;height:36px;padding:0 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text1);"
+        oninput="filterTable()" />
+      <button onclick="setFilter('all')"     id="btn-all"     class="filter-chip active-chip">전체</button>
+      <button onclick="setFilter('online')"  id="btn-online"  class="filter-chip">접속 중</button>
+      <button onclick="setFilter('premium')" id="btn-premium" class="filter-chip">프리미엄</button>
+      <button onclick="setFilter('dormant')" id="btn-dormant" class="filter-chip">휴면 대상</button>
+    </div>
+
+    <!-- 학생 목록 테이블 -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <table id="student-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--bg3);">
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);width:48px;">접속</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">이름</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">전공</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">학번</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">플랜</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">상태</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);">마지막 접속</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% students.forEach(s => {
+            const lastLogin = s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
+          %>
+          <tr class="student-row"
+            data-online="<%= s.isOnline %>"
+            data-plan="<%= s.planType %>"
+            data-dormant="<%= s.isDormant %>"
+            data-search="<%= (s.name + s.studentId + s.major).toLowerCase() %>"
+            style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;"
+            onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"
+            onclick="openStudentModal('<%= s._id %>')">
+            <td style="padding:10px 14px;">
+              <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:<%= s.isOnline ? '#1D9E75' : '#94a3b8' %>;" title="<%= s.isOnline ? '접속 중' : '오프라인' %>"></span>
+            </td>
+            <td style="padding:10px 14px;font-weight:600;color:#534AB7;"><%= s.name %></td>
+            <td style="padding:10px 14px;color:var(--text1);"><%= s.major || '-' %></td>
+            <td style="padding:10px 14px;color:var(--text2);"><%= s.studentId || '-' %></td>
+            <td style="padding:10px 14px;">
+              <% if (s.planType === 'premium') { %>
+                <span style="font-size:11px;background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:20px;">프리미엄</span>
+              <% } else { %>
+                <span style="font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">무료</span>
+              <% } %>
+            </td>
+            <td style="padding:10px 14px;">
+              <% if (s.accountStatus === 'suspended') { %>
+                <span style="font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:20px;">정지</span>
+              <% } else if (s.accountStatus === 'dormant' || s.isDormant) { %>
+                <span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;">휴면</span>
+              <% } else { %>
+                <span style="font-size:11px;background:#F1F5F9;color:#475569;padding:2px 8px;border-radius:20px;">정상</span>
+              <% } %>
+            </td>
+            <td style="padding:10px 14px;color:var(--text2);font-size:12px;">
+              <% if (s.isOnline) { %>
+                <span style="color:#1D9E75;font-size:11px;background:#E1F5EE;padding:2px 8px;border-radius:20px;">접속 중</span>
+              <% } else { %>
+                <%= lastLogin %>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (students.length === 0) { %>
+          <tr>
+            <td colspan="7" style="padding:40px;text-align:center;color:var(--text2);">등록된 학생이 없습니다.</td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /.page-content -->
+</main>
+
+<!-- ── 학생 상세 모달 ── -->
+<div id="student-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(23,25,43,.5);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;">
+
+    <!-- 모달 헤더 -->
+    <div id="modal-head" style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:10;border-radius:20px 20px 0 0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="modal-avatar" style="width:42px;height:42px;border-radius:50%;background:#EEEDFE;color:#3C3489;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;"></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="modal-name" style="font-size:16px;font-weight:700;"></span>
+            <span id="modal-online-badge" style="display:none;font-size:11px;background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:20px;">접속 중</span>
+          </div>
+          <div id="modal-meta" style="font-size:13px;color:var(--text2);margin-top:2px;"></div>
+        </div>
+      </div>
+      <button onclick="closeStudentModal()" style="width:32px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:16px;color:var(--text2);">✕</button>
+    </div>
+
+    <!-- 모달 바디 -->
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
+
+      <!-- 기본 정보 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">구독 플랜</div>
+          <div id="modal-plan" style="font-size:14px;font-weight:600;"></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">포인트 잔액</div>
+          <div id="modal-points" style="font-size:14px;font-weight:600;"></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">계정 상태</div>
+          <div id="modal-status" style="font-size:14px;font-weight:600;"></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">오늘 사용량</div>
+          <div id="modal-usage" style="font-size:13px;font-weight:600;"></div>
+        </div>
+      </div>
+
+      <!-- 접속 기록 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">최근 접속 기록</div>
+        <div id="modal-history" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;"></div>
+      </div>
+
+      <!-- 계정 관리 액션 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">계정 관리</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="handleStatus('dormant')"  class="action-btn warn-btn">🌙 휴면 처리</button>
+          <button onclick="handleStatus('suspended')" class="action-btn danger-btn">🚫 계정 정지</button>
+          <button onclick="handleStatus('active')"    class="action-btn">✅ 정상 복구</button>
+          <button onclick="handleResetPw()"           class="action-btn">🔑 비밀번호 초기화</button>
+          <button onclick="handleDelete()"            class="action-btn danger-btn" style="grid-column:span 2;">🗑 계정 삭제</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/modals/mypage', { user: user }) %>
+<script src="/js/common.js"></script>
+
+<style>
+.filter-chip{height:32px;padding:0 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .12s;}
+.filter-chip:hover{background:var(--bg3);}
+.active-chip{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489;}
+.action-btn{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:13px;cursor:pointer;transition:background .12s;}
+.action-btn:hover{background:var(--bg4);}
+.warn-btn{border-color:#FCD34D;color:#92400E;}
+.warn-btn:hover{background:#FEF3C7;}
+.danger-btn{border-color:#FCA5A5;color:#991B1B;}
+.danger-btn:hover{background:#FEE2E2;}
+</style>
+
+<script>
+let currentStudentId = null;
+
+// ── 검색 / 필터 ──────────────────────────────────────
+let currentFilter = 'all';
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active-chip'));
+  document.getElementById('btn-' + f).classList.add('active-chip');
+  filterTable();
+}
+
+function filterTable() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  document.querySelectorAll('.student-row').forEach(row => {
+    const matchSearch  = !q || row.dataset.search.includes(q);
+    const matchOnline  = currentFilter !== 'online'  || row.dataset.online  === 'true';
+    const matchPremium = currentFilter !== 'premium' || row.dataset.plan    === 'premium';
+    const matchDormant = currentFilter !== 'dormant' || row.dataset.dormant === 'true';
+    row.style.display = (matchSearch && matchOnline && matchPremium && matchDormant) ? '' : 'none';
+  });
+}
+
+// ── 모달 열기 ─────────────────────────────────────────
+async function openStudentModal(id) {
+  currentStudentId = id;
+  document.getElementById('student-modal-overlay').style.display = 'flex';
+  document.getElementById('modal-history').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;">불러오는 중...</div>';
+
+  try {
+    const res  = await fetch(`/staff/students/${id}`);
+    const data = await res.json();
+    if (!data.ok) return alert('조회 실패');
+    const s = data.student;
+
+    document.getElementById('modal-avatar').textContent   = s.name[0];
+    document.getElementById('modal-name').textContent     = s.name;
+    document.getElementById('modal-meta').textContent     = `${s.major || ''} · ${s.studentId || ''} · ${s.enrollmentStatus || ''}`;
+
+    const onlineBadge = document.getElementById('modal-online-badge');
+    onlineBadge.style.display = s.isOnline ? 'inline-block' : 'none';
+
+    document.getElementById('modal-plan').innerHTML = s.planType === 'premium'
+      ? '<span style="color:#3C3489;">프리미엄</span>'
+      : '<span style="color:#0F6E56;">무료</span>';
+    document.getElementById('modal-points').textContent = (s.pointBalance || 0).toLocaleString() + '원';
+
+    const statusMap = { active:'정상', dormant:'휴면', suspended:'정지' };
+    const statusColor = { active:'#475569', dormant:'#92400E', suspended:'#991B1B' };
+    const st = s.accountStatus || 'active';
+    document.getElementById('modal-status').innerHTML = `<span style="color:${statusColor[st]}">${statusMap[st]}</span>`;
+
+    const today   = new Date().toISOString().slice(0, 10);
+    const quiz    = (s.dailyUsage?.quiz?.date === today)    ? (s.dailyUsage.quiz.count || 0)    : 0;
+    const summary = (s.dailyUsage?.summary?.date === today) ? (s.dailyUsage.summary.count || 0) : 0;
+    document.getElementById('modal-usage').textContent = s.planType === 'premium'
+      ? '무제한' : `퀴즈 ${quiz}/10 · 요약 ${summary}/5`;
+
+    // 접속 기록
+    const history = s.loginHistory || [];
+    if (history.length === 0) {
+      document.getElementById('modal-history').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;">접속 기록이 없습니다.</div>';
+    } else {
+      document.getElementById('modal-history').innerHTML = history.map((h, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;${i < history.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}font-size:12px;">
+          <span style="font-size:10px;padding:2px 8px;border-radius:20px;flex-shrink:0;${h.action === 'login' ? 'background:#E1F5EE;color:#0F6E56;' : 'background:#F1F5F9;color:#475569;'}">${h.action === 'login' ? '로그인' : '로그아웃'}</span>
+          <span style="flex:1;color:var(--text1);">${new Date(h.at).toLocaleString('ko-KR')}</span>
+          <span style="color:var(--text2);">${h.ip || ''}</span>
+        </div>
+      `).join('');
+    }
+  } catch {
+    alert('서버 오류가 발생했습니다.');
+  }
+}
+
+function closeStudentModal() {
+  document.getElementById('student-modal-overlay').style.display = 'none';
+  currentStudentId = null;
+}
+
+document.getElementById('student-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('student-modal-overlay')) closeStudentModal();
+});
+
+// ── 계정 상태 변경 ────────────────────────────────────
+const statusLabel = { dormant:'휴면 처리', suspended:'계정 정지', active:'정상 복구' };
+
+async function handleStatus(action) {
+  if (!currentStudentId) return;
+  if (!confirm(`${statusLabel[action]}하시겠습니까?`)) return;
+  try {
+    const res  = await fetch(`/staff/students/${currentStudentId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!data.ok) return alert('처리 실패');
+    alert(`${statusLabel[action]} 완료`);
+    location.reload();
+  } catch { alert('서버 오류'); }
+}
+
+// ── 비밀번호 초기화 ───────────────────────────────────
+async function handleResetPw() {
+  if (!currentStudentId) return;
+  if (!confirm('임시 비밀번호로 초기화하시겠습니까?')) return;
+  try {
+    const res  = await fetch(`/staff/students/${currentStudentId}/reset-password`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) return alert('초기화 실패');
+    alert(`임시 비밀번호: ${data.tempPassword}\n\n학생에게 안내 후 변경을 요청하세요.`);
+  } catch { alert('서버 오류'); }
+}
+
+// ── 계정 삭제 ─────────────────────────────────────────
+async function handleDelete() {
+  if (!currentStudentId) return;
+  if (!confirm('계정을 삭제하면 복구할 수 없습니다. 정말 삭제하시겠습니까?')) return;
+  try {
+    const res  = await fetch(`/staff/students/${currentStudentId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) return alert('삭제 실패');
+    alert('계정이 삭제되었습니다.');
+    closeStudentModal();
+    location.reload();
+  } catch { alert('서버 오류'); }
+}
+</script>
+
+</body>
+</html>
