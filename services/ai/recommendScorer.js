@@ -283,9 +283,15 @@ function rankedItems(items) {
     .sort((a, b) => b.importance - a.importance);
 }
 
-function bestRankWeight(items, names) {
+// 점수를 준 직무 쪽 항목과 그 순위(1부터). 없으면 null.
+function bestRankMatch(items, names) {
   const idx = rankedItems(items).findIndex(it => names.has(it.name));
-  return idx === -1 ? 0 : RANK_WEIGHT[idx] || 0;
+  if (idx === -1) return null;
+  return { name: rankedItems(items)[idx].name, rank: idx + 1, weight: RANK_WEIGHT[idx] || 0 };
+}
+
+function bestRankWeight(items, names) {
+  return bestRankMatch(items, names)?.weight || 0;
 }
 
 function targetStrength(job, target) {
@@ -307,7 +313,12 @@ function buildSalaryPool(jobs) {
 // 직무 쪽 데이터가 없으면 그 항목은 0점이며 환산하지 않는다(계획서 §3-5).
 function scoreJob(signals, prefs, job, salaryPool = []) {
   const breakdown = { major: 0, cert: 0, knowledge: 0, skill: 0, pref: 0 };
-  const matched = { major: null, certs: [], subjects: [], skills: [], prefs: [] };
+  // topKnowledge/topAbility: 점수를 준 직무 쪽 항목(화면의 "이 직무의 핵심 지식 ○○(n순위)").
+  // subjects·skills·experiences는 직무 안 순위가 높은 항목을 뒷받침하는 것부터 나온다.
+  const matched = {
+    major: null, certs: [], subjects: [], skills: [], experiences: [], prefs: [],
+    topKnowledge: null, topAbility: null,
+  };
 
   const majorHit = signals.majors.find(m => majorMatch(m, job.relatedDepartments));
   if (majorHit) {
@@ -321,14 +332,21 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   matched.certs = heldCerts;
 
   const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
-  breakdown.knowledge = Math.round(WEIGHTS.knowledge * bestRankWeight(job.knowledge, knowledgeNames));
+  const topKnowledge = bestRankMatch(job.knowledge, knowledgeNames);
+  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.weight || 0));
+  if (topKnowledge) matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
   const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
   matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
 
   const abilityNames = new Set(signals.skillAbilities.keys());
-  breakdown.skill = Math.round(WEIGHTS.skill * bestRankWeight(job.abilities, abilityNames));
+  const topAbility = bestRankMatch(job.abilities, abilityNames);
+  breakdown.skill = Math.round(WEIGHTS.skill * (topAbility?.weight || 0));
+  if (topAbility) matched.topAbility = { name: topAbility.name, rank: topAbility.rank };
   const heldAbilities = rankedItems(job.abilities).filter(a => abilityNames.has(a.name));
-  matched.skills = [...new Set(heldAbilities.flatMap(a => signals.skillAbilities.get(a.name)))];
+  const abilityEvidence = [...new Set(heldAbilities.flatMap(a => signals.skillAbilities.get(a.name)))];
+  const skillSet = new Set(signals.skills);
+  matched.skills = abilityEvidence.filter(label => skillSet.has(label));
+  matched.experiences = abilityEvidence.filter(label => !skillSet.has(label));
 
   let pref = 0;
   const work = (prefs?.work || []).filter(key => WORK_PREF_TARGETS[key]);

@@ -42,8 +42,35 @@ function matchedChips(matched) {
     ...(matched.certs || []).map((c) => `자격증: ${c}`),
     ...(matched.subjects || []).map((s) => `과목: ${s}`),
     ...(matched.skills || []).map((s) => `기술: ${s}`),
+    ...(matched.experiences || []).map((e) => `경험: ${e}`),
     ...(matched.prefs || []),
   ].filter(Boolean)
+}
+
+// "○○ 외 N과목" — 목록이 비면 빈 문자열
+function evidenceSummary(list, unit) {
+  if (!list?.length) return ''
+  return ` ← ${list[0]}${list.length > 1 ? ` 외 ${list.length - 1}${unit}` : ''}`
+}
+
+// 점수를 준 직무 쪽 항목 한 줄씩. 이 필드가 생기기 전 추천 문서에는 topKnowledge/topAbility가 없어서 줄을 숨긴다.
+function KeyMatchLines({ matched }) {
+  const lines = []
+  if (matched?.topKnowledge) {
+    const { name, rank } = matched.topKnowledge
+    lines.push(`이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
+  }
+  if (matched?.topAbility) {
+    const { name, rank } = matched.topAbility
+    const evidence = [...(matched.skills || []), ...(matched.experiences || [])]
+    lines.push(`이 직무의 핵심 능력 ${name}(${rank}순위)${evidenceSummary(evidence, '개')}`)
+  }
+  if (lines.length === 0) return null
+  return (
+    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {lines.map((line) => <div key={line} style={{ fontSize: 12, fontWeight: 600 }}>{line}</div>)}
+    </div>
+  )
 }
 
 // jmcd가 없으면 자격증 DB에 없는 종목(외국·민간 등)이라 일정을 알 방법이 없다.
@@ -131,6 +158,7 @@ function InterestPicker({ categories, selected, setSelected, busy, onSubmit }) {
 
 function PickCard({ pick, candidate, selected, selecting, onSelect }) {
   const chips = matchedChips(candidate?.matched)
+  const [showChips, setShowChips] = useState(false)
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -140,13 +168,22 @@ function PickCard({ pick, candidate, selected, selecting, onSelect }) {
       </div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{pick.jobMdclNm || candidate?.jobMdclNm}</div>
 
+      <KeyMatchLines matched={candidate?.matched} />
+
       <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginTop: 10 }}>
         {pick.reason || '점수 기준 추천'}
       </p>
 
       {chips.length > 0 && (
         <div style={{ marginTop: 6 }}>
-          {chips.map((c, i) => <span className="evidence-chip" style={{ marginRight: 4, marginTop: 4, display: 'inline-block' }} key={i}>{c}</span>)}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowChips((v) => !v)}>
+            {showChips ? '근거 접기' : `근거 전체 보기 (${chips.length})`}
+          </button>
+          {showChips && (
+            <div style={{ marginTop: 4 }}>
+              {chips.map((c, i) => <span className="evidence-chip" style={{ marginRight: 4, marginTop: 4, display: 'inline-block' }} key={i}>{c}</span>)}
+            </div>
+          )}
         </div>
       )}
 
@@ -266,6 +303,8 @@ function CareerRecommend() {
   }
 
   const candidatesByCode = new Map((doc?.candidates || []).map((c) => [c.jobCode, c]))
+  const topTotal = doc?.candidates?.[0]?.total
+  const tiedWithTop = (doc?.candidates || []).filter((c) => c.total === topTotal).length
 
   return (
     <>
@@ -329,6 +368,11 @@ function CareerRecommend() {
               <span className="card-title">후보 직무 {(doc.candidates || []).length}개</span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setError(null); setStep('checklist') }}>체크리스트 다시 하기</button>
             </div>
+            {tiedWithTop >= 3 && (
+              <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: 8, fontSize: 12, marginTop: 8 }}>
+                비슷한 점수의 직무가 많습니다. '끌리는 일'을 고르면 더 가려낼 수 있어요.
+              </div>
+            )}
             <div style={{ overflowX: 'auto', marginTop: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>

@@ -204,6 +204,11 @@ const weeklyPlanSchema = new Schema({
 weeklyPlanSchema.index({ userId: 1, weekStart: 1 }, { unique: true });
 
 // ── AI 진로 추천 (후보는 recommendScorer가 점수로 고르고, 2단계에서 AI가 그 안에서 3개를 고른다)
+const rankedItemSchema = new Schema({
+  name: { type: String, required: true },
+  rank: { type: Number, required: true }, // 직무 안에서 importance 순위(1~5)
+}, { _id: false });
+
 const recommendationCandidateSchema = new Schema({
   jobCode: { type: String, required: true },
   title: { type: String, required: true },
@@ -222,7 +227,11 @@ const recommendationCandidateSchema = new Schema({
     certs: { type: [String], default: [] },
     subjects: { type: [String], default: [] },
     skills: { type: [String], default: [] },
+    experiences: { type: [String], default: [] },
     prefs: { type: [String], default: [] },
+    // 점수를 준 직무 쪽 항목 — 이 필드가 생기기 전 문서에는 없다(화면에서 없으면 줄을 숨김)
+    topKnowledge: { type: rankedItemSchema, default: null },
+    topAbility: { type: rankedItemSchema, default: null },
   },
 }, { _id: false });
 
