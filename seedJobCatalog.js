@@ -18,7 +18,7 @@ require('dotenv').config();
 const { parseStringPromise } = require('xml2js');
 const { JobCatalog } = require('./models/JobCatalog');
 const careerService = require('./services/careerService');
-const { norm, expandCert } = require('./services/ai/recommendScorer');
+const { norm, expandCert, splitCertNames } = require('./services/ai/recommendScorer');
 
 const SOURCE = 'jobInfo';
 const CALL_INTERVAL_MS = 300;
@@ -98,7 +98,9 @@ function buildCatalogDoc(listItem, primary, duties) {
   const title = primary?.jobSmclNm || listItem.jobNm || '';
   const summary = String(primary?.jobSum || duties?.jobSum || '').slice(0, 300);
   const responsibilities = parseDuties(duties?.execJob);
-  const relatedCertifications = toArray(primary?.relCertList).map(c => c.certNm).filter(Boolean);
+  const relatedCertifications = [...new Set(
+    toArray(primary?.relCertList).flatMap(c => splitCertNames(c.certNm)),
+  )];
   const certNames = [...new Set(relatedCertifications.flatMap(expandCert).map(norm))];
 
   return {
@@ -161,6 +163,8 @@ async function run() {
   let failCount = 0;
   const fillCounts = Object.fromEntries(Object.keys(FILL_FIELDS).map(k => [k, 0]));
   const rawSamples = [];
+  const certSamples = []; // 파싱으로 표기가 바뀐 relCertList 원문 → 결과
+  let certNameTotal = 0;
 
   for (const item of targets) {
     try {
@@ -179,6 +183,11 @@ async function run() {
       }
 
       const doc = buildCatalogDoc(item, primary, duties);
+      certNameTotal += doc.certNames.length;
+      const rawCerts = toArray(primary?.relCertList).map(c => c.certNm).filter(Boolean);
+      if (certSamples.length < 5 && rawCerts.some(c => /[,，(（]/.test(c))) {
+        certSamples.push({ jobCode: item.jobCd, raw: rawCerts, parsed: doc.relatedCertifications, certNames: doc.certNames });
+      }
       Object.entries(FILL_FIELDS).forEach(([key, isFilled]) => { if (isFilled(doc)) fillCounts[key] += 1; });
 
       await JobCatalog.findOneAndUpdate(
@@ -214,6 +223,8 @@ async function run() {
   console.log(`직무 수: ${targets.length}`);
   console.log(`성공: ${successCount} / 실패: ${failCount}`);
   Object.entries(fillCounts).forEach(([key, n]) => console.log(`채움 ${key}: ${n}/${targets.length} (${pct(n)}%)`));
+  console.log(`certNames 직무당 평균: ${successCount ? (certNameTotal / successCount).toFixed(2) : 0}개`);
+  console.log('자격증 파싱 샘플(원문 → 결과):', JSON.stringify(certSamples, null, 2));
   console.log('첫 3건 원문(knowldg/jobAbil/jobChr):', JSON.stringify(rawSamples, null, 2));
 
   await mongoose.connection.close();

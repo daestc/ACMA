@@ -21,6 +21,16 @@ function expandCert(raw) {
   return [parts[0], ...parts.slice(1).map(p => (p.replace(CERT_SERIES, '') === '' ? stem + p : p))];
 }
 
+// 1차 API relCertList.certNm은 꼬리표("컴퓨터활용능력 1급(국가기술)")가 붙거나 한 항목에
+// 여러 개가 쉼표로 들어 있다("빅데이터분석기사, 데이터분석전문가"). 끝의 괄호만 뗀다 —
+// 이름 중간의 괄호는 자격증 이름의 일부일 수 있다.
+function splitCertNames(raw) {
+  return String(raw || '')
+    .split(/[,，]/)
+    .map(s => s.replace(/\s*[(（][^)）]*[)）]\s*$/, '').trim())
+    .filter(Boolean);
+}
+
 // 학과: 끝의 학과/전공/학부/과/부 제거. 같으면 길이와 무관하게 일치,
 // 포함 관계는 짧은 쪽이 3자 이상일 때만 인정("경영" ⊂ "경영정보" 차단)
 const normMajor = v => norm(v).replace(/(학과|전공|학부|과|부)$/, '');
@@ -324,6 +334,7 @@ module.exports = {
   WEIGHTS,
   norm,
   expandCert,
+  splitCertNames,
   normMajor,
   splitDept,
   majorMatch,
