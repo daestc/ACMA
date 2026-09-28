@@ -381,6 +381,24 @@ function rankCandidates(signals, prefs, jobs, { limit = 10, perMidClass = 3 } = 
   return picked;
 }
 
+// 후보 순서대로 고르되 중분류(jobMdclNm)가 서로 다른 것을 먼저 고르고, 모자라면 순서대로 채운다.
+// 동점 구간에서 같은 중분류 직무 3개가 picks를 다 차지하는 걸 막는다. 반환 순서는 후보 순서.
+function pickDiverse(candidates, count) {
+  const chosen = new Set();
+  const seenMid = new Set();
+  for (const c of candidates) {
+    if (chosen.size >= count) break;
+    if (seenMid.has(c.jobMdclNm)) continue;
+    chosen.add(c);
+    seenMid.add(c.jobMdclNm);
+  }
+  for (const c of candidates) {
+    if (chosen.size >= count) break;
+    chosen.add(c);
+  }
+  return candidates.filter(c => chosen.has(c));
+}
+
 // 학생 쪽 입력 신호 종류로 판정한다(계획서 v3.2 §4-2). 결과 점수 차로 판정하면 492개 직무에서
 // 동점 구간이 생길 때마다 정보가 많은 학생도 low가 된다. style 'any'는 점수에 쓰이지 않아 세지 않는다.
 function countSignalKinds(signals, prefs) {
@@ -420,6 +438,7 @@ module.exports = {
   extractUserSignals,
   scoreJob,
   rankCandidates,
+  pickDiverse,
   countSignalKinds,
   calcConfidence,
 };

@@ -119,7 +119,10 @@ async function attachCertGaps(picks, context, jobsByCode) {
     const unknown = [];
     for (const name of missing) {
       if (found.length >= CERT_GAP_LIMIT) break;
-      const match = await gapLinker.findDirectCertMatch(name);
+      // Certification.name은 "컴퓨터활용능력1급"처럼 붙여 쓴 경우가 있어 공백을 뺀 이름으로 한 번 더 찾는다.
+      const compactName = name.replace(/\s+/g, '');
+      const match = await gapLinker.findDirectCertMatch(name)
+        || (compactName !== name ? await gapLinker.findDirectCertMatch(compactName) : null);
       if (match) found.push(toCertGap(name, match));
       else unknown.push(toCertGap(name, null));
     }
@@ -129,7 +132,7 @@ async function attachCertGaps(picks, context, jobsByCode) {
 }
 
 function toScorePicks(candidates) {
-  return candidates.slice(0, PICK_COUNT).map(c => ({
+  return scorer.pickDiverse(candidates, PICK_COUNT).map(c => ({
     jobCode: c.jobCode,
     title: c.title,
     jobMdclNm: c.jobMdclNm,
@@ -171,7 +174,11 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
   return { httpStatus: 200, body: { id: doc._id, status: 'done', data: doc.toObject() } };
 }
 
+// 형식이 틀린 id로 findById를 부르면 CastError가 나서 500이 된다 — 없는 문서와 같이 404로 본다.
+const isObjectIdString = id => /^[a-f\d]{24}$/i.test(String(id || ''));
+
 async function getRecommendation(userId, docId) {
+  if (!isObjectIdString(docId)) return null;
   await expireStalePending(userId);
   const doc = await CareerRecommendation.findById(docId).lean();
   if (!doc || String(doc.userId) !== String(userId)) return null;
@@ -193,6 +200,7 @@ async function getLatestRecommendation(userId) {
  * @returns {{ httpStatus: number, body: object }}
  */
 async function selectJob(userId, docId, jobCode) {
+  if (!isObjectIdString(docId)) return { httpStatus: 404, body: { success: false } };
   const doc = await CareerRecommendation.findById(docId).select('userId candidates').lean();
   if (!doc || String(doc.userId) !== String(userId)) {
     return { httpStatus: 404, body: { success: false } };

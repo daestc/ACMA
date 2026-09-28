@@ -203,6 +203,8 @@ function checkAccounts(jobs) {
     console.log(`  스킬→능력: ${abilityMapped || '없음'}`);
     console.log(`  신뢰도: ${confidence} (입력 신호 ${scorer.countSignalKinds(signals, safePrefs)}종) → 요청 흐름: ${flow}`);
     console.log(`  1위 ${ranked[0]?.total ?? '-'}, 5위 ${ranked[4]?.total ?? '-'} / 후보 10개 값 종류: 지식 ${distinct('knowledge')}, 기술 ${distinct('skill')}, 선호 ${distinct('pref')}`);
+    const picks = scorer.pickDiverse(ranked, 3);
+    console.log(`  picks: ${picks.map(p => `${ranked.indexOf(p) + 1}위 ${p.title} [${p.jobMdclNm}]`).join(' / ')}`);
     ranked.forEach((c, i) => {
       const b = c.breakdown;
       const matched = [
