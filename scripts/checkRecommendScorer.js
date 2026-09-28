@@ -12,7 +12,9 @@ const SAMPLE_MAJORS = [
   '컴퓨터공학과', '소프트웨어학과', '경영학과', '전자공학과', '기계공학과',
   '간호학과', '영어영문학과', '시각디자인학과', '경제학과', '행정학과',
 ];
-const SAMPLE_SKILLS = ['Java', 'Python', 'JavaScript', 'React', 'SQL', 'Excel'];
+const SAMPLE_SKILLS = ['Java', 'Python', 'JavaScript', 'React', 'SQL', 'Excel', 'Figma'];
+const SAMPLE_CERTS = ['정보처리기사', '컴퓨터활용능력1급', '빅데이터분석기사', '전산회계1급'];
+const C_PRIME_PREFS = { work: ['analyze'], style: 'solo' };
 
 const ACCOUNTS = [
   {
@@ -43,7 +45,13 @@ const ACCOUNTS = [
   {
     label: "C': C + { work:['analyze'], style:'solo' }",
     context: { profile: { major: '컴퓨터공학전공' } },
-    prefs: { work: ['analyze'], style: 'solo' },
+    prefs: C_PRIME_PREFS,
+  },
+  {
+    label: "C'': C' + 관심분야 ['연구직 및 공학 기술직']",
+    context: { profile: { major: '컴퓨터공학전공' } },
+    prefs: C_PRIME_PREFS,
+    interests: ['연구직 및 공학 기술직'],
   },
 ];
 
@@ -77,6 +85,11 @@ function checkNames(jobs) {
     if (!catalogNames.knowledge.has(name)) missing.push(`SUBJECT_KNOWLEDGE_MAP.knowledge: "${name}"`);
   });
 
+  const skillAbilityNames = new Set([...scorer.SKILL_ABILITY_MAP, ...scorer.SKILL_ONLY_ABILITY_MAP].flatMap(([, names]) => names));
+  skillAbilityNames.forEach(name => {
+    if (!catalogNames.abilities.has(name)) missing.push(`SKILL_ABILITY_MAP.abilities: "${name}"`);
+  });
+
   const unmappedKnowledge = [...catalogNames.knowledge].filter(n => !subjectNames.has(n));
   console.log(`카탈로그 이름 수: characteristics ${catalogNames.characteristics.size}, abilities ${catalogNames.abilities.size}, knowledge ${catalogNames.knowledge.size}`);
   console.log(`과목 매핑표가 쓰는 지식 ${subjectNames.size}종 / 매핑 없는 지식: ${unmappedKnowledge.join(', ') || '없음'}`);
@@ -108,26 +121,52 @@ function checkDepartments(jobs) {
 }
 
 function checkSkills(jobs) {
-  section('3. 스킬 별칭 매칭');
+  section('3. 스킬 → 능력 매칭');
   SAMPLE_SKILLS.forEach(skill => {
     const signals = scorer.extractUserSignals({ specs: { skills: [{ name: skill }] } });
-    const { needles } = signals.skillNeedles[0];
-    const hits = jobs.filter(j => needles.some(n => (j.searchText || '').includes(n)));
-    console.log(`  ${skill} [${needles.join(', ')}]: ${hits.length}건${hits.length ? ` (예: ${hits.slice(0, 4).map(j => j.title).join(', ')})` : ''}`);
+    const abilities = [...signals.skillAbilities.keys()];
+    const hits = jobs.filter(j => (j.abilities || []).some(a => signals.skillAbilities.has(a.name)));
+    console.log(`  ${skill} → [${abilities.join(', ') || '없음'}]: ${hits.length}건${hits.length ? ` (예: ${hits.slice(0, 4).map(j => j.title).join(', ')})` : ''}`);
+  });
+}
+
+function checkImportance(jobs) {
+  section('3-1. importance 범위');
+  ['knowledge', 'abilities', 'characteristics'].forEach(field => {
+    const values = jobs.flatMap(j => (j[field] || []).map(i => i.importance)).filter(v => typeof v === 'number').sort((a, b) => a - b);
+    const median = values.length ? values[Math.floor(values.length / 2)] : '-';
+    console.log(`  ${field}: n=${values.length} min=${values[0]} max=${values[values.length - 1]} median=${median}`);
+    if (values[values.length - 1] > scorer.IMPORTANCE_MAX) console.log(`  ⚠️ ${field} 최댓값이 IMPORTANCE_MAX(${scorer.IMPORTANCE_MAX})를 넘음`);
+  });
+}
+
+function checkCerts(jobs) {
+  section('3-2. 자격증 매칭');
+  const withCerts = jobs.filter(j => (j.certNames || []).length > 0);
+  const avg = jobs.reduce((sum, j) => sum + (j.certNames || []).length, 0) / (jobs.length || 1);
+  console.log(`  certNames 채움 ${withCerts.length}/${jobs.length}, 직무당 평균 ${avg.toFixed(2)}개`);
+  SAMPLE_CERTS.forEach(cert => {
+    const keys = scorer.expandCert(cert).map(scorer.norm);
+    const hits = jobs.filter(j => (j.certNames || []).some(c => keys.includes(c)));
+    console.log(`  ${cert}: ${hits.length}건${hits.length ? ` (예: ${hits.slice(0, 4).map(j => j.title).join(', ')})` : ''}`);
   });
 }
 
 function checkAccounts(jobs) {
   section('4. 테스트 계정 가상 순위');
-  ACCOUNTS.forEach(({ label, context, prefs }) => {
+  ACCOUNTS.forEach(({ label, context, prefs, interests }) => {
     const signals = scorer.extractUserSignals(context);
     const safePrefs = scorer.sanitizePrefs(prefs);
-    const ranked = scorer.rankCandidates(signals, safePrefs, jobs, { limit: 10, perMidClass: 3 });
+    const pool = interests ? jobs.filter(j => interests.includes(j.jobLrclNm)) : jobs;
+    const ranked = scorer.rankCandidates(signals, safePrefs, pool, { limit: 10, perMidClass: 3 });
     const confidence = scorer.calcConfidence(ranked);
     const knowledgeMapped = [...signals.knowledgeSubjects].map(([k, s]) => `${k}←${s.join('/')}`).join(', ');
+    const abilityMapped = [...signals.skillAbilities].map(([a, s]) => `${a}←${s.join('/')}`).join(', ');
 
     console.log(`\n▶ ${label}`);
+    if (interests) console.log(`  후보 풀: ${pool.length}건 (관심분야 필터)`);
     console.log(`  과목→지식: ${knowledgeMapped || '없음'}`);
+    console.log(`  스킬→능력: ${abilityMapped || '없음'}`);
     console.log(`  신뢰도: ${confidence} (1위 ${ranked[0]?.total ?? '-'}, 5위 ${ranked[4]?.total ?? '-'})`);
     ranked.forEach((c, i) => {
       const b = c.breakdown;
@@ -147,13 +186,15 @@ function checkAccounts(jobs) {
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   const jobs = await JobCatalog.find({ source: 'jobInfo', syncError: '' })
-    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames searchText averageSalary')
+    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames averageSalary')
     .lean();
   console.log(`카탈로그 직무 ${jobs.length}건`);
 
   const namesOk = checkNames(jobs);
   const deptOk = checkDepartments(jobs);
   checkSkills(jobs);
+  checkImportance(jobs);
+  checkCerts(jobs);
   checkAccounts(jobs);
 
   await mongoose.connection.close();

@@ -4,7 +4,7 @@
 
 const WEIGHTS = { major: 15, cert: 20, knowledge: 25, skill: 20, pref: 20 };
 const CERT_POINT = 12;
-const SKILL_POINT = 7;
+const SKILL_POINT = 10; // 걸린 능력 하나당 importance/100 × 10, 최대 20
 const PREF_POINTS = { work: 12, style: 4, salary: 4 };
 
 // ── 정규화 ─────────────────────────────────────────────
@@ -38,9 +38,19 @@ const normMajor = v => norm(v).replace(/(학과|전공|학부|과|부)$/, '');
 // 고용24 학과명이 "컴퓨터·통신공학"처럼 계열 단위일 수 있어서 구분자로도 쪼갠다.
 const splitDept = d => [d, ...String(d).split(/[·ㆍ,/]/)].map(s => s.trim()).filter(Boolean);
 
+// 카탈로그 표기와 이어지지 않는 전공만 여기 추가한다(점검 스크립트로 발견된 것만).
+// 키·값 모두 normMajor 결과 기준. 모든 전공을 망라하려 하지 않는다.
+const MAJOR_ALIASES = {
+  영어영문: ['영미어'], // 카탈로그: "영미어·문학과"
+};
+
 function majorMatch(userMajor, depts) {
-  const u = normMajor(userMajor);
-  if (!u) return false;
+  const base = normMajor(userMajor);
+  if (!base) return false;
+  return [base, ...(MAJOR_ALIASES[base] || [])].some(u => majorMatchOne(u, depts));
+}
+
+function majorMatchOne(u, depts) {
   return (depts || []).flatMap(splitDept).some(d => {
     const dd = normMajor(d);
     if (!dd) return false;
@@ -89,18 +99,25 @@ const SUBJECT_KNOWLEDGE_MAP = [
   [/사무|문서|오피스|엑셀/, ['사무']],
 ];
 
-// norm한 스킬명 → searchText(한글 직무 설명)에서 찾을 표기
-const SKILL_ALIASES = {
-  java: ['자바'],
-  python: ['파이썬'],
-  javascript: ['자바스크립트'],
-  react: ['리액트'],
-  springboot: ['스프링'],
-  spring: ['스프링'],
-  excel: ['엑셀'],
-  'c++': ['c++'],
-  sql: ['sql', '데이터베이스'],
-};
+// 스킬명·경험 제목 → 그 도구가 증명하는 능력(abilities) 이름. 고용24 직무 설명에는 도구 이름이
+// 거의 없어서(Python·Excel 0건) 텍스트 매칭 대신 능력으로 옮겨 비교한다. 지식은 과목이 맡으므로
+// 대상에서 뺀다(같은 신호를 두 번 세지 않기 위해).
+const SKILL_ABILITY_MAP = [
+  [/python|파이썬|java(?!script)|자바|javascript|자바스크립트|typescript|react|리액트|vue|spring|스프링|node|kotlin|swift|c\+\+|c#|코딩|프로그래밍|개발|부트캠프|알고리즘|git/i, ['전산', '기술 설계']],
+  [/sql|데이터베이스|db|excel|엑셀|pandas|tableau|태블로|power ?bi|통계|spss|데이터 ?분석|빅데이터/i, ['전산', '수리력', '논리적 분석']],
+  [/figma|피그마|photoshop|포토샵|illustrator|일러스트|premiere|프리미어|after ?effects|영상 ?편집|디자인|3d|blender|블렌더/i, ['창의력']],
+  [/회계|재무|세무|erp|전산회계|결산/i, ['재정 관리']],
+  [/발표|스피치|토론|영업|마케팅|판매|홍보/i, ['말하기', '설득']],
+  [/튜터|멘토|강사|과외|교육 ?봉사|조교/i, ['가르치기']],
+  [/글쓰기|기자|에디터|블로그|작가|카피|번역/i, ['글쓰기']],
+];
+// 한 글자 언어명은 오탐이 쉬워서 스킬명 전체가 일치할 때만 적용한다(경험 제목에는 적용하지 않음)
+const SKILL_ONLY_ABILITY_MAP = [
+  [/^\s*c\s*(언어)?\s*$/i, ['전산', '기술 설계']],
+  [/^\s*r\s*(언어)?\s*$/i, ['전산', '수리력', '논리적 분석']],
+];
+
+const IMPORTANCE_MAX = 100; // 점검 스크립트 3-1에서 knowledge·abilities·characteristics 모두 최대 100 이하로 확인
 
 // ── 선호 체크리스트 ───────────────────────────────────────
 
@@ -204,26 +221,45 @@ function extractUserSignals(context) {
   const certIndex = new Map(); // norm(펼친 이름) → 원래 표기
   certs.forEach(name => expandCert(name).forEach(n => certIndex.set(norm(n), name)));
 
-  const skillNeedles = [...skills, ...experiences].map(label => {
-    const key = norm(label);
-    return { label, needles: [...new Set([key, ...(SKILL_ALIASES[key] || []).map(norm)])].filter(n => n.length >= 2) };
-  });
-
   return {
     majors, certs, subjects, skills, experiences,
     certIndex,
     knowledgeSubjects: mapSubjectsToKnowledge(subjects),
-    skillNeedles,
+    skillAbilities: mapSkillsToAbilities(skills, experiences),
   };
+}
+
+// 능력 이름 → [그 능력을 증명한 스킬·경험]
+function mapSkillsToAbilities(skills, experiences) {
+  const skillAbilities = new Map();
+  const add = (label, abilityNames) => abilityNames.forEach(name => {
+    const list = skillAbilities.get(name) || [];
+    if (!list.includes(label)) list.push(label);
+    skillAbilities.set(name, list);
+  });
+  skills.forEach(label => {
+    SKILL_ONLY_ABILITY_MAP.forEach(([pattern, abilityNames]) => { if (pattern.test(label)) add(label, abilityNames); });
+  });
+  [...skills, ...experiences].forEach(label => {
+    SKILL_ABILITY_MAP.forEach(([pattern, abilityNames]) => { if (pattern.test(label)) add(label, abilityNames); });
+  });
+  return skillAbilities;
 }
 
 // ── 점수 ───────────────────────────────────────────────
 
-const names = list => new Set((list || []).map(item => item?.name).filter(Boolean));
+const TARGET_FIELDS = ['characteristics', 'abilities', 'knowledge'];
 
-function hitsTargets(jobNames, target) {
-  return ['characteristics', 'abilities', 'knowledge'].some(field =>
-    [...target[field]].some(name => jobNames[field].has(name)));
+// 직무의 5개 항목 중 target 이름과 일치하는 것의 최대 importance/IMPORTANCE_MAX (없으면 0).
+// 적중 여부(0/1)가 아니라 중요도로 가중해야 흔한 항목이 모든 직무에 같은 점수를 주지 않는다.
+function targetStrength(job, target) {
+  let best = 0;
+  TARGET_FIELDS.forEach(field => {
+    (job[field] || []).forEach(item => {
+      if (target[field].has(item?.name)) best = Math.max(best, (item.importance || 0) / IMPORTANCE_MAX);
+    });
+  });
+  return best;
 }
 
 // 후보 풀 연봉(0 제외)의 오름차순 배열에서 v의 백분위(0~1)
@@ -263,26 +299,24 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
     matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
   }
 
-  const searchText = job.searchText || '';
-  const skillHits = signals.skillNeedles.filter(s => s.needles.some(n => searchText.includes(n))).map(s => s.label);
-  breakdown.skill = Math.min(WEIGHTS.skill, skillHits.length * SKILL_POINT);
-  matched.skills = skillHits;
+  const heldAbilities = (job.abilities || []).filter(a => signals.skillAbilities.has(a.name));
+  const skillRaw = heldAbilities.reduce((sum, a) => sum + ((a.importance || 0) / IMPORTANCE_MAX) * SKILL_POINT, 0);
+  breakdown.skill = Math.min(WEIGHTS.skill, Math.round(skillRaw));
+  matched.skills = [...new Set(heldAbilities.flatMap(a => signals.skillAbilities.get(a.name)))];
 
-  const jobNames = {
-    characteristics: names(job.characteristics),
-    abilities: names(job.abilities),
-    knowledge: names(job.knowledge),
-  };
   let pref = 0;
-  const work = prefs?.work || [];
+  const work = (prefs?.work || []).filter(key => WORK_PREF_TARGETS[key]);
   if (work.length > 0) {
-    const hitKeys = work.filter(key => WORK_PREF_TARGETS[key] && hitsTargets(jobNames, WORK_PREF_TARGETS[key]));
-    pref += Math.round((PREF_POINTS.work * hitKeys.length) / work.length);
-    hitKeys.forEach(key => matched.prefs.push(`선호: ${optionLabel('work', key)}`));
+    const strengths = work.map(key => targetStrength(job, WORK_PREF_TARGETS[key]));
+    pref += Math.round((PREF_POINTS.work * strengths.reduce((a, b) => a + b, 0)) / work.length);
+    work.forEach((key, i) => { if (strengths[i] > 0) matched.prefs.push(`선호: ${optionLabel('work', key)}`); });
   }
-  if (prefs?.style && STYLE_TARGETS[prefs.style] && hitsTargets(jobNames, STYLE_TARGETS[prefs.style])) {
-    pref += PREF_POINTS.style;
-    matched.prefs.push(`방식: ${optionLabel('style', prefs.style)}`);
+  if (prefs?.style && STYLE_TARGETS[prefs.style]) {
+    const stylePoint = Math.round(PREF_POINTS.style * targetStrength(job, STYLE_TARGETS[prefs.style]));
+    if (stylePoint > 0) {
+      pref += stylePoint;
+      matched.prefs.push(`방식: ${optionLabel('style', prefs.style)}`);
+    }
   }
   if (prefs?.value === 'salary') {
     const salaryPoint = Math.round(PREF_POINTS.salary * salaryPercentile(job.averageSalary?.median50 || 0, salaryPool));
@@ -339,7 +373,10 @@ module.exports = {
   splitDept,
   majorMatch,
   SUBJECT_KNOWLEDGE_MAP,
-  SKILL_ALIASES,
+  MAJOR_ALIASES,
+  SKILL_ABILITY_MAP,
+  SKILL_ONLY_ABILITY_MAP,
+  IMPORTANCE_MAX,
   PREF_OPTIONS,
   WORK_PREF_TARGETS,
   STYLE_TARGETS,
