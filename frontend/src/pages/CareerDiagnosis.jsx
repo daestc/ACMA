@@ -173,6 +173,11 @@ function CareerDiagnosis() {
         {scores?.blockers?.length > 0 && (
           <div style={{ background: 'var(--red-bg)', color: 'var(--red)', padding: '10px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.6, marginTop: 10 }}>
             {scores.blockers.map((b, i) => <div key={i}>⚠️ {b}</div>)}
+            {scores.blockers.includes('목표 직무를 설정해 주세요') && (
+              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => navigate('/career/recommend')}>
+                진로 추천 받기
+              </button>
+            )}
           </div>
         )}
         <MissingList missing={(scores?.missing || []).filter((m) => m.key !== 'graduation')} />
