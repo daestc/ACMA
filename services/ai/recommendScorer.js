@@ -21,13 +21,24 @@ function expandCert(raw) {
   return [parts[0], ...parts.slice(1).map(p => (p.replace(CERT_SERIES, '') === '' ? stem + p : p))];
 }
 
-// 1차 API relCertList.certNm은 꼬리표("컴퓨터활용능력 1급(국가기술)")가 붙거나 한 항목에
-// 여러 개가 쉼표로 들어 있다("빅데이터분석기사, 데이터분석전문가"). 끝의 괄호만 뗀다 —
-// 이름 중간의 괄호는 자격증 이름의 일부일 수 있다.
+// 1차 API relCertList.certNm 표기: 끝 꼬리표("(국가기술)", "《…》", 겹쳐서도 붙음), 쉼표 나열,
+// 공백 나열("전산세무1급 전산회계1급"), 중간 괄호 약식("품질경영(산업)기사").
+// 끝에 붙은 꼬리표만 뗀다 — 이름 중간의 괄호는 자격증 이름의 일부일 수 있다.
+const CERT_SERIES_END = /(기술사|기능장|산업기사|기사|기능사|\d급|사)$/;
 function splitCertNames(raw) {
   return String(raw || '')
     .split(/[,，]/)
-    .map(s => s.replace(/\s*[(（][^)）]*[)）]\s*$/, '').trim())
+    .map(s => s.replace(/(?:\s*(?:\([^)]*\)|（[^）]*）|《[^》]*》|〈[^〉]*〉))+\s*$/, '').trim())
+    // 공백 나열은 모든 토큰이 3자 이상이고 자격 등급으로 끝날 때만 쪼갠다
+    // ("컴퓨터활용능력 1급"은 "1급"이 2자라 쪼개지지 않는다)
+    .flatMap(s => {
+      const toks = s.split(/\s+/);
+      return toks.length > 1 && toks.every(t => t.length >= 3 && CERT_SERIES_END.test(t)) ? toks : [s];
+    })
+    .flatMap(s => {
+      const m = s.match(/^(.+)\((산업)\)(기사)$/);
+      return m ? [m[1] + m[3], m[1] + m[2] + m[3]] : [s];
+    })
     .filter(Boolean);
 }
 

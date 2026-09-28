@@ -16,6 +16,22 @@ const SAMPLE_SKILLS = ['Java', 'Python', 'JavaScript', 'React', 'SQL', 'Excel', 
 const SAMPLE_CERTS = ['정보처리기사', '컴퓨터활용능력1급', '빅데이터분석기사', '전산회계1급'];
 const C_PRIME_PREFS = { work: ['analyze'], style: 'solo' };
 
+// splitCertNames 단위 사례 (계획서 v3.2 §5-0 표 + 재적재 샘플에서 본 실제 표기)
+const CERT_SPLIT_CASES = [
+  ['CIA(외국)', ['CIA']],
+  ['FRM《국제금융위험관리사》(외국)', ['FRM']],
+  ['ERP정보관리사《회계》', ['ERP정보관리사']],
+  ['전산세무1급 전산세무2급 전산회계1급 전산회계2급', ['전산세무1급', '전산세무2급', '전산회계1급', '전산회계2급']],
+  ['품질경영(산업)기사', ['품질경영기사', '품질경영산업기사']],
+  ['품질경영(산업)기사(국가기술)', ['품질경영기사', '품질경영산업기사']],
+  ['컴퓨터활용능력 1급(국가기술)', ['컴퓨터활용능력 1급']],
+  ['빅데이터분석기사, 데이터분석전문가, 데이터분석준전문가', ['빅데이터분석기사', '데이터분석전문가', '데이터분석준전문가']],
+  ['직업상담사 2급', ['직업상담사 2급']],
+  ['한국사능력검정시험 1급', ['한국사능력검정시험 1급']],
+  ['정보처리기사·산업기사', ['정보처리기사·산업기사']],
+  ['경영지도사(국가전문)', ['경영지도사']],
+];
+
 const ACCOUNTS = [
   {
     label: 'A: 컴공 + 정처기 + 자바·DB·알고리즘 + Java·Spring Boot·Python·React',
@@ -140,6 +156,19 @@ function checkImportance(jobs) {
   });
 }
 
+function checkCertSplit() {
+  section('0. splitCertNames 단위 사례');
+  let failed = 0;
+  CERT_SPLIT_CASES.forEach(([raw, expected]) => {
+    const actual = scorer.splitCertNames(raw);
+    const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    if (!ok) failed += 1;
+    console.log(`  ${ok ? '✅' : '❌'} ${raw} → ${JSON.stringify(actual)}${ok ? '' : ` (기대 ${JSON.stringify(expected)})`}`);
+  });
+  console.log(failed ? `❌ ${failed}/${CERT_SPLIT_CASES.length} 실패` : `✅ ${CERT_SPLIT_CASES.length}건 모두 통과`);
+  return failed === 0;
+}
+
 function checkCerts(jobs) {
   section('3-2. 자격증 매칭');
   const withCerts = jobs.filter(j => (j.certNames || []).length > 0);
@@ -190,6 +219,7 @@ async function main() {
     .lean();
   console.log(`카탈로그 직무 ${jobs.length}건`);
 
+  const certSplitOk = checkCertSplit();
   const namesOk = checkNames(jobs);
   const deptOk = checkDepartments(jobs);
   checkSkills(jobs);
@@ -198,7 +228,7 @@ async function main() {
   checkAccounts(jobs);
 
   await mongoose.connection.close();
-  if (!namesOk || !deptOk) process.exitCode = 1;
+  if (!certSplitOk || !namesOk || !deptOk) process.exitCode = 1;
 }
 
 main().catch(async error => {
