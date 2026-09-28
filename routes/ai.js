@@ -28,4 +28,11 @@ router.post('/diagnosis', requireLogin, aiController.requestDiagnosis);
 router.get('/diagnosis/:id', requireLogin, aiController.getDiagnosis);
 router.post('/diagnosis/:id/gaps/:gapId/to-plan', requireLogin, aiController.addGapToWeeklyPlan);
 
+// /form, /latest는 /:id보다 먼저 와야 한다 — 뒤에 두면 "form"이 id로 해석된다.
+router.get('/recommendation/form', requireLogin, aiController.getRecommendationForm);
+router.post('/recommendation', requireLogin, aiController.requestRecommendation);
+router.get('/recommendation/latest', requireLogin, aiController.getLatestRecommendation);
+router.get('/recommendation/:id', requireLogin, aiController.getRecommendation);
+router.post('/recommendation/:id/select', requireLogin, aiController.selectRecommendation);
+
 module.exports = router;

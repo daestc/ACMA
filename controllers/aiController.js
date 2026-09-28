@@ -8,6 +8,7 @@ const planService = require('../services/ai/planService');
 const completionService = require('../services/ai/completionService');
 const portfolioService = require('../services/ai/portfolioService');
 const diagnosisService = require('../services/ai/diagnosisService');
+const recommendationService = require('../services/ai/recommendationService');
 const kstDate = require('../utils/kstDate');
 const logger = require('../config/logger');
 
@@ -556,6 +557,66 @@ async function addGapToWeeklyPlan(req, res) {
   }
 }
 
+// ── 진로 추천 ─────────────────────────────────────────
+
+async function getRecommendationForm(req, res) {
+  try {
+    const form = await recommendationService.getForm(req.user.id);
+    return res.json({ success: true, ...form });
+  } catch (error) {
+    logger.error(`[ai] getRecommendationForm error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function requestRecommendation(req, res) {
+  try {
+    const { httpStatus, body } = await recommendationService.requestRecommendation(
+      req.user.id, req.body?.prefs, req.body?.interests,
+    );
+    return res.status(httpStatus).json(body);
+  } catch (error) {
+    logger.error(`[ai] requestRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false, message: '요청 처리에 실패했습니다.' });
+  }
+}
+
+async function getRecommendation(req, res) {
+  try {
+    const doc = await recommendationService.getRecommendation(req.user.id, req.params.id);
+    if (!doc) return res.status(404).json({ success: false });
+
+    if (doc.status === 'pending') return res.json({ status: doc.status });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+  } catch (error) {
+    logger.error(`[ai] getRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function getLatestRecommendation(req, res) {
+  try {
+    const doc = await recommendationService.getLatestRecommendation(req.user.id);
+    if (!doc) return res.status(404).json({ success: false });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+  } catch (error) {
+    logger.error(`[ai] getLatestRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function selectRecommendation(req, res) {
+  try {
+    const { httpStatus, body } = await recommendationService.selectJob(
+      req.user.id, req.params.id, String(req.body?.jobCode || ''),
+    );
+    return res.status(httpStatus).json(body);
+  } catch (error) {
+    logger.error(`[ai] selectRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
 module.exports = {
   requestWeeklyPlan,
   getWeeklyPlan,
@@ -578,4 +639,9 @@ module.exports = {
   getDiagnosis,
   getLatestDiagnosis,
   addGapToWeeklyPlan,
+  getRecommendationForm,
+  requestRecommendation,
+  getRecommendation,
+  getLatestRecommendation,
+  selectRecommendation,
 };

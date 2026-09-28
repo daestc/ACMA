@@ -203,8 +203,76 @@ const weeklyPlanSchema = new Schema({
 
 weeklyPlanSchema.index({ userId: 1, weekStart: 1 }, { unique: true });
 
+// ── AI 진로 추천 (후보는 recommendScorer가 점수로 고르고, 2단계에서 AI가 그 안에서 3개를 고른다)
+const recommendationCandidateSchema = new Schema({
+  jobCode: { type: String, required: true },
+  title: { type: String, required: true },
+  jobLrclNm: { type: String, default: '' },
+  jobMdclNm: { type: String, default: '' },
+  total: { type: Number, default: 0 },
+  breakdown: {
+    major: { type: Number, default: 0 },
+    cert: { type: Number, default: 0 },
+    knowledge: { type: Number, default: 0 },
+    skill: { type: Number, default: 0 },
+    pref: { type: Number, default: 0 },
+  },
+  matched: {
+    major: { type: String, default: null },
+    certs: { type: [String], default: [] },
+    subjects: { type: [String], default: [] },
+    skills: { type: [String], default: [] },
+    prefs: { type: [String], default: [] },
+  },
+}, { _id: false });
+
+const recommendationCertGapSchema = new Schema({
+  name: { type: String, required: true },
+  jmcd: { type: String, default: null },
+  nextExamDate: { type: Date, default: null },
+  dDay: { type: Number, default: null },
+  isApplication: { type: Boolean, default: false },
+}, { _id: false });
+
+const recommendationPickSchema = new Schema({
+  jobCode: { type: String, required: true },
+  title: { type: String, required: true },
+  jobMdclNm: { type: String, default: '' },
+  angle: { type: String, enum: ['안정', '확장', '도전'], default: null }, // 1단계(점수 기준)에선 null
+  reason: { type: String, default: null }, // null이면 화면에서 "점수 기준 추천"
+  evidence: { type: [String], default: [] },
+  source: { type: String, enum: ['ai', 'score'], default: 'score' },
+  certGaps: { type: [recommendationCertGapSchema], default: [] },
+}, { _id: false });
+
+const careerRecommendationSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  status: { type: String, enum: ['pending', 'done', 'failed'], default: 'pending', index: true },
+  errorMessage: { type: String, default: null },
+
+  // 체크리스트 응답은 User가 아니라 요청마다 여기 저장한다 — /form이 최근 문서로 미리 채운다.
+  prefs: {
+    work: { type: [String], default: [] },
+    style: { type: String, default: null },
+    value: { type: String, default: null },
+  },
+  interests: { type: [String], default: [] }, // JobCatalog.jobLrclNm 값
+  confidence: { type: String, enum: ['low', 'normal'], default: 'normal' },
+
+  candidates: { type: [recommendationCandidateSchema], default: [] },
+  picks: { type: [recommendationPickSchema], default: [] },
+
+  selectedJobCode: { type: String, default: null },
+  selectedAt: { type: Date, default: null },
+
+  generation: { type: generationMetaSchema, default: () => ({}) }, // 2단계(AI)에서만 채운다
+}, { timestamps: true });
+
+careerRecommendationSchema.index({ userId: 1, createdAt: -1 });
+
 module.exports = {
   CareerPortfolio: mongoose.model('CareerPortfolio', careerPortfolioSchema),
   CareerDiagnosis: mongoose.model('CareerDiagnosis', careerDiagnosisSchema),
   WeeklyPlan: mongoose.model('WeeklyPlan', weeklyPlanSchema),
+  CareerRecommendation: mongoose.model('CareerRecommendation', careerRecommendationSchema),
 };
