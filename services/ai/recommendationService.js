@@ -1,5 +1,6 @@
-// AI 진로 추천 (FR-AI-005). 1단계는 AI 없이 recommendScorer의 점수로 후보 10개와 picks 3개를
-// 만든다. 2단계(커밋 7)에서 generateRecommendation이 후보 안에서 3개를 골라 설명을 붙인다.
+// AI 진로 추천 (FR-AI-005). recommendScorer가 점수로 후보 10개와 점수 기준 picks 3개를 만들고,
+// generateRecommendation이 백그라운드에서 AI로 그 후보 안에서 3개를 골라 angle·사유를 붙인다.
+// AI가 실패해도 후보와 점수 picks는 남는다.
 
 const { CareerRecommendation } = require('../../models/Ai');
 const { JobCatalog } = require('../../models/JobCatalog');
@@ -8,11 +9,16 @@ const contextBuilder = require('./contextBuilder');
 const scorer = require('./recommendScorer');
 const gapLinker = require('./gapLinker');
 const retentionService = require('./retentionService');
+const aiClient = require('./aiClient');
+const validator = require('./validator');
+const recommendationPrompt = require('./prompts/recommendation');
 const careerService = require('../careerService');
+const logger = require('../../config/logger');
 
 const CATALOG_QUERY = { source: 'jobInfo', syncError: '' };
 const SCORING_FIELDS = 'jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics '
-  + 'relatedDepartments relatedCertifications certNames averageSalary';
+  + 'relatedDepartments relatedCertifications certNames averageSalary summary';
+const GENERIC_FAILURE_MESSAGE = 'AI 추천 사유 생성에 실패했습니다. 점수 기준 추천을 보여드립니다.';
 const PICK_COUNT = 3;
 const CERT_GAP_LIMIT = 2;
 const CATEGORY_EXAMPLE_COUNT = 3;
@@ -169,13 +175,87 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
     return { httpStatus: 200, body: { status: 'needs_interests', categories } };
   }
 
-  const picks = await attachCertGaps(toScorePicks(candidates), context, jobsByCode);
-  const doc = await CareerRecommendation.create({
-    userId, status: 'done', prefs, interests, confidence, candidates, picks,
-  });
-  await retentionService.enforceRetention(CareerRecommendation, userId, RETENTION_LIMIT);
+  const scorePicks = await attachCertGaps(toScorePicks(candidates), context, jobsByCode);
 
-  return { httpStatus: 200, body: { id: doc._id, status: 'done', data: doc.toObject() } };
+  // 후보가 3개 미만이면 AI가 고를 게 없다 — 있는 만큼 점수 기준으로 바로 끝낸다.
+  if (candidates.length < PICK_COUNT) {
+    const doc = await CareerRecommendation.create({
+      userId, status: 'done', prefs, interests, confidence, candidates, picks: scorePicks,
+    });
+    await retentionService.enforceRetention(CareerRecommendation, userId, RETENTION_LIMIT);
+    return { httpStatus: 200, body: { id: doc._id, status: 'done', data: doc.toObject() } };
+  }
+
+  // pending 문서에도 후보와 점수 picks를 먼저 저장한다 — AI가 실패하거나 서버가 중간에 죽어도
+  // 화면에 보여줄 계산값이 남는다.
+  const doc = await CareerRecommendation.create({
+    userId, status: 'pending', prefs, interests, confidence, candidates, picks: scorePicks,
+  });
+  setImmediate(() => {
+    generateRecommendation(doc._id, userId, context, candidates, prefs, jobsByCode).catch(error => {
+      logger.error(`[ai] recommendation background crash (docId=${doc._id}): ${error.message}`);
+    });
+  });
+  return { httpStatus: 202, body: { id: doc._id, status: 'pending' } };
+}
+
+// 체크리스트 응답을 한글 문구로 — matched.prefs와 같은 접두어라 근거 목록과 화면 칩이 일치한다.
+// style 'any'는 점수에도 안 쓰이는 "상관없음"이라 근거로 넣지 않는다. prefs는 sanitizePrefs를 거친 값.
+function buildPrefLabels(prefs) {
+  const label = (question, key) => scorer.PREF_OPTIONS[question].options.find(o => o.key === key).label;
+  return [
+    ...(prefs?.work || []).map(key => `선호: ${label('work', key)}`),
+    ...(prefs?.style && prefs.style !== 'any' ? [`방식: ${label('style', prefs.style)}`] : []),
+    ...(prefs?.value ? [`중시: ${label('value', prefs.value)}`] : []),
+  ];
+}
+
+function buildGenerationMeta(meta) {
+  return {
+    model: meta.model,
+    promptVersion: recommendationPrompt.VERSION,
+    inputTokens: meta.inputTokens,
+    outputTokens: meta.outputTokens,
+    latencyMs: meta.latencyMs,
+    retryCount: meta.retryCount,
+  };
+}
+
+/**
+ * 후보 안에서 AI가 3개를 골라 angle·사유·근거를 붙인다. requestRecommendation의 setImmediate에서 호출.
+ * 실패하면 status만 failed로 바꾼다 — candidates와 점수 picks는 pending 저장 때 이미 들어 있다.
+ */
+async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode) {
+  try {
+    const prefLabels = buildPrefLabels(prefs);
+    // 공용 collectEvidenceFacts는 진단·포트폴리오와 공유하므로 고치지 않고, 체크리스트 문구는 여기서만 합친다.
+    const facts = [...new Set([...validator.collectEvidenceFacts(context), ...prefLabels])];
+    const candidateCodes = candidates.map(c => c.jobCode);
+
+    const { data, meta } = await aiClient.generateJSON({
+      system: recommendationPrompt.buildSystem(),
+      user: recommendationPrompt.buildUser(context, candidates, jobsByCode, prefLabels, facts),
+      schema: recommendationPrompt.buildOutputSchema(candidateCodes, facts),
+    });
+
+    const { picks, errors } = validator.validateRecommendation(data, candidates, facts);
+    if (errors.length) logger.warn(`[ai] recommendation validation (docId=${docId}): ${JSON.stringify(errors)}`);
+
+    await attachCertGaps(picks, context, jobsByCode);
+    await CareerRecommendation.findByIdAndUpdate(docId, {
+      status: 'done',
+      errorMessage: null,
+      picks,
+      generation: buildGenerationMeta(meta),
+    });
+    await retentionService.enforceRetention(CareerRecommendation, userId, RETENTION_LIMIT);
+  } catch (error) {
+    logger.error(`[ai] recommendation generation failed (docId=${docId}): ${error.message}`);
+    await CareerRecommendation.findByIdAndUpdate(docId, {
+      status: 'failed',
+      errorMessage: GENERIC_FAILURE_MESSAGE,
+    }).catch(() => {});
+  }
 }
 
 // 형식이 틀린 id로 findById를 부르면 CastError가 나서 500이 된다 — 없는 문서와 같이 404로 본다.
@@ -263,6 +343,7 @@ module.exports = {
   buildCandidates,
   attachCertGaps,
   requestRecommendation,
+  generateRecommendation,
   getRecommendation,
   getLatestRecommendation,
   selectJob,

@@ -339,6 +339,11 @@ function CareerRecommend() {
 
       {step === 'result' && doc && (
         <div>
+          {doc.status === 'failed' && (
+            <div style={{ background: 'var(--red-bg)', color: 'var(--red)', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
+              ⚠️ {doc.errorMessage || 'AI 추천 사유 생성에 실패했습니다. 점수 기준 추천을 보여드립니다.'}
+            </div>
+          )}
           {doc.confidence === 'low' && (
             <div style={{ background: 'var(--amber-bg, var(--bg3))', color: 'var(--amber, var(--text))', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
               ℹ️ 입력한 정보가 적어 참고용 추천입니다. 과목·자격증·스킬을 등록하면 더 정확해집니다.

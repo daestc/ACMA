@@ -308,4 +308,74 @@ function validateDiagnosis(data, context, graduationSummary) {
   };
 }
 
-module.exports = { validateWeeklyPlan, validatePortfolio, validateDiagnosis, collectEvidenceFacts };
+const RECOMMENDATION_COUNT = 3;
+const RECOMMENDATION_ANGLES = ['안정', '확장', '도전'];
+
+// 진로 추천 검증. facts는 collectEvidenceFacts(context) + 체크리스트 문구 — 체크리스트 문구는
+// 추천 서비스 안에서만 합친다(공용 collectEvidenceFacts에 넣으면 진단 강점 근거로 "선호: …"가 인용된다).
+// 결과는 항상 3개(후보가 3개 미만이면 그만큼): 후보에 없거나 중복된 jobCode는 버리고, 모자라면
+// 점수 순위로 채워 reason:null, source:'score'로 둔다.
+function validateRecommendation(data, candidates, facts) {
+  const errors = [];
+  const byCode = new Map((candidates || []).map(c => [c.jobCode, c]));
+  const groundedFacts = new Set((facts || []).map(normalizeEvidence));
+  const raw = Array.isArray(data?.recommendations) ? data.recommendations : [];
+  if (!Array.isArray(data?.recommendations)) errors.push('recommendations가 배열이 아님');
+
+  const picks = [];
+  raw.forEach((rec, idx) => {
+    if (picks.length >= RECOMMENDATION_COUNT) {
+      errors.push(`recommendations[${idx}]는 ${RECOMMENDATION_COUNT}개 초과라 제외`);
+      return;
+    }
+    const candidate = byCode.get(rec?.jobCode);
+    if (!candidate) {
+      errors.push(`recommendations[${idx}] jobCode(${rec?.jobCode})가 후보에 없어 제외`);
+      return;
+    }
+    if (picks.some(p => p.jobCode === candidate.jobCode)) {
+      errors.push(`recommendations[${idx}] jobCode(${candidate.jobCode}) 중복이라 제외`);
+      return;
+    }
+    const rawEvidence = Array.isArray(rec.evidence) ? rec.evidence : [];
+    const evidence = [...new Set(rawEvidence.filter(e => typeof e === 'string' && e.trim() && isEvidenceGrounded(e, groundedFacts)))];
+    if (evidence.length < rawEvidence.length) {
+      errors.push(`recommendations[${idx}]에서 근거 목록에 없는 evidence ${rawEvidence.length - evidence.length}개 제거`);
+    }
+    picks.push({
+      jobCode: candidate.jobCode,
+      title: candidate.title,
+      jobMdclNm: candidate.jobMdclNm,
+      angle: RECOMMENDATION_ANGLES.includes(rec.angle) ? rec.angle : null,
+      reason: typeof rec.reason === 'string' && rec.reason.trim() ? rec.reason.trim() : null,
+      evidence,
+      source: 'ai',
+      certGaps: [],
+    });
+  });
+
+  for (const candidate of (candidates || [])) {
+    if (picks.length >= RECOMMENDATION_COUNT) break;
+    if (picks.some(p => p.jobCode === candidate.jobCode)) continue;
+    errors.push(`AI 추천이 모자라 점수 순위로 ${candidate.jobCode} 보충`);
+    picks.push({
+      jobCode: candidate.jobCode,
+      title: candidate.title,
+      jobMdclNm: candidate.jobMdclNm,
+      angle: null,
+      reason: null,
+      evidence: [],
+      source: 'score',
+      certGaps: [],
+    });
+  }
+
+  const angles = picks.map(p => p.angle).filter(Boolean);
+  if (new Set(angles).size < angles.length) errors.push(`angle 중복: ${angles.join(',')}`);
+
+  return { picks, errors };
+}
+
+module.exports = {
+  validateWeeklyPlan, validatePortfolio, validateDiagnosis, validateRecommendation, collectEvidenceFacts,
+};
