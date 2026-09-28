@@ -93,6 +93,13 @@ async function buildCandidates(userId, prefs, interests) {
 
 const MIN_CERT_NAME_LENGTH = 3; // gapLinker와 같은 기준 — "기사"처럼 짧은 조각은 자격증명이 아니다
 
+// Certification.name은 "컴퓨터활용능력1급"처럼 붙여 쓴 경우가 있어 공백을 뺀 이름으로 한 번 더 찾는다.
+async function findCertMatch(name) {
+  const compactName = name.replace(/\s+/g, '');
+  return await gapLinker.findDirectCertMatch(name)
+    || (compactName !== name ? gapLinker.findDirectCertMatch(compactName) : null);
+}
+
 function toCertGap(name, match) {
   return {
     name,
@@ -119,10 +126,7 @@ async function attachCertGaps(picks, context, jobsByCode) {
     const unknown = [];
     for (const name of missing) {
       if (found.length >= CERT_GAP_LIMIT) break;
-      // Certification.name은 "컴퓨터활용능력1급"처럼 붙여 쓴 경우가 있어 공백을 뺀 이름으로 한 번 더 찾는다.
-      const compactName = name.replace(/\s+/g, '');
-      const match = await gapLinker.findDirectCertMatch(name)
-        || (compactName !== name ? await gapLinker.findDirectCertMatch(compactName) : null);
+      const match = await findCertMatch(name);
       if (match) found.push(toCertGap(name, match));
       else unknown.push(toCertGap(name, null));
     }
@@ -195,6 +199,16 @@ async function getLatestRecommendation(userId) {
   }).sort({ createdAt: -1 }).lean();
 }
 
+// Certification DB에서 찾히는 것을 앞으로, 나머지를 뒤로 — 각 그룹 안의 순서는 유지한다.
+async function sortCertsByKnown(names) {
+  const known = [];
+  const unknown = [];
+  for (const name of names) {
+    ((await findCertMatch(name)) ? known : unknown).push(name);
+  }
+  return [...known, ...unknown];
+}
+
 /**
  * 추천 후보 중 하나를 목표 직무로 설정한다.
  * @returns {{ httpStatus: number, body: object }}
@@ -225,9 +239,11 @@ async function selectJob(userId, docId, jobCode) {
   //   대비로 판단하므로 비었을 때만 보충한다.
   // - relatedCertifications: 1차 API 원문("OCP(외국)", "정보처리기능사, 산업기사, 기사(국가기술)")이
   //   그대로 저장돼 진단 gap 문장과 gapLinker 매칭까지 원문 표기가 새므로 파싱된 값으로 항상 덮어쓴다.
+  //   Certification DB에 있는 것(일정·jmcd를 붙일 수 있는 것)을 앞으로 둔다 — 진단 프롬프트가 앞쪽
+  //   자격증을 먼저 제안하는 경향이 있어, DB2 같은 외국 자격증이 앞에 있으면 일정 없는 gap이 나온다.
   const catalog = await JobCatalog.findOne({ jobCode }).select('responsibilities relatedCertifications').lean();
   if (catalog) {
-    const patch = { relatedCertifications: catalog.relatedCertifications || [] };
+    const patch = { relatedCertifications: await sortCertsByKnown(catalog.relatedCertifications || []) };
     if (!(saved.responsibilities || []).length && catalog.responsibilities?.length) {
       patch.responsibilities = catalog.responsibilities;
     }
