@@ -562,10 +562,8 @@ module.exports = {
   deleteJob, // 선택한 직무 삭제하기
   getMyCareerAndCertifications, // 선택한 목표 직무와 목표 자격증 가져오기
 
-  // 아래 4개는 seedJobCatalog.js 배치가 직접 부른다 (AI 진로 추천용 카탈로그 적재).
+  // 아래 2개는 seedJobCatalog.js 배치가 직접 부른다 (AI 진로 추천용 카탈로그 적재).
   // 내부 로직은 그대로이고 export만 추가한 것 — getCareerDetails/parseSlashList는 건드리지 않는다.
   fetchPrimaryJobAPI, // 1차 API: jobSum (능력, 지식, 성격, 연봉, 학과 등) 원문
-  fetchSecondaryJobAPI, // 2차 API: dJobsSum (직무 개요, 주요 업무, 자격증 목록) 원문
   parseSalary, // sal 문자열 파싱
-  parseCertLic, // "A·B, C·D" 형태의 자격증 목록 문자열 분리
 };

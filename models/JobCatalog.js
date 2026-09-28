@@ -22,6 +22,13 @@ const jobCatalogSchema = new Schema(
     jobSeq: { type: String, default: '1' },
     title: { type: String, required: true, trim: true, index: true },
 
+    // 'jobInfo' = 고용24 직업정보(대표 직업 약 500개). 직업사전(dJobCD) 코드는 1차 API 상세가
+    // 거의 없어서(2.2%) 쓰지 않는다. 배치는 시작 시 source가 다른 문서를 지운다.
+    source: { type: String, enum: ['jobInfo'], default: 'jobInfo' },
+    jobLrclNm: { type: String, default: '' }, // 직업정보 대분류명
+    jobMdclNm: { type: String, default: '', index: true }, // 직업정보 중분류명 (관심분야 필터 후보)
+
+    // 한국표준직업분류(JobSearch) 기준 분류 — jobInfo 출처에서는 비워둔다
     categoryId: { type: String, default: '' },
     depth1_name: { type: String, default: '' },
     depth2_name: { type: String, default: '', index: true },
