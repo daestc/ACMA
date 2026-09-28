@@ -220,13 +220,18 @@ async function selectJob(userId, docId, jobCode) {
     return { httpStatus: 502, body: { success: false, message: '직무 정보를 불러오지 못했습니다.' } };
   }
 
-  // 대표 직업 코드는 2차 API가 비어 saveCareerDetails가 하는 일을 못 채운다(계획서 §3-4).
-  // 진단의 gaps가 하는 일 대비로 판단하므로 카탈로그 값으로 보충한다. saveCareerDetails는 고치지 않는다.
-  if (!(saved.responsibilities || []).length) {
-    const catalog = await JobCatalog.findOne({ jobCode }).select('responsibilities').lean();
-    if (catalog?.responsibilities?.length) {
-      await Job.updateOne({ userId, jobCode }, { $set: { responsibilities: catalog.responsibilities } });
+  // saveCareerDetails는 고치지 않고(진로 페이지가 쓴다) 저장 직후 카탈로그 값으로 보정한다.
+  // - responsibilities: 대표 직업 코드는 2차 API가 비어 못 채운다(계획서 §3-4). 진단 gaps가 하는 일
+  //   대비로 판단하므로 비었을 때만 보충한다.
+  // - relatedCertifications: 1차 API 원문("OCP(외국)", "정보처리기능사, 산업기사, 기사(국가기술)")이
+  //   그대로 저장돼 진단 gap 문장과 gapLinker 매칭까지 원문 표기가 새므로 파싱된 값으로 항상 덮어쓴다.
+  const catalog = await JobCatalog.findOne({ jobCode }).select('responsibilities relatedCertifications').lean();
+  if (catalog) {
+    const patch = { relatedCertifications: catalog.relatedCertifications || [] };
+    if (!(saved.responsibilities || []).length && catalog.responsibilities?.length) {
+      patch.responsibilities = catalog.responsibilities;
     }
+    await Job.updateOne({ userId, jobCode }, { $set: patch });
   }
 
   await CareerRecommendation.updateOne(

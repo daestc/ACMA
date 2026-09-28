@@ -46,7 +46,9 @@ function matchedChips(matched) {
   ].filter(Boolean)
 }
 
+// jmcd가 없으면 자격증 DB에 없는 종목(외국·민간 등)이라 일정을 알 방법이 없다.
 function certGapLabel(gap) {
+  if (!gap.jmcd) return '일정 정보 없음'
   if (gap.dDay == null) return '다음 시험 일정 미공개'
   return `${gap.isApplication ? '원서접수 마감' : '시험'} D-${gap.dDay}`
 }
