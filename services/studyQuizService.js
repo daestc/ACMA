@@ -98,7 +98,7 @@ function pythonExitError(exitCode) {
   const errors = {
     2: ['INVALID_PDF', 'PDF 파일을 읽지 못했습니다.', 400],
     3: ['PDF_TEXT_NOT_FOUND', 'PDF에서 텍스트를 추출하지 못했습니다. 스캔본이라면 OCR이 필요합니다.', 400],
-    4: ['AI_NOT_CONFIGURED', 'Python 환경에 ANTHROPIC_API_KEY가 설정되지 않았습니다.', 503],
+    4: ['AI_NOT_CONFIGURED', 'Python 환경에 AI_PROVIDER(anthropic/openai)에 맞는 API 키가 설정되지 않았습니다.', 503],
     5: ['AI_UNAVAILABLE', 'Python AI 퀴즈 생성 중 오류가 발생했습니다.', 502],
     6: ['INVALID_AI_RESPONSE', 'AI 응답을 퀴즈 형식으로 해석하지 못했습니다.', 502],
   };

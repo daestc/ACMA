@@ -18,7 +18,11 @@ import sys
 from typing import Any
 
 MAX_CHARS = 20_000
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_PROVIDER = "anthropic"
+DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o-mini",  # .env.example의 OPENAI_MODEL 기본값과 맞춤
+}
 MIN_QUIZ_COUNT = 3
 MAX_QUIZ_COUNT = 10
 
@@ -180,8 +184,15 @@ def validate_quiz(
     return valid
 
 
-def generate_quiz(text: str, count: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """추출 텍스트를 Claude에 전달해 구조화된 퀴즈를 생성한다."""
+def _build_user_prompt(selected_text: str, count: int) -> str:
+    return (
+        f"다음 본문으로 4지선다 문제 {count}개를 만들어 주세요. "
+        "본문의 페이지 표식을 근거 페이지로 사용하세요.\n\n"
+        f"<본문>\n{selected_text}\n</본문>"
+    )
+
+
+def _call_anthropic(model: str, user_content: str, max_tokens: int) -> str:
     try:
         from anthropic import Anthropic
     except ImportError as exc:
@@ -194,28 +205,14 @@ def generate_quiz(text: str, count: int) -> tuple[list[dict[str, Any]], dict[str
     if not api_key:
         raise QuizPipelineError("ANTHROPIC_API_KEY가 설정되지 않았습니다.", 4)
 
-    model = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
-    original_chars = len(text)
-    selected_text = text[:MAX_CHARS]
-    allowed_pages = {int(page) for page in re.findall(r"\[p\.(\d+)\]", selected_text)}
-
     try:
         client = Anthropic(api_key=api_key)
         response = client.messages.create(
             model=model,
-            max_tokens=min(8_000, 1_000 + count * 550),
+            max_tokens=max_tokens,
             temperature=0.7,
             system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"다음 본문으로 4지선다 문제 {count}개를 만들어 주세요. "
-                        "본문의 페이지 표식을 근거 페이지로 사용하세요.\n\n"
-                        f"<본문>\n{selected_text}\n</본문>"
-                    ),
-                }
-            ],
+            messages=[{"role": "user", "content": user_content}],
             output_config={
                 "format": {
                     "type": "json_schema",
@@ -229,17 +226,89 @@ def generate_quiz(text: str, count: int) -> tuple[list[dict[str, Any]], dict[str
     if getattr(response, "stop_reason", None) in {"max_tokens", "refusal"}:
         raise QuizPipelineError("Claude가 완전한 퀴즈 응답을 반환하지 못했습니다.", 6)
 
-    raw = next(
+    return next(
         (block.text for block in response.content if getattr(block, "type", None) == "text"),
         "",
     )
+
+
+def _call_openai(model: str, user_content: str, max_tokens: int) -> str:
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise QuizPipelineError(
+            "openai SDK가 설치되지 않았습니다. pip install -r python/requirements.txt를 실행하세요.",
+            5,
+        ) from exc
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise QuizPipelineError("OPENAI_API_KEY가 설정되지 않았습니다.", 4)
+
+    # max_tokens가 아니라 max_completion_tokens를 쓰고 temperature는 지정하지 않는다 —
+    # 이 프로젝트의 다른 OpenAI 연동(services/ai/aiClient.js)이 쓰는 모델(gpt-5 계열 포함)
+    # 기준과 맞춘 것으로, reasoning 계열 모델은 max_tokens/커스텀 temperature를 거부한다.
+    timeout = float(os.getenv("AI_TIMEOUT_MS", "60000")) / 1000
+    try:
+        client = OpenAI(api_key=api_key, timeout=timeout)
+        response = client.chat.completions.create(
+            model=model,
+            max_completion_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "quiz",
+                    "schema": quiz_schema(),
+                    "strict": True,
+                },
+            },
+        )
+    except Exception as exc:
+        raise QuizPipelineError("OpenAI API 호출에 실패했습니다.", 5) from exc
+
+    choice = response.choices[0]
+    if choice.finish_reason == "length" or getattr(choice.message, "refusal", None):
+        raise QuizPipelineError("OpenAI가 완전한 퀴즈 응답을 반환하지 못했습니다.", 6)
+
+    return choice.message.content or ""
+
+
+def generate_quiz(text: str, count: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """추출 텍스트를 AI_PROVIDER(anthropic|openai)로 전달해 구조화된 퀴즈를 생성한다.
+
+    임시로 OpenAI를 쓰려면 .env에 AI_PROVIDER=openai와 OPENAI_API_KEY만 추가하면 된다.
+    AI_PROVIDER 미지정 시 기존과 동일하게 Anthropic을 쓴다.
+    """
+    provider = (os.getenv("AI_PROVIDER", "").strip().lower() or DEFAULT_PROVIDER)
+    if provider not in DEFAULT_MODELS:
+        raise QuizPipelineError(f"지원하지 않는 AI_PROVIDER입니다: {provider}", 4)
+
+    model_env = "OPENAI_MODEL" if provider == "openai" else "ANTHROPIC_MODEL"
+    model = os.getenv(model_env, DEFAULT_MODELS[provider]).strip() or DEFAULT_MODELS[provider]
+
+    original_chars = len(text)
+    selected_text = text[:MAX_CHARS]
+    allowed_pages = {int(page) for page in re.findall(r"\[p\.(\d+)\]", selected_text)}
+    user_content = _build_user_prompt(selected_text, count)
+    max_tokens = min(8_000, 1_000 + count * 550)
+
+    if provider == "openai":
+        raw = _call_openai(model, user_content, max_tokens)
+    else:
+        raw = _call_anthropic(model, user_content, max_tokens)
+
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise QuizPipelineError("Claude 응답의 JSON 파싱에 실패했습니다.", 6) from exc
+        raise QuizPipelineError(f"{provider} 응답의 JSON 파싱에 실패했습니다.", 6) from exc
 
     quiz = validate_quiz(payload, count, allowed_pages)
     meta = {
+        "provider": provider,
         "model": model,
         "extracted_chars": original_chars,
         "used_chars": len(selected_text),
