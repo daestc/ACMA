@@ -151,8 +151,8 @@ function checkImportance(jobs) {
   ['knowledge', 'abilities', 'characteristics'].forEach(field => {
     const values = jobs.flatMap(j => (j[field] || []).map(i => i.importance)).filter(v => typeof v === 'number').sort((a, b) => a - b);
     const median = values.length ? values[Math.floor(values.length / 2)] : '-';
-    console.log(`  ${field}: n=${values.length} min=${values[0]} max=${values[values.length - 1]} median=${median}`);
-    if (values[values.length - 1] > scorer.IMPORTANCE_MAX) console.log(`  ⚠️ ${field} 최댓값이 IMPORTANCE_MAX(${scorer.IMPORTANCE_MAX})를 넘음`);
+    const zeros = values.filter(v => v === 0).length;
+    console.log(`  ${field}: n=${values.length} min=${values[0]} max=${values[values.length - 1]} median=${median} (0인 항목 ${zeros}개 — 순위 가중에서 제외)`);
   });
 }
 
@@ -188,7 +188,9 @@ function checkAccounts(jobs) {
     const safePrefs = scorer.sanitizePrefs(prefs);
     const pool = interests ? jobs.filter(j => interests.includes(j.jobLrclNm)) : jobs;
     const ranked = scorer.rankCandidates(signals, safePrefs, pool, { limit: 10, perMidClass: 3 });
-    const confidence = scorer.calcConfidence(ranked);
+    const confidence = scorer.calcConfidence(signals, safePrefs);
+    const flow = confidence === 'low' && !interests ? 'needs_interests' : `결과 표시${confidence === 'low' ? ' + 참고용' : ''}`;
+    const distinct = kind => new Set(ranked.map(c => c.breakdown[kind])).size;
     const knowledgeMapped = [...signals.knowledgeSubjects].map(([k, s]) => `${k}←${s.join('/')}`).join(', ');
     const abilityMapped = [...signals.skillAbilities].map(([a, s]) => `${a}←${s.join('/')}`).join(', ');
 
@@ -196,7 +198,8 @@ function checkAccounts(jobs) {
     if (interests) console.log(`  후보 풀: ${pool.length}건 (관심분야 필터)`);
     console.log(`  과목→지식: ${knowledgeMapped || '없음'}`);
     console.log(`  스킬→능력: ${abilityMapped || '없음'}`);
-    console.log(`  신뢰도: ${confidence} (1위 ${ranked[0]?.total ?? '-'}, 5위 ${ranked[4]?.total ?? '-'})`);
+    console.log(`  신뢰도: ${confidence} (입력 신호 ${scorer.countSignalKinds(signals, safePrefs)}종) → 요청 흐름: ${flow}`);
+    console.log(`  1위 ${ranked[0]?.total ?? '-'}, 5위 ${ranked[4]?.total ?? '-'} / 후보 10개 값 종류: 지식 ${distinct('knowledge')}, 기술 ${distinct('skill')}, 선호 ${distinct('pref')}`);
     ranked.forEach((c, i) => {
       const b = c.breakdown;
       const matched = [

@@ -4,8 +4,11 @@
 
 const WEIGHTS = { major: 15, cert: 20, knowledge: 25, skill: 20, pref: 20 };
 const CERT_POINT = 12;
-const SKILL_POINT = 10; // 걸린 능력 하나당 importance/100 × 10, 최대 20
 const PREF_POINTS = { work: 12, style: 4, salary: 4 };
+// 직무마다 지식·능력·성격이 정확히 5개. importance 값은 필드마다 척도가 다르고 상위 5개끼리
+// 몰려 있어(능력 중앙값 92) 차이가 안 나서, 직무 안에서의 순위로 가중한다(계획서 v3.2 §4-2-1).
+const RANK_WEIGHT = [1.0, 0.8, 0.6, 0.4, 0.2];
+const MIN_SIGNAL_KINDS = 3; // 학생 쪽 입력 신호가 이만큼 있어야 신뢰도 normal
 
 // ── 정규화 ─────────────────────────────────────────────
 
@@ -127,8 +130,6 @@ const SKILL_ONLY_ABILITY_MAP = [
   [/^\s*c\s*(언어)?\s*$/i, ['전산', '기술 설계']],
   [/^\s*r\s*(언어)?\s*$/i, ['전산', '수리력', '논리적 분석']],
 ];
-
-const IMPORTANCE_MAX = 100; // 점검 스크립트 3-1에서 knowledge·abilities·characteristics 모두 최대 100 이하로 확인
 
 // ── 선호 체크리스트 ───────────────────────────────────────
 
@@ -261,16 +262,21 @@ function mapSkillsToAbilities(skills, experiences) {
 
 const TARGET_FIELDS = ['characteristics', 'abilities', 'knowledge'];
 
-// 직무의 5개 항목 중 target 이름과 일치하는 것의 최대 importance/IMPORTANCE_MAX (없으면 0).
-// 적중 여부(0/1)가 아니라 중요도로 가중해야 흔한 항목이 모든 직무에 같은 점수를 주지 않는다.
+// items를 importance 내림차순으로 세웠을 때, names와 일치하는 첫 항목의 순위 가중치(없으면 0).
+// importance 0은 "중요하지 않음"인데 순위로는 점수를 받게 되므로 뺀다. 동점은 원래 순서 유지.
+function rankedItems(items) {
+  return (items || [])
+    .filter(it => (it?.importance || 0) > 0)
+    .sort((a, b) => b.importance - a.importance);
+}
+
+function bestRankWeight(items, names) {
+  const idx = rankedItems(items).findIndex(it => names.has(it.name));
+  return idx === -1 ? 0 : RANK_WEIGHT[idx] || 0;
+}
+
 function targetStrength(job, target) {
-  let best = 0;
-  TARGET_FIELDS.forEach(field => {
-    (job[field] || []).forEach(item => {
-      if (target[field].has(item?.name)) best = Math.max(best, (item.importance || 0) / IMPORTANCE_MAX);
-    });
-  });
-  return best;
+  return Math.max(...TARGET_FIELDS.map(field => bestRankWeight(job[field], target[field])));
 }
 
 // 후보 풀 연봉(0 제외)의 오름차순 배열에서 v의 백분위(0~1)
@@ -301,18 +307,14 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   breakdown.cert = Math.min(WEIGHTS.cert, heldCerts.length * CERT_POINT);
   matched.certs = heldCerts;
 
-  const jobKnowledge = job.knowledge || [];
-  const totalImportance = jobKnowledge.reduce((sum, k) => sum + (k.importance || 0), 0);
-  const heldKnowledge = jobKnowledge.filter(k => signals.knowledgeSubjects.has(k.name));
-  if (totalImportance > 0 && heldKnowledge.length > 0) {
-    const heldImportance = heldKnowledge.reduce((sum, k) => sum + (k.importance || 0), 0);
-    breakdown.knowledge = Math.round((WEIGHTS.knowledge * heldImportance) / totalImportance);
-    matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
-  }
+  const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
+  breakdown.knowledge = Math.round(WEIGHTS.knowledge * bestRankWeight(job.knowledge, knowledgeNames));
+  const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
+  matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
 
-  const heldAbilities = (job.abilities || []).filter(a => signals.skillAbilities.has(a.name));
-  const skillRaw = heldAbilities.reduce((sum, a) => sum + ((a.importance || 0) / IMPORTANCE_MAX) * SKILL_POINT, 0);
-  breakdown.skill = Math.min(WEIGHTS.skill, Math.round(skillRaw));
+  const abilityNames = new Set(signals.skillAbilities.keys());
+  breakdown.skill = Math.round(WEIGHTS.skill * bestRankWeight(job.abilities, abilityNames));
+  const heldAbilities = rankedItems(job.abilities).filter(a => abilityNames.has(a.name));
   matched.skills = [...new Set(heldAbilities.flatMap(a => signals.skillAbilities.get(a.name)))];
 
   let pref = 0;
@@ -323,7 +325,7 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
     work.forEach((key, i) => { if (strengths[i] > 0) matched.prefs.push(`선호: ${optionLabel('work', key)}`); });
   }
   if (prefs?.style && STYLE_TARGETS[prefs.style]) {
-    const stylePoint = Math.round(PREF_POINTS.style * targetStrength(job, STYLE_TARGETS[prefs.style]));
+    const stylePoint = Math.round(PREF_POINTS.style * bestRankWeight(job.characteristics, STYLE_TARGETS[prefs.style].characteristics));
     if (stylePoint > 0) {
       pref += stylePoint;
       matched.prefs.push(`방식: ${optionLabel('style', prefs.style)}`);
@@ -366,13 +368,23 @@ function rankCandidates(signals, prefs, jobs, { limit = 10, perMidClass = 3 } = 
   return picked;
 }
 
-// 반드시 선호 점수를 반영한 순위로 판정한다(계획서 §6).
-function calcConfidence(ranked) {
-  if (!ranked || ranked.length === 0) return 'low';
-  const activeKinds = Object.keys(WEIGHTS).filter(kind => ranked.some(c => c.breakdown[kind] > 0));
-  if (activeKinds.length <= 1) return 'low';
-  const compareWith = ranked[Math.min(4, ranked.length - 1)];
-  return ranked[0].total - compareWith.total < 10 ? 'low' : 'normal';
+// 학생 쪽 입력 신호 종류로 판정한다(계획서 v3.2 §4-2). 결과 점수 차로 판정하면 492개 직무에서
+// 동점 구간이 생길 때마다 정보가 많은 학생도 low가 된다. style 'any'는 점수에 쓰이지 않아 세지 않는다.
+function countSignalKinds(signals, prefs) {
+  const prefAnswered = (prefs?.work || []).length > 0
+    || Boolean(STYLE_TARGETS[prefs?.style])
+    || prefs?.value === 'salary';
+  return [
+    signals.majors.length > 0,
+    signals.certs.length > 0,
+    signals.knowledgeSubjects.size > 0,
+    signals.skillAbilities.size > 0,
+    prefAnswered,
+  ].filter(Boolean).length;
+}
+
+function calcConfidence(signals, prefs) {
+  return countSignalKinds(signals, prefs) >= MIN_SIGNAL_KINDS ? 'normal' : 'low';
 }
 
 module.exports = {
@@ -387,7 +399,7 @@ module.exports = {
   MAJOR_ALIASES,
   SKILL_ABILITY_MAP,
   SKILL_ONLY_ABILITY_MAP,
-  IMPORTANCE_MAX,
+  RANK_WEIGHT,
   PREF_OPTIONS,
   WORK_PREF_TARGETS,
   STYLE_TARGETS,
@@ -395,5 +407,6 @@ module.exports = {
   extractUserSignals,
   scoreJob,
   rankCandidates,
+  countSignalKinds,
   calcConfidence,
 };
