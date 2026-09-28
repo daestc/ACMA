@@ -28,10 +28,23 @@ function expandCert(raw) {
 // 공백 나열("전산세무1급 전산회계1급"), 중간 괄호 약식("품질경영(산업)기사").
 // 끝에 붙은 꼬리표만 뗀다 — 이름 중간의 괄호는 자격증 이름의 일부일 수 있다.
 const CERT_SERIES_END = /(기술사|기능장|산업기사|기사|기능사|\d급|사)$/;
+
+// "정보처리기능사, 산업기사, 기사"처럼 쉼표 뒤 항목이 등급만 남은 약식이면 첫 항목의 어간을 붙인다
+// (가운뎃점 약식을 expandCert가 펼치는 것과 같은 규칙). 카탈로그 492건 중 199건에 이 표기가 있다.
+function completeSeriesStems(parts) {
+  const first = parts.find(p => p.replace(CERT_SERIES, '') !== '');
+  const m = first?.match(CERT_SERIES);
+  if (!m) return parts;
+  const stem = first.slice(0, -m[0].length);
+  return parts.map(p => (p.replace(CERT_SERIES, '') === '' ? stem + p : p));
+}
+
 function splitCertNames(raw) {
-  return String(raw || '')
+  const parts = String(raw || '')
     .split(/[,，]/)
     .map(s => s.replace(/(?:\s*(?:\([^)]*\)|（[^）]*）|《[^》]*》|〈[^〉]*〉))+\s*$/, '').trim())
+    .filter(Boolean);
+  return completeSeriesStems(parts)
     // 공백 나열은 모든 토큰이 3자 이상이고 자격 등급으로 끝날 때만 쪼갠다
     // ("컴퓨터활용능력 1급"은 "1급"이 2자라 쪼개지지 않는다)
     .flatMap(s => {
