@@ -187,7 +187,21 @@ exports.confirmPayment = async (req, res, next) => {
 
   try {
     const payment = await Payment.findOne({ orderId });
+
+    // 토스 승인을 부르기 전에 주문 주인을 확인한다 — 승인 전까지는 결제가 확정되지 않으므로 여기서
+    // 멈추면 돈이 나가지 않는다. 이 검사를 승인 뒤로 옮기면 돈이 나간 뒤에 거부하게 된다.
+    // 라우터에 requireLogin을 걸지 않는 이유: 로그인 페이지로 보내면서 쿼리(paymentKey 등)를 버려
+    // 사용자가 왜 결제가 안 됐는지 모르게 된다.
+    const sessionUserId = req.session?.user?.id;
+    if (!sessionUserId) {
+      return res.redirect(`/payment/fail?message=${encodeURIComponent('로그인이 만료되었습니다. 다시 로그인한 뒤 결제해 주세요.')}`);
+    }
     if (!payment) return res.redirect('/payment/fail?message=주문정보를 찾을 수 없습니다.');
+    if (String(payment.userId) !== String(sessionUserId)) {
+      logger.warn(`결제승인 거부(주문 소유자 불일치) | orderId=${orderId} | orderUserId=${payment.userId} | sessionUserId=${sessionUserId}`);
+      return res.redirect(`/payment/fail?message=${encodeURIComponent('주문 정보가 일치하지 않습니다.')}`);
+    }
+
     if (payment.status === 'done') return res.redirect('/payment?already=1');
     if (String(payment.amount) !== String(amount)) {
       return res.redirect('/payment/fail?message=결제금액이 일치하지 않습니다.');
