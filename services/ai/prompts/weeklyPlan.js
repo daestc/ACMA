@@ -1,6 +1,6 @@
 const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
 
-const VERSION = 'weeklyPlan.v6';
+const VERSION = 'weeklyPlan.v7';
 
 const SYSTEM_PROMPT = `당신은 한국 대학생의 진로·학업 주간 계획을 설계한다.
 
@@ -28,6 +28,14 @@ const SYSTEM_PROMPT = `당신은 한국 대학생의 진로·학업 주간 계�
      하루 이틀짜리 자잘한 작업이 아니라 완성 가능한 산출물 단위로 목표를 잡는다.
 4-2. academicPhase가 'semester_start'이면 이번 주(개강 첫 주)는 수강 과목 파악과
      학기 계획 수립에 시간을 배분하고, 자격증·프로젝트 비중은 낮춘다.
+4-3. academicPhase가 'normal' 또는 'registration'이고 academic.currentSubjects가
+     있으면, category 'course' 항목을 1~2개 반드시 포함하고 그 estimatedHours 합을
+     availableHoursTotal의 20~30%로 한다. 과목이 3개 이상이면 전공 과목을 우선하고,
+     2~3과목을 한 항목으로 묶어도 된다(예: "자료구조·운영체제 주간 복습").
+     이 항목의 priority는 2 또는 3으로 한다.
+4-4. computed.daysUntilNextExam이 14 이하이면 4-3 대신 시험 준비로 본다:
+     category 'course' 항목의 시간 합을 availableHoursTotal의 40~50%로 올리고,
+     자격증·프로젝트는 50% 이내로 줄인다(규칙 4와 같은 비율).
 5. 입력 데이터에 없는 자격증, 과목, 경력을 지어내지 마라.
 6. items는 3~7개로 한다.
 7. prevCompletionRate가 주어진 경우:
