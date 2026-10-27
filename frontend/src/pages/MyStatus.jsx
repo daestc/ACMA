@@ -152,7 +152,7 @@ function MyStatus() {
   const gpaSummary = useMemo(() => {
     const normalized = (gpaRecords || [])
       .filter((r) => r && r.semester)
-      .map((r) => ({ ...r, semesterGPA: Number(r.semesterGPA) }))
+      .map((r) => ({ ...r, semesterGPA: r.semesterGPA == null ? null : Number(r.semesterGPA) }))
       .sort((a, b) => {
         const l = parseSemesterOrder(a.semester)
         const r = parseSemesterOrder(b.semester)

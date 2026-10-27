@@ -85,7 +85,7 @@ function Academic() {
       const json = await res.json()
       const records = (json.success ? json.records : [])
         .filter((r) => r && r.semester)
-        .map((r) => ({ ...r, semesterGPA: Number(r.semesterGPA) }))
+        .map((r) => ({ ...r, semesterGPA: r.semesterGPA == null ? null : Number(r.semesterGPA) }))
         .sort((a, b) => {
           const ao = parseSemesterOrder(a.semester)
           const bo = parseSemesterOrder(b.semester)
