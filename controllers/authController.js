@@ -402,7 +402,8 @@ exports.postWithdraw = async (req, res) => {
 
     req.session.destroy(() => {
       res.clearCookie('connect.sid');
-      logger.info(`회원탈퇴 | provider=${result.provider} | userId=${userId} | ip=${ip}`);
+      const deletedCount = Object.values(result.deleted || {}).reduce((sum, n) => sum + n, 0);
+      logger.info(`회원탈퇴 | provider=${result.provider} | userId=${userId} | ip=${ip} | 연관 문서 ${deletedCount}건 삭제`);
       res.json({ ok: true });
     });
 

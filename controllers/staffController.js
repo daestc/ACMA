@@ -1,5 +1,6 @@
 const staffService = require('../services/staffService');
 const logger = require('../config/logger');
+const { deleteUserAccount, countDeleted } = require('../services/accountDeletionService');
 
 const getHomePage = async (req, res, next) => {
   try {
@@ -355,9 +356,11 @@ const suspendStudent = async (req, res, next) => {
 const deleteStudent = async (req, res, next) => {
   try {
     const university = req.user.university;
-    const student = await User.findOneAndDelete({ _id: req.params.id, university, role: 'student' }).lean();
+    // 같은 대학의 학생인지 먼저 확인한다 — 확인 전에 정리를 시작하면 다른 대학 학생 데이터가 지워진다.
+    const student = await User.findOne({ _id: req.params.id, university, role: 'student' }).select('email').lean();
     if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
-    logger.info(`계정삭제 | target=${student.email} | by=${req.user.email}`);
+    const result = await deleteUserAccount(student._id);
+    logger.info(`계정삭제 | target=${student.email} | by=${req.user.email} | 연관 문서 ${countDeleted(result)}건 삭제`);
     res.json({ ok: true });
   } catch (err) {
     next(err);
