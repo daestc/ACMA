@@ -5,7 +5,7 @@ const UserSkill = require('../models/User_skills');
 function makeHandler(type, build) {
   return async (req, res) => {
     try {
-      const userId = req.session.user.id;
+      const userId = req.session?.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
 
       const item = build(req.body);
