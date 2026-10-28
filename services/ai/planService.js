@@ -140,12 +140,21 @@ async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
     injectDueDates(sanitized.items, context.certSchedule, extraNotices);
 
     // 규칙 14는 목표 항목을 50% 이상으로 잡게 하지만 마감·시험 규칙이 우선이라 정당하게 모자랄
-    // 수 있다. 항목을 고치거나 다시 생성하지 않고 안내만 한다.
+    // 수 있다. 항목을 고치거나 다시 생성하지 않고 안내만 한다. "마감·시험 때문"이라는 원인은
+    // 실제로 마감 항목이 있거나 시험 기간·시험 2주 전일 때만 붙인다.
     if (context.userGoal && sanitized.allocatedHours > 0) {
       const goalHours = sanitized.items.filter(item => item.forGoal).reduce((sum, item) => sum + item.estimatedHours, 0);
       const goalPct = Math.round((goalHours / sanitized.allocatedHours) * 100);
-      if (goalPct < 50) {
+      const { academicPhase, daysUntilNextExam } = context.computed;
+      const deadlineOrExam = sanitized.items.some(item => item.isDeadline)
+        || academicPhase === 'midterm' || academicPhase === 'final'
+        || (daysUntilNextExam != null && daysUntilNextExam <= 14);
+      if (goalHours === 0) {
+        extraNotices.push('입력한 목표와 직접 관련된 항목을 만들지 못했습니다. 공부할 과목이나 자격증처럼 구체적으로 적어 보세요.');
+      } else if (goalPct < 50 && deadlineOrExam) {
         extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다. 마감·시험 일정이 먼저 배치되었습니다.`);
+      } else if (goalPct < 50) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다.`);
       }
     }
 
