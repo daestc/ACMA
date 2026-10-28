@@ -38,9 +38,13 @@ function sortForDistribution(items) {
  * 순수 함수 — DB 접근 없음, LLM 미사용.
  * @param {object} weeklyPlan  status:'done'인 WeeklyPlan 문서(lean) — weekStart, items, _id 사용
  * @param {number[]} availableHoursByDay  weeklyPlan.computed.availableHoursByDay (0=일)
+ * @param {Array<{date, planItemIndex, hours}>} completedSlices  이 계획에서 이미 완료한 조각
+ *   (completionService.collectCompletedSlices). 재분배 때 완료한 시간을 다시 깔지 않고, 오늘
+ *   이미 한 일이 오늘 용량을 차지하게 하는 데 쓴다. planItemIndex가 null인 조각(다시 생성으로
+ *   분리된 옛 기록)은 용량에만 반영한다.
  * @returns {{ byDate: Map<string, Array<{content, hours, source, weeklyPlanId, planItemIndex, order}>>, errors: string[], weekDates: string[] }}
  */
-function distribute(weeklyPlan, availableHoursByDay) {
+function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   const errors = [];
   const weekDates = kstDate.getWeekDateStrings(weeklyPlan.weekStart);
   const today = kstDate.toKstDateString(new Date());
@@ -65,12 +69,29 @@ function distribute(weeklyPlan, availableHoursByDay) {
   const byDate = new Map(availableDates.map(d => [d, []]));
   let orderCounter = 1000;
 
+  const doneByItem = new Map(); // planItemIndex → { hours, slices }
+  for (const slice of completedSlices) {
+    if (usedHoursByDate.has(slice.date)) {
+      usedHoursByDate.set(slice.date, usedHoursByDate.get(slice.date) + (slice.hours || 0));
+      itemCountByDate.set(slice.date, itemCountByDate.get(slice.date) + 1);
+    }
+    if (slice.planItemIndex == null) continue;
+    const done = doneByItem.get(slice.planItemIndex) || { hours: 0, slices: 0 };
+    done.hours += slice.hours || 0;
+    done.slices += 1;
+    doneByItem.set(slice.planItemIndex, done);
+  }
+
   const sortedItems = sortForDistribution(weeklyPlan.items || []);
 
   for (const { item, idx } of sortedItems) {
     const dueDateStr = item.dueDate ? kstDate.toKstDateString(new Date(item.dueDate)) : null;
     const isZeroHour = !(item.estimatedHours > 0);
+    const done = doneByItem.get(idx) || { hours: 0, slices: 0 };
     const slots = []; // { date, hours }
+
+    if (isZeroHour && done.slices > 0) continue; // 체크만 하면 되는 항목을 이미 체크함
+    if (!isZeroHour && item.estimatedHours - done.hours <= 0) continue;
 
     if (isZeroHour) {
       // 체크만 하면 되는 항목 — 시간 용량을 쓰지 않고 하루에 1회만 배치
@@ -85,7 +106,7 @@ function distribute(weeklyPlan, availableHoursByDay) {
         errors.push(`"${item.title}"을(를) 배치할 날짜를 찾지 못함`);
       }
     } else {
-      let remaining = item.estimatedHours;
+      let remaining = item.estimatedHours - done.hours;
 
       // MAX_SLOT_HOURS는 "하루에 이 항목이 한 번에 차지할 수 있는 최대치"이지
       // "하루 전체 상한"이 아니다 — 한 번 훑어서 못 끝내면(예: 6시간짜리 항목이
@@ -122,10 +143,11 @@ function distribute(weeklyPlan, availableHoursByDay) {
       }
     }
 
-    // 라벨링: 총 조각 수를 알아야 하므로 슬롯이 전부 정해진 뒤에 진행
+    // 라벨링: 총 조각 수를 알아야 하므로 슬롯이 전부 정해진 뒤에 진행. 번호는 완료한
+    // 조각에 이어서 매긴다(완료 1개 + 새 1개면 "(2/2, 3h)").
     slots.forEach((slot, sliceIndex) => {
       byDate.get(slot.date).push({
-        content: formatContent(item.title, slot.hours, sliceIndex, slots.length, isZeroHour),
+        content: formatContent(item.title, slot.hours, done.slices + sliceIndex, done.slices + slots.length, isZeroHour),
         hours: slot.hours,
         source: 'ai',
         weeklyPlanId: weeklyPlan._id,
@@ -171,6 +193,7 @@ function toChecklistItem(slot) {
     source: 'ai',
     weeklyPlanId: slot.weeklyPlanId,
     planItemIndex: slot.planItemIndex,
+    hours: slot.hours,
   };
 }
 

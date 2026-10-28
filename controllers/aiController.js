@@ -550,6 +550,12 @@ async function addGapToWeeklyPlan(req, res) {
     });
     await plan.save();
 
+    // 추가한 항목을 바로 일별 보기에 배치한다. 재분배가 완료한 조각을 보존하므로 이미 한 일은
+    // 그대로 남는다. 생성 중(pending)인 계획은 생성이 끝날 때 어차피 다시 배치된다.
+    if (plan.status === 'done') {
+      await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+    }
+
     return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1 });
   } catch (error) {
     logger.error(`[ai] addGapToWeeklyPlan error: ${error.message}`);

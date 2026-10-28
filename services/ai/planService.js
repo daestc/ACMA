@@ -1,10 +1,13 @@
 const { WeeklyPlan } = require('../../models/Ai');
+const { DailyChecklist } = require('../../models/Calendar');
 const { Job } = require('../../models/Certifications_jobs');
 const contextBuilder = require('./contextBuilder');
 const weeklyPlanPrompt = require('./prompts/weeklyPlan');
 const aiClient = require('./aiClient');
 const validator = require('./validator');
 const dailyDistributor = require('./dailyDistributor');
+const completionService = require('./completionService');
+const kstDate = require('../../utils/kstDate');
 const logger = require('../../config/logger');
 
 const GENERIC_FAILURE_MESSAGE = '생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
@@ -71,11 +74,18 @@ function buildGenerationMeta(meta, promptVersion) {
 // 유효하므로 사용자에게 보여줄 수 있고, 분배만 재시도 가능해야 한다(POST .../distribute).
 // errors(실제 배치 실패)와 notices(정보성 안내)를 분리해서 저장한다 — 성격이 다른
 // 메시지를 한 배열에 섞어두면 화면에서 사용자가 뭘 조치해야 하는지 구분이 안 된다.
+// 이미 완료한 조각을 함께 넘겨야 재분배 때 한 시간을 다시 깔지 않는다(재분배 API·생성 직후·갭 추가 모두 여기를 거친다).
 async function runDistribution(weeklyPlanDoc, extraNotices = []) {
   try {
+    const completedSlices = await completionService.collectCompletedSlices(
+      weeklyPlanDoc.userId,
+      weeklyPlanDoc._id,
+      kstDate.getWeekDateStrings(weeklyPlanDoc.weekStart),
+    );
     const { byDate, errors, weekDates } = dailyDistributor.distribute(
       weeklyPlanDoc,
       weeklyPlanDoc.computed?.availableHoursByDay || [],
+      completedSlices,
     );
     await dailyDistributor.applyDistributionToChecklists(weeklyPlanDoc.userId, weeklyPlanDoc._id, byDate, weekDates);
 
@@ -156,6 +166,15 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
       prevCompletionRate: context.prevCompletionRate,
       generation: buildGenerationMeta(meta, weeklyPlanPrompt.VERSION),
     }, { new: true }).lean();
+
+    // 같은 주를 다시 생성하면 _id가 그대로라, 옛 완료 조각의 planItemIndex가 새 항목 배열을
+    // 가리키게 된다. 번호만 떼어 내 새 항목 진행률에 섞이지 않게 한다 — 완료 기록 자체는 남아
+    // 주간 달성률과 오늘 용량 계산에는 계속 반영된다.
+    await DailyChecklist.updateMany(
+      { userId, 'items.weeklyPlanId': docId },
+      { $set: { 'items.$[e].planItemIndex': null } },
+      { arrayFilters: [{ 'e.weeklyPlanId': docId, 'e.source': 'ai', 'e.isCompleted': true }] },
+    );
 
     await runDistribution(savedDoc, extraNotices);
   } catch (error) {

@@ -118,6 +118,7 @@ const dailyChecklistSchema = new Schema(
         source: { type: String, enum: ['manual', 'ai'], default: 'manual' },
         weeklyPlanId: { type: Schema.Types.ObjectId, ref: 'WeeklyPlan', default: null },
         planItemIndex: { type: Number, default: null }, // WeeklyPlan.items의 인덱스 (역추적용)
+        hours: { type: Number, default: null }, // AI 조각의 시간 (재분배·진행률 계산용, 옛 조각은 null)
       },
     ],
   },
