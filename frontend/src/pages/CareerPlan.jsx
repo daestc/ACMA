@@ -102,7 +102,6 @@ function CareerPlan() {
     currentPlanIdRef.current = doc._id
     setPlan(doc)
     setProgress(planProgress || null)
-    setUserGoalInput(doc.userGoal || '')
     setSection('plan')
     loadDailyChecklist(doc._id)
   }
@@ -114,6 +113,7 @@ function CareerPlan() {
     pollTimerRef.current = pollUntilDone(`/ai/weekly-plan/${currentPlanIdRef.current}`, null, (data) => {
       if (data.status === 'done' && data.data) {
         renderPlanDoc(data.data, data.progress)
+        setUserGoalInput(data.data.userGoal || '')
       } else {
         setFailedMsg(data.errorMessage || '생성에 실패했습니다.')
         setSection('failed')
@@ -139,6 +139,7 @@ function CareerPlan() {
     }
     if (data.status === 'done' && data.data) {
       renderPlanDoc(data.data, data.progress)
+      setUserGoalInput(data.data.userGoal || '')
       return
     }
     setSection('empty')

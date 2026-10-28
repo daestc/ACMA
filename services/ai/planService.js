@@ -167,8 +167,9 @@ async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
 
     const targetJob = await Job.findOne({ userId, status: 'target' }).select('jobCode title').lean();
 
+    // status는 아직 pending으로 둔다. 화면 폴링은 done을 보는 즉시 진행률을 한 번 그리고 멈추므로,
+    // 옛 완료 조각 분리·재배치가 끝난 뒤에 done으로 바꿔야 옛 기록이 새 항목에 붙은 진행률이 안 그려진다.
     const savedDoc = await WeeklyPlan.findByIdAndUpdate(docId, {
-      status: 'done',
       errorMessage: null,
       jobCode: targetJob?.jobCode || null,
       jobTitle: targetJob?.title || null,
@@ -195,7 +196,9 @@ async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
       { arrayFilters: [{ 'e.weeklyPlanId': docId, 'e.source': 'ai', 'e.isCompleted': true }] },
     );
 
+    // runDistribution은 실패해도 던지지 않고 distribution.status만 failed로 남기므로 done 전환은 항상 실행된다.
     await runDistribution(savedDoc, extraNotices);
+    await WeeklyPlan.findByIdAndUpdate(docId, { status: 'done' });
   } catch (error) {
     logger.error(`[ai] weekly-plan generation failed (docId=${docId}): ${error.message}`);
     await WeeklyPlan.findByIdAndUpdate(docId, {

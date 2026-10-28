@@ -40,7 +40,6 @@ function resolveWeekStart(requestedWeekStart) {
   return nextWeekStart;
 }
 
-// weekStart(일요일 00:00 KST)로부터 토요일 23:59:59.999 KST를 구한다.
 const USER_GOAL_MAX_LENGTH = 100;
 
 // 학생이 쓴 주간 목표 — 줄바꿈·연속 공백을 하나로 접고 100자로 자른다. 비면 null.
@@ -50,6 +49,7 @@ function normalizeUserGoal(value) {
   return goal || null;
 }
 
+// weekStart(일요일 00:00 KST)로부터 토요일 23:59:59.999 KST를 구한다.
 function computeWeekEnd(weekStart) {
   const weekDates = kstDate.getWeekDateStrings(weekStart);
   const lastDayStart = kstDate.fromKstDateString(weekDates[6]);
