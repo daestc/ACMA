@@ -21,6 +21,33 @@ function normalizeMajor(major) {
   return major?.trim() || null;
 }
 
+const MIN_ADMISSION_YEAR = 1990;
+
+// 학번에서 입학연도를 판정한다. 형식이 학교마다 달라 저장을 막지 않고, 판정 결과를 화면에 보여
+// 학생이 틀리면 학번을 고치게 한다. 저장하지 않고 조회할 때마다 계산한다(학번을 고치면 어긋나므로).
+// 숫자만 남겨 앞 4자리가 1990~올해면 그 해, 아니고 2~7자리면 2000+앞 2자리(올해 이하), 그 외 null.
+function admissionYearFromStudentId(studentId, now = new Date()) {
+  const digits = String(studentId || '').replace(/\D/g, '');
+  const thisYear = now.getFullYear();
+  if (digits.length >= 4) {
+    const year = Number(digits.slice(0, 4));
+    if (year >= MIN_ADMISSION_YEAR && year <= thisYear) return year;
+  }
+  if (digits.length >= 2 && digits.length <= 7) {
+    const year = 2000 + Number(digits.slice(0, 2));
+    if (year <= thisYear) return year;
+  }
+  return null;
+}
+
+// 입학연도 이하인 fromYear 중 가장 큰 항목. 없거나 연도를 모르면 null(기본 요건).
+function pickYearEntry(entries, year) {
+  if (year == null) return null;
+  return (entries || [])
+    .filter((entry) => entry.fromYear <= year)
+    .reduce((best, entry) => (!best || entry.fromYear > best.fromYear ? entry : best), null);
+}
+
 function mergeGraduationRequirements(schoolRequirements = {}, majorAdditional = {}, studentRequirements = {}) {
   const school = { ...DEFAULT_REQUIREMENTS, ...schoolRequirements };
   const major = majorAdditional || {};
@@ -148,7 +175,7 @@ async function saveMajorAdditionalRequirements(university, major, additionalRequ
   return findMajorRequirements(doc.toObject(), normalized);
 }
 
-async function getStaffGraduationForStudent(university, major) {
+async function getStaffGraduationForStudent(university, major, admissionYear = null) {
   const univ = university?.trim() || null;
   const majorNorm = normalizeMajor(major);
 
@@ -192,8 +219,10 @@ async function getStaffGraduationForStudent(university, major) {
   }
 
   const majorEntry = findMajorRequirements(graduationDoc, majorNorm);
+  // 학과 추가 요건은 연도를 나누지 않고, 고른 연도(또는 기본) 대학 요건 위에 그대로 덮는다.
+  const yearEntry = pickYearEntry(graduationDoc.requirementsByYear, admissionYear);
   const requirements = mergeGraduationRequirements(
-    graduationDoc.requirements,
+    yearEntry ? yearEntry.requirements : graduationDoc.requirements,
     majorEntry?.additionalRequirements,
     {},
   );
@@ -206,6 +235,8 @@ async function getStaffGraduationForStudent(university, major) {
     major: majorNorm,
     requirements,
     hasMajorSpecific: Boolean(majorEntry),
+    admissionYear,
+    appliedFromYear: yearEntry ? yearEntry.fromYear : null,
   };
 }
 
@@ -216,19 +247,21 @@ async function getStaffGraduationForStudent(university, major) {
 // 전공은 마이페이지에서 매번 갱신되는 User.major를 먼저 본다.
 async function resolveRequirements(userId) {
   const [user, profile] = await Promise.all([
-    User.findById(userId).select('university major').lean(),
+    User.findById(userId).select('university major studentId').lean(),
     UniversityProfile.findOne({ userId }).select('major').lean(),
   ]);
 
   const university = user?.university || null;
   const major = normalizeMajor(user?.major || profile?.major);
 
-  return getStaffGraduationForStudent(university, major);
+  return getStaffGraduationForStudent(university, major, admissionYearFromStudentId(user?.studentId));
 }
 
 module.exports = {
   DEFAULT_REQUIREMENTS,
   mergeGraduationRequirements,
+  admissionYearFromStudentId,
+  pickYearEntry,
   getUniversityGraduationDoc,
   findMajorRequirements,
   getMajorList,

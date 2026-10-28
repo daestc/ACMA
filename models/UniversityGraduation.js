@@ -31,9 +31,17 @@ const majorRequirementSchema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { _id: true });
 
+// 입학연도(학번)별 요건. fromYear는 "이 학번부터 적용" — 학생 입학연도 이하인 것 중 가장 큰 것을 쓴다.
+const yearRequirementSchema = new mongoose.Schema({
+  fromYear: { type: Number, required: true, min: 1990, max: 2100 },
+  requirements: { type: graduationRequirementsSchema, default: () => ({}) },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+}, { _id: false });
+
 const universityGraduationSchema = new mongoose.Schema({
   university: { type: String, required: true, unique: true, trim: true },
-  requirements: { type: graduationRequirementsSchema, default: () => ({}) },
+  requirements: { type: graduationRequirementsSchema, default: () => ({}) }, // 기본 요건(연도 미지정)
+  requirementsByYear: { type: [yearRequirementSchema], default: [] },
   majorRequirements: { type: [majorRequirementSchema], default: [] },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });

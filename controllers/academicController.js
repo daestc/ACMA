@@ -273,6 +273,8 @@ const getGraduationRequirements = async (req, res) => {
         university: graduation.university,
         GraduationRequirements: graduation.requirements,
         hasMajorSpecific: graduation.hasMajorSpecific,
+        admissionYear: graduation.admissionYear,
+        appliedFromYear: graduation.appliedFromYear,
       },
     });
   } catch (error) {
@@ -326,6 +328,8 @@ const getProgress = async (req, res) => {
       graduationAvailable: credits.available,
       graduationRequirements: credits.available ? credits.requirements : null,
       remaining: credits.remaining,
+      admissionYear: credits.admissionYear ?? null,
+      appliedFromYear: credits.appliedFromYear ?? null,
     });
   } catch (error) {
     console.error(error);

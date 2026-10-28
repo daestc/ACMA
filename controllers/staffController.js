@@ -111,17 +111,38 @@ const getGraduationPage = async (req, res, next) => {
 };
 
 // 졸업요건 설정 페이지 데이터 (JSON) — getGraduationPage와 동일한 조회, React StaffGraduation.jsx용.
+// ?fromYear=2023이면 그 연도 요건(없으면 기본 요건 복사본 + isNew), 없으면 기본 요건.
 const getGraduationData = async (req, res, next) => {
   try {
+    const fromYear = parseFromYear(req.query.fromYear);
+    if (fromYear === INVALID_YEAR) {
+      return res.status(400).json({ ok: false, message: INVALID_YEAR_MESSAGE });
+    }
     const [graduation, majors] = await Promise.all([
-      staffService.getGraduationRequirements(req.user.university),
+      staffService.getGraduationRequirements(req.user.university, fromYear),
       staffService.getMajorList(req.user.university),
     ]);
-    res.json({ ok: true, requirements: graduation?.requirements || null, majors });
+    res.json({
+      ok: true,
+      requirements: graduation.requirements,
+      years: graduation.years,
+      fromYear: graduation.fromYear,
+      isNew: graduation.isNew,
+      majors,
+    });
   } catch (err) {
     next(err);
   }
 };
+
+const INVALID_YEAR = Symbol('invalid year');
+const INVALID_YEAR_MESSAGE = '적용 학번은 1990~2100 사이 연도로 입력해주세요.';
+// 비어 있으면 null(기본 요건), 1990~2100 정수면 그 연도, 그 외는 INVALID_YEAR
+function parseFromYear(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  const year = Number(value);
+  return Number.isInteger(year) && year >= 1990 && year <= 2100 ? year : INVALID_YEAR;
+}
 
 function parseNum(value, fallback) {
   const n = parseInt(value, 10);
@@ -155,14 +176,41 @@ const saveGraduation = async (req, res) => {
         : parseNum(body.requiredVolunteer, null),
     };
 
+    const fromYear = parseFromYear(body.fromYear);
+    if (fromYear === INVALID_YEAR) {
+      return res.status(400).json({ ok: false, message: INVALID_YEAR_MESSAGE });
+    }
+
     const graduation = await staffService.saveGraduationRequirements(
       req.user.university,
       requirements,
       req.user.id,
+      fromYear,
     );
 
-    logger.info(`졸업요건 저장 | univ=${req.user.university} | by=${req.user.email}`);
-    res.json({ ok: true, requirements: graduation.requirements });
+    logger.info(`졸업요건 저장 | univ=${req.user.university} | fromYear=${fromYear ?? '기본'} | by=${req.user.email}`);
+    res.json({ ok: true, requirements: graduation.requirements, fromYear });
+  } catch (err) {
+    if (err.code === 'NO_UNIVERSITY') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+const deleteGraduationYear = async (req, res) => {
+  try {
+    const fromYear = parseFromYear(req.body?.fromYear);
+    if (fromYear === null) {
+      return res.status(400).json({ ok: false, message: '기본 요건은 삭제할 수 없습니다.' });
+    }
+    if (fromYear === INVALID_YEAR) {
+      return res.status(400).json({ ok: false, message: INVALID_YEAR_MESSAGE });
+    }
+    const deleted = await staffService.deleteGraduationYear(req.user.university, fromYear);
+    if (!deleted) return res.status(404).json({ ok: false, message: '해당 연도 요건이 없습니다.' });
+    logger.info(`연도별 졸업요건 삭제 | univ=${req.user.university} | fromYear=${fromYear} | by=${req.user.email}`);
+    res.json({ ok: true, fromYear });
   } catch (err) {
     if (err.code === 'NO_UNIVERSITY') {
       return res.status(400).json({ ok: false, message: err.message });
@@ -395,6 +443,7 @@ module.exports = {
   getGraduationPage,
   getGraduationData,
   saveGraduation,
+  deleteGraduationYear,
   getMajorList,
   getMajorGraduation,
   saveMajorGraduation,

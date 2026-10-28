@@ -369,7 +369,15 @@ async function calcRemainingCredits(userId) {
     total: Math.max(0, req.requiredTotalCredits - earned.total),
   };
 
-  return { available: true, earned, gpa: cumulativeGPA, requirements: req, remaining };
+  return {
+    available: true,
+    earned,
+    gpa: cumulativeGPA,
+    requirements: req,
+    remaining,
+    admissionYear: graduation.admissionYear,
+    appliedFromYear: graduation.appliedFromYear,
+  };
 }
 
 module.exports = {

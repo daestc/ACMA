@@ -491,7 +491,16 @@ function GradTab({ available, message, profile, progressTotals }) {
     <div className="card">
       <div className="card-header">
         <span className="card-title">졸업요건</span>
-        <span className="badge badge-blue">{profile?.major || profile?.university || '-'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span className="badge badge-blue">{profile?.major || profile?.university || '-'}</span>
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+            {profile?.appliedFromYear
+              ? `${profile.appliedFromYear}학번부터 적용 요건 (내 학번: ${profile.admissionYear})`
+              : profile?.admissionYear
+                ? `기본 요건 (내 학번: ${profile.admissionYear})`
+                : '기본 요건 · 학번을 입력하면 입학연도별 요건이 적용됩니다'}
+          </span>
+        </div>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.6 }}>
         대학관계자가 등록한 졸업요건입니다. 학생은 조회만 가능합니다.

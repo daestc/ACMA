@@ -32,7 +32,8 @@ router.delete('/schedules/:id', staffController.deleteSchedule);// 일정 삭제
 router.get('/graduation', staffController.getGraduationPage);// 졸업요건 관리 페이지
 router.get('/graduation/data', staffController.getGraduationData);// 졸업요건 설정 데이터 (JSON, React용)
 router.post('/graduation', staffController.saveGraduation);// 졸업요건 저장 (기존 EJS 폼)
-router.post('/graduation/save', staffController.saveGraduation);// 졸업요건 저장 (React 폼) — 위와 동일한 이유
+router.post('/graduation/save', staffController.saveGraduation);// 졸업요건 저장 (React 폼) — 위와 동일한 이유, fromYear가 있으면 연도별 요건
+router.post('/graduation/years/delete', staffController.deleteGraduationYear);// 연도별 졸업요건 삭제 (기본 요건은 불가)
 router.get('/graduation/majors', staffController.getMajorList);// 전공 목록 조회
 router.get('/graduation/majors/:major', staffController.getMajorGraduation);// 전공 졸업요건 조회
 router.post('/graduation/majors', staffController.saveMajorGraduation);// 전공 졸업요건 저장

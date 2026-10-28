@@ -79,18 +79,56 @@ async function deleteSchedule(id, university) {
   return result;
 }
 
-async function getGraduationRequirements(university) {
+// fromYear가 없으면 기본 요건, 있으면 그 연도 요건. 등록되지 않은 연도는 기본 요건을 복사해
+// isNew:true로 돌려준다(새 연도는 기본 요건에서 시작). years는 등록된 연도 목록(오름차순).
+async function getGraduationRequirements(university, fromYear = null) {
   const univ = requireUniversity(university);
-  return UniversityGraduation.findOne({ university: univ }).lean();
+  const doc = await UniversityGraduation.findOne({ university: univ }).lean();
+  const years = (doc?.requirementsByYear || []).map((entry) => entry.fromYear).sort((a, b) => a - b);
+  if (fromYear == null) {
+    return { requirements: doc?.requirements || null, years, fromYear: null, isNew: false };
+  }
+  const entry = (doc?.requirementsByYear || []).find((item) => item.fromYear === fromYear);
+  return {
+    requirements: entry ? entry.requirements : (doc?.requirements || null),
+    years,
+    fromYear,
+    isNew: !entry,
+  };
 }
 
-async function saveGraduationRequirements(university, requirements, updatedBy) {
+// fromYear가 있으면 그 연도 항목을 upsert, 없으면 기본 요건을 저장한다.
+async function saveGraduationRequirements(university, requirements, updatedBy, fromYear = null) {
   const univ = requireUniversity(university);
-  return UniversityGraduation.findOneAndUpdate(
+  if (fromYear == null) {
+    return UniversityGraduation.findOneAndUpdate(
+      { university: univ },
+      { requirements, updatedBy },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+    ).lean();
+  }
+
+  const doc = await UniversityGraduation.findOneAndUpdate(
     { university: univ },
-    { requirements, updatedBy },
-    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
-  ).lean();
+    { $setOnInsert: { university: univ } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  const index = doc.requirementsByYear.findIndex((item) => item.fromYear === fromYear);
+  const entry = { fromYear, requirements, updatedBy };
+  if (index >= 0) doc.requirementsByYear[index] = entry;
+  else doc.requirementsByYear.push(entry);
+  await doc.save();
+  const saved = doc.toObject().requirementsByYear.find((item) => item.fromYear === fromYear);
+  return { requirements: saved.requirements, fromYear };
+}
+
+async function deleteGraduationYear(university, fromYear) {
+  const univ = requireUniversity(university);
+  const result = await UniversityGraduation.updateOne(
+    { university: univ },
+    { $pull: { requirementsByYear: { fromYear } } },
+  );
+  return result.modifiedCount > 0;
 }
 
 function formatScheduleRange(startDate, endDate) {
@@ -184,6 +222,7 @@ module.exports = {
   createSchedule,
   deleteSchedule,
   getGraduationRequirements,
+  deleteGraduationYear,
   saveGraduationRequirements,
   getMajorList,
   getMajorAdditionalRequirements,

@@ -94,9 +94,17 @@ function CertPicker({ certs, setCerts, msgSetter }) {
   )
 }
 
+const YEAR_BASE = '' // 적용 학번 선택값: '' = 기본(연도 미지정)
+const YEAR_ADD = 'add'
+
 function StaffGraduation() {
   const [loading, setLoading] = useState(true)
   const [majors, setMajors] = useState([])
+
+  // 적용 학번(입학연도)별 요건
+  const [years, setYears] = useState([])
+  const [fromYear, setFromYear] = useState(YEAR_BASE)
+  const [isNewYear, setIsNewYear] = useState(false)
 
   // 학교 기본값
   const [total, setTotal] = useState(130)
@@ -128,34 +136,82 @@ function StaffGraduation() {
   const [mgrMsg, setMgrMsg] = useState(null)
   const [mgrSaving, setMgrSaving] = useState(false)
 
+  const applySchoolRequirements = (r) => {
+    setTotal(r?.requiredTotalCredits ?? 130)
+    setMajorReq(r?.requiredMajorCredits ?? 42)
+    setMajorEl(r?.requiredMajorElective ?? 40)
+    setGenReq(r?.requiredGeneralCredits ?? 20)
+    setGenEl(r?.requiredGeneralElective ?? 28)
+    setVolunteer(r?.requiredVolunteer ?? '')
+    setGradWork(r?.requiresGraduationWork !== false)
+    setLang(r?.requiredLanguageScore || '')
+    setCerts(r?.requiredCertifications || [])
+    setInternship(r?.requiredInternship == null ? '' : String(r.requiredInternship))
+    setCapstone(r?.requiredCapstonDesign == null ? '' : String(r.requiredCapstonDesign))
+    setNc(r?.requiredNCProgram == null ? '' : String(r.requiredNCProgram))
+  }
+
+  // year: '' = 기본 요건, 숫자 = 그 학번부터 적용되는 요건(없으면 서버가 기본 요건 복사본을 준다)
+  const loadSchoolRequirements = async (year) => {
+    const query = year === YEAR_BASE ? '' : `?fromYear=${encodeURIComponent(year)}`
+    const res = await fetch(`/staff/graduation/data${query}`)
+    const data = await res.json()
+    if (!data.ok) {
+      setSchoolMsg({ text: data.message || '졸업요건을 불러오지 못했습니다.', isError: true })
+      return false
+    }
+    setMajors(data.majors || [])
+    setYears(data.years || [])
+    setFromYear(data.fromYear == null ? YEAR_BASE : String(data.fromYear))
+    setIsNewYear(Boolean(data.isNew))
+    applySchoolRequirements(data.requirements)
+    return true
+  }
+
   useEffect(() => {
-    fetch('/staff/graduation/data')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.ok) return
-        setMajors(data.majors || [])
-        const r = data.requirements
-        if (r) {
-          setTotal(r.requiredTotalCredits ?? 130)
-          setMajorReq(r.requiredMajorCredits ?? 42)
-          setMajorEl(r.requiredMajorElective ?? 40)
-          setGenReq(r.requiredGeneralCredits ?? 20)
-          setGenEl(r.requiredGeneralElective ?? 28)
-          setVolunteer(r.requiredVolunteer ?? '')
-          setGradWork(r.requiresGraduationWork !== false)
-          setLang(r.requiredLanguageScore || '')
-          setCerts(r.requiredCertifications || [])
-          setInternship(r.requiredInternship == null ? '' : String(r.requiredInternship))
-          setCapstone(r.requiredCapstonDesign == null ? '' : String(r.requiredCapstonDesign))
-          setNc(r.requiredNCProgram == null ? '' : String(r.requiredNCProgram))
-        }
-      })
-      .finally(() => setLoading(false))
+    loadSchoolRequirements(YEAR_BASE).finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const changeYear = async (value) => {
+    setSchoolMsg(null)
+    if (value !== YEAR_ADD) {
+      loadSchoolRequirements(value)
+      return
+    }
+    const input = window.prompt('몇 학번부터 적용할 요건인가요? (예: 2023)')
+    if (input == null) return
+    const year = Number(String(input).trim())
+    if (!Number.isInteger(year) || year < 1990 || year > 2100) {
+      setSchoolMsg({ text: '1990~2100 사이 연도를 입력해주세요.', isError: true })
+      return
+    }
+    loadSchoolRequirements(String(year))
+  }
+
+  const deleteYear = async () => {
+    if (fromYear === YEAR_BASE || isNewYear) return
+    if (!window.confirm(`${fromYear}학번부터 적용되는 요건을 삭제할까요? 해당 학번 학생에게는 바로 앞 연도 요건이나 기본 요건이 적용됩니다.`)) return
+    try {
+      const res = await fetch('/staff/graduation/years/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fromYear: Number(fromYear) }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        setSchoolMsg({ text: data.message || '삭제에 실패했습니다.', isError: true })
+        return
+      }
+      await loadSchoolRequirements(YEAR_BASE)
+      setSchoolMsg({ text: `${data.fromYear}학번 요건을 삭제했습니다.`, isError: false })
+    } catch {
+      setSchoolMsg({ text: '서버와 통신할 수 없습니다.', isError: true })
+    }
+  }
 
   const saveSchool = async () => {
     setSchoolSaving(true)
     const body = {
+      fromYear: fromYear === YEAR_BASE ? null : Number(fromYear),
       requiredTotalCredits: total,
       requiredMajorCredits: majorReq,
       requiredMajorElective: majorEl,
@@ -175,7 +231,13 @@ function StaffGraduation() {
       })
       const data = await res.json()
       if (data.ok) {
-        setSchoolMsg({ text: '학교 기본 졸업요건이 저장되었습니다.', isError: false })
+        if (data.fromYear == null) {
+          setSchoolMsg({ text: '학교 기본 졸업요건이 저장되었습니다.', isError: false })
+        } else {
+          setYears((prev) => (prev.includes(data.fromYear) ? prev : [...prev, data.fromYear].sort((a, b) => a - b)))
+          setIsNewYear(false)
+          setSchoolMsg({ text: `${data.fromYear}학번부터 적용되는 졸업요건이 저장되었습니다.`, isError: false })
+        }
       } else {
         setSchoolMsg({ text: data.message || '저장에 실패했습니다.', isError: true })
       }
@@ -271,9 +333,28 @@ function StaffGraduation() {
       <div className="card">
         <div className="card-header">
           <span className="card-title">🎓 졸업요건</span>
-          <span className="badge badge-blue">학교 기본값</span>
+          <span className="badge badge-blue">{fromYear === YEAR_BASE ? '학교 기본값' : `${fromYear}학번부터`}</span>
         </div>
         <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>이 설정은 해당 대학 학생의 졸업요건 기본값으로 사용됩니다.</p>
+
+        <div style={{ marginBottom: 12 }}>
+          <label>적용 학번</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select className="input-field" value={fromYear} onChange={(e) => changeYear(e.target.value)} style={{ flex: 1 }}>
+              <option value={YEAR_BASE}>기본(연도 미지정)</option>
+              {[...new Set([...years, ...(fromYear !== YEAR_BASE ? [Number(fromYear)] : [])])].sort((a, b) => a - b).map((y) => (
+                <option key={y} value={String(y)}>{y}학번부터{!years.includes(y) ? ' (새 연도, 저장 전)' : ''}</option>
+              ))}
+              <option value={YEAR_ADD}>+ 연도 추가</option>
+            </select>
+            {fromYear !== YEAR_BASE && !isNewYear && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={deleteYear}>이 연도 요건 삭제</button>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>
+            학생 학번 앞자리로 입학연도를 판단합니다. 해당 연도 이전 학번에는 바로 앞 연도 요건이, 아무 연도에도 해당하지 않으면 기본 요건이 적용됩니다.
+          </div>
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -324,7 +405,7 @@ function StaffGraduation() {
           </div>
 
           <button type="button" className="btn btn-accent" style={{ width: '100%', justifyContent: 'center' }} disabled={schoolSaving} onClick={saveSchool}>
-            {schoolSaving ? '저장 중...' : '💾 학교 기본값 저장'}
+            {schoolSaving ? '저장 중...' : fromYear === YEAR_BASE ? '💾 학교 기본값 저장' : `💾 ${fromYear}학번 요건 저장`}
           </button>
           {schoolMsg && <div style={msgBoxStyle(schoolMsg.isError)}>{schoolMsg.text}</div>}
         </div>
