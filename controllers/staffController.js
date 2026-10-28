@@ -149,6 +149,11 @@ function parseNum(value, fallback) {
   return Number.isNaN(n) ? fallback : n;
 }
 
+function parseNullableNum(value) {
+  if (value === '' || value == null) return null;
+  return parseNum(value, null);
+}
+
 function parseBool(value) {
   if (value === '' || value == null) return null;
   return value === true || value === 'true';
@@ -174,6 +179,9 @@ const saveGraduation = async (req, res) => {
       requiredVolunteer: body.requiredVolunteer === '' || body.requiredVolunteer == null
         ? null
         : parseNum(body.requiredVolunteer, null),
+      // 비우면 null — 복수전공 학생도 단일전공 기준으로 계산된다
+      doubleMajorPrimaryCredits: parseNullableNum(body.doubleMajorPrimaryCredits),
+      doubleMajorCredits: parseNullableNum(body.doubleMajorCredits),
     };
 
     const fromYear = parseFromYear(body.fromYear);

@@ -135,6 +135,7 @@ const updateBulkGrades = async (req, res) => {
       subjectName: String(s.subjectName || '').trim(),
       subjectType: String(s.subjectType || '').trim(),
       grade: String(s.grade || '').trim(),
+      majorTrack: String(s.majorTrack || '').trim(),
     })).filter(s => s.subjectName);
 
     // 2. 서비스 함수에 "객체 형태"로 인자 전달 (이름 매핑 주의)
@@ -317,6 +318,9 @@ const getProgress = async (req, res) => {
       general_elective: earned.generalElective,
       free: earned.free,
       totalEarned: earned.total,
+      // 전공 과목의 트랙별 합(전필+전선). 복수전공 표시용으로 추가
+      primary_major: earned.primaryMajor,
+      double_major: earned.doubleMajor,
     };
 
     // MyStatus(React·EJS)는 profile.GraduationRequirements를 요건으로 읽는다. 프로필 문서의 그 필드는
@@ -330,6 +334,8 @@ const getProgress = async (req, res) => {
       remaining: credits.remaining,
       admissionYear: credits.admissionYear ?? null,
       appliedFromYear: credits.appliedFromYear ?? null,
+      doubleMajorMode: Boolean(credits.doubleMajorMode),
+      doubleMajorNotice: credits.doubleMajorNotice ?? null,
     });
   } catch (error) {
     console.error(error);

@@ -213,6 +213,7 @@ async function buildUserContext(userId) {
         majorElective: credits.majorElective ?? null,
         generalRequired: credits.generalRequired ?? null,
         generalElective: credits.generalElective ?? null,
+        doubleMajor: credits.doubleMajor ?? null, // 복수전공 학점 남은 것(단일전공이면 null → 키 제거)
       },
       pendingRequirements: derivePendingRequirements(requirements, acquiredCertNames),
       majorCourses: extractMajorCourses(records),

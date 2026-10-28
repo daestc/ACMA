@@ -13,6 +13,9 @@ const graduationRequirementsSchema = new mongoose.Schema({
   requiredCapstonDesign: { type: Boolean, default: null },
   requiredNCProgram: { type: Boolean, default: null },
   requiredVolunteer: { type: Number, default: null },
+  // 복수전공자 학점. 둘 다 있어야 복수전공 계산을 한다(하나라도 비면 단일전공 기준).
+  doubleMajorPrimaryCredits: { type: Number, default: null }, // 복수전공자의 주전공 이수 학점(전필+전선)
+  doubleMajorCredits: { type: Number, default: null },        // 복수전공 이수 학점
 }, { _id: false });
 
 const additionalRequirementsSchema = new mongoose.Schema({

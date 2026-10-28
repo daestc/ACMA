@@ -3,6 +3,8 @@ const UniversityProfile = require('../models/University_profile');
 const { resolveRequirements } = require('./graduationService');
 
 const PASSING_GRADES = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'P'];
+const MAJOR_TRACKS = ['primary', 'double'];
+const DOUBLE_MAJOR_NOTICE = '대학관계자가 복수전공 학점 요건을 등록하지 않아 단일전공 기준으로 계산했습니다.';
 const GRADE_POINTS = {
   'A+': 4.5, 'A': 4.0,
   'B+': 3.5, 'B': 3.0,
@@ -121,6 +123,7 @@ async function updateBulkGrades({ userId, semester, updates }, options = {}) {
       // 과목을 찾았다면 사용자가 선택한 이수구분과 성적으로 덮어씀
       if (updateData.subjectType) subject.subjectType = updateData.subjectType;
       if (updateData.grade) subject.grade = updateData.grade;
+      if (MAJOR_TRACKS.includes(updateData.majorTrack)) subject.majorTrack = updateData.majorTrack;
     }
   });
 
@@ -309,9 +312,17 @@ async function saveUniversityProfile(userId, profileData) {
 
 // 영역별 취득 학점 vs 졸업요건 잔여 학점 계산 (CreditSummary 캐시 갱신 포함)
 async function calcRemainingCredits(userId) {
-  const records = await model.AcademicRecord.find({ userId }).select('status subjects').lean();
+  const [records, profile] = await Promise.all([
+    model.AcademicRecord.find({ userId }).select('status subjects').lean(),
+    UniversityProfile.findOne({ userId }).select('doubleMajor').lean(),
+  ]);
 
-  const earned = { majorRequired: 0, majorElective: 0, generalRequired: 0, generalElective: 0, free: 0, total: 0 };
+  // primaryMajor·doubleMajor: 전공 과목(전필+전선)을 트랙별로 나눈 합. primaryMajorRequired는 주전공 트랙 전필.
+  const earned = {
+    majorRequired: 0, majorElective: 0, generalRequired: 0, generalElective: 0, free: 0, total: 0,
+    primaryMajor: 0, doubleMajor: 0,
+  };
+  let primaryMajorRequired = 0;
   let attemptedCreditsTotal = 0;
   let gpaAttemptedCredits = 0;
   let gpaPoints = 0;
@@ -336,6 +347,12 @@ async function calcRemainingCredits(userId) {
       const key = CREDIT_CATEGORY_MAP[subject.subjectType] || 'free';
       earned[key] += credits;
       earned.total += credits;
+
+      if (String(subject.subjectType || '').startsWith('major_')) {
+        const isDouble = subject.majorTrack === 'double';
+        earned[isDouble ? 'doubleMajor' : 'primaryMajor'] += credits;
+        if (!isDouble && subject.subjectType === 'major_required') primaryMajorRequired += credits;
+      }
     });
   });
 
@@ -367,7 +384,19 @@ async function calcRemainingCredits(userId) {
     generalRequired: Math.max(0, req.requiredGeneralCredits - earned.generalRequired),
     generalElective: Math.max(0, req.requiredGeneralElective - earned.generalElective),
     total: Math.max(0, req.requiredTotalCredits - earned.total),
+    doubleMajor: null,
   };
+
+  // 복수전공 모드: 프로필에 복수전공이 있고 대학관계자가 두 학점 요건을 모두 등록했을 때.
+  // 기존 다섯 필드의 의미(AI 컨텍스트·graduationAdvisor가 기대하는 의미)는 유지한다 —
+  // majorElective는 "주전공 이수 학점 중 전필을 빼고 남은 것"으로 다시 계산하고, doubleMajor만 새로 더한다.
+  const hasDoubleMajor = Boolean(profile?.doubleMajor);
+  const doubleMajorMode = hasDoubleMajor && req.doubleMajorPrimaryCredits != null && req.doubleMajorCredits != null;
+  if (doubleMajorMode) {
+    remaining.majorRequired = Math.max(0, req.requiredMajorCredits - primaryMajorRequired);
+    remaining.majorElective = Math.max(0, (req.doubleMajorPrimaryCredits - earned.primaryMajor) - remaining.majorRequired);
+    remaining.doubleMajor = Math.max(0, req.doubleMajorCredits - earned.doubleMajor);
+  }
 
   return {
     available: true,
@@ -377,6 +406,8 @@ async function calcRemainingCredits(userId) {
     remaining,
     admissionYear: graduation.admissionYear,
     appliedFromYear: graduation.appliedFromYear,
+    doubleMajorMode,
+    doubleMajorNotice: hasDoubleMajor && !doubleMajorMode ? DOUBLE_MAJOR_NOTICE : null,
   };
 }
 

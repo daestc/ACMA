@@ -112,6 +112,8 @@ function StaffGraduation() {
   const [majorEl, setMajorEl] = useState(40)
   const [genReq, setGenReq] = useState(20)
   const [genEl, setGenEl] = useState(28)
+  const [dmPrimary, setDmPrimary] = useState('') // 복수전공자 주전공 학점 — 비우면 null
+  const [dmCredits, setDmCredits] = useState('') // 복수전공 학점 — 비우면 null
   const [volunteer, setVolunteer] = useState('')
   const [gradWork, setGradWork] = useState(true)
   const [lang, setLang] = useState('')
@@ -142,6 +144,8 @@ function StaffGraduation() {
     setMajorEl(r?.requiredMajorElective ?? 40)
     setGenReq(r?.requiredGeneralCredits ?? 20)
     setGenEl(r?.requiredGeneralElective ?? 28)
+    setDmPrimary(r?.doubleMajorPrimaryCredits ?? '')
+    setDmCredits(r?.doubleMajorCredits ?? '')
     setVolunteer(r?.requiredVolunteer ?? '')
     setGradWork(r?.requiresGraduationWork !== false)
     setLang(r?.requiredLanguageScore || '')
@@ -217,6 +221,8 @@ function StaffGraduation() {
       requiredMajorElective: majorEl,
       requiredGeneralCredits: genReq,
       requiredGeneralElective: genEl,
+      doubleMajorPrimaryCredits: dmPrimary,
+      doubleMajorCredits: dmCredits,
       requiresGraduationWork: gradWork,
       requiredCertifications: certs,
       requiredLanguageScore: lang,
@@ -364,7 +370,10 @@ function StaffGraduation() {
             <div><label>교양필수</label><input className="input-field" type="number" value={genReq} onChange={(e) => setGenReq(e.target.value)} style={{ width: '100%' }} /></div>
             <div><label>교양선택</label><input className="input-field" type="number" value={genEl} onChange={(e) => setGenEl(e.target.value)} style={{ width: '100%' }} /></div>
             <div><label>사회봉사 시간</label><input className="input-field" type="number" placeholder="예: 30" value={volunteer} onChange={(e) => setVolunteer(e.target.value)} style={{ width: '100%' }} /></div>
+            <div><label>복수전공자 주전공 학점</label><input className="input-field" type="number" placeholder="비우면 단일전공 기준" value={dmPrimary} onChange={(e) => setDmPrimary(e.target.value)} style={{ width: '100%' }} /></div>
+            <div><label>복수전공 학점</label><input className="input-field" type="number" placeholder="비우면 단일전공 기준" value={dmCredits} onChange={(e) => setDmCredits(e.target.value)} style={{ width: '100%' }} /></div>
           </div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: -4 }}>복수전공 학생은 두 칸이 모두 채워져 있을 때만 주전공·복수전공 학점을 따로 계산합니다. 주전공 학점은 전필+전선 합입니다.</div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
             <div>

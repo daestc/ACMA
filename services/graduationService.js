@@ -15,6 +15,8 @@ const DEFAULT_REQUIREMENTS = {
   requiredCapstonDesign: null,
   requiredNCProgram: null,
   requiredVolunteer: null,
+  doubleMajorPrimaryCredits: null,
+  doubleMajorCredits: null,
 };
 
 function normalizeMajor(major) {
@@ -78,6 +80,9 @@ function mergeGraduationRequirements(schoolRequirements = {}, majorAdditional = 
     requiredCapstonDesign: pick(student.requiredCapstonDesign, major.requiredCapstonDesign, school.requiredCapstonDesign),
     requiredNCProgram: pick(student.requiredNCProgram, major.requiredNCProgram, school.requiredNCProgram),
     requiredVolunteer: pick(student.requiredVolunteer, major.requiredVolunteer, school.requiredVolunteer),
+    // 학점 항목이라 학과 단계를 건너뛴다. 여기서 빠뜨리면 병합할 때 사라진다.
+    doubleMajorPrimaryCredits: pick(student.doubleMajorPrimaryCredits, null, school.doubleMajorPrimaryCredits),
+    doubleMajorCredits: pick(student.doubleMajorCredits, null, school.doubleMajorCredits),
   };
 }
 

@@ -8,14 +8,18 @@ const graduationService = require('../graduationService');
 async function calcRemainingCredits(userId) {
   const result = await academicSevice.calcRemainingCredits(userId);
   if (!result.available) {
-    return { total: 0, majorRequired: 0, majorElective: 0, generalRequired: 0, generalElective: 0, gpa: null, earnedTotal: 0 };
+    return { total: 0, majorRequired: 0, majorElective: 0, generalRequired: 0, generalElective: 0, doubleMajor: null, gpa: null, earnedTotal: 0 };
   }
 
-  const { total, majorRequired, majorElective, generalRequired, generalElective } = result.remaining;
-  return { total, majorRequired, majorElective, generalRequired, generalElective, gpa: result.gpa, earnedTotal: result.earned.total };
+  // doubleMajor는 복수전공 모드에서만 숫자, 단일전공이면 null(contextBuilder의 compact가 키를 지운다)
+  const { total, majorRequired, majorElective, generalRequired, generalElective, doubleMajor } = result.remaining;
+  return {
+    total, majorRequired, majorElective, generalRequired, generalElective, doubleMajor,
+    gpa: result.gpa, earnedTotal: result.earned.total,
+  };
 }
 
-// 대학 마스터 → 전공 추가요건 → 개인 override 병합 결과(GraduationRequirements 형태)만 노출
+// 대학 요건(입학연도별) → 전공 추가요건 병합 결과(GraduationRequirements 형태)만 노출
 async function resolveRequirements(userId) {
   const result = await graduationService.resolveRequirements(userId);
   return result.available ? result.requirements : null;

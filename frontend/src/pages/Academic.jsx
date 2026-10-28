@@ -13,7 +13,7 @@ import {
 const CREDIT_OPTIONS = ['3', '2', '1']
 
 function blankRows() {
-  return [0, 1, 2].map(() => ({ subjectName: '', subjectType: 'free', credits: '3', grade: 'A' }))
+  return [0, 1, 2].map(() => ({ subjectName: '', subjectType: 'free', credits: '3', grade: 'A', majorTrack: 'primary' }))
 }
 
 const PROGRESS_CATEGORIES = [
@@ -40,6 +40,8 @@ function Academic() {
   const [trendLoading, setTrendLoading] = useState(true)
   const [progressTotals, setProgressTotals] = useState(null)
   const [progressReq, setProgressReq] = useState(null)
+  // 복수전공 계산 결과(진도 API): { doubleMajorMode, doubleMajorNotice, remaining }
+  const [progressDouble, setProgressDouble] = useState(null)
 
 
   const [gradAvailable, setGradAvailable] = useState(null) // null = 로딩중
@@ -67,6 +69,7 @@ function Academic() {
           subjectType: s.subjectType || 'free',
           credits: String(s.credits ?? '3'),
           grade: s.grade || 'A',
+          majorTrack: s.majorTrack || 'primary',
         })))
       }
     } catch (err) {
@@ -108,6 +111,7 @@ function Academic() {
       if (!json.success) return
       setProgressTotals(json.totals || {})
       setProgressReq(json.graduationRequirements || null)
+      setProgressDouble({ doubleMajorMode: Boolean(json.doubleMajorMode), doubleMajorNotice: json.doubleMajorNotice || null, remaining: json.remaining || null })
     } catch (err) {
       console.error(err)
     }
@@ -151,9 +155,16 @@ function Academic() {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, grade } : row)))
   }
 
+  function handleTrackChange(index, majorTrack) {
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, majorTrack } : row)))
+  }
+
+  // 복수전공이 있는 학생만 전공 과목 행에 주전공/복수전공 선택을 보인다
+  const hasDoubleMajor = Boolean(gradProfile?.doubleMajor)
+
   async function handleSave() {
     const subjects = rows
-      .map((row) => ({ subjectName: row.subjectName.trim(), subjectType: row.subjectType, credits: row.credits, grade: row.grade }))
+      .map((row) => ({ subjectName: row.subjectName.trim(), subjectType: row.subjectType, credits: row.credits, grade: row.grade, majorTrack: row.majorTrack }))
       .filter((s) => s.subjectName)
 
     if (!subjects.length) {
@@ -174,6 +185,7 @@ function Academic() {
 
       setSaveState('saved')
       setTimeout(() => setSaveState('idle'), 1500)
+      loadProgress()
     } catch (err) {
       alert(err.message || '저장에 실패했습니다.')
       setSaveState('idle')
@@ -262,6 +274,12 @@ function Academic() {
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                    {hasDoubleMajor && String(row.subjectType).startsWith('major_') && (
+                      <select className="select-field" name="majorTrack" value={row.majorTrack} onChange={(e) => handleTrackChange(i, e.target.value)} title="이 전공 과목이 어느 전공 학점인지">
+                        <option value="primary">주전공</option>
+                        <option value="double">복수전공</option>
+                      </select>
+                    )}
                     <select
                       className="select-field"
                       name="credits"
@@ -319,6 +337,7 @@ function Academic() {
           message={gradMessage}
           profile={gradProfile}
           progressTotals={progressTotals}
+          progressDouble={progressDouble}
         />
       )}
     </>
@@ -449,7 +468,7 @@ function CreditTab({ trendLoading, trendRecords, progressTotals, progressReq }) 
   )
 }
 
-function GradTab({ available, message, profile, progressTotals }) {
+function GradTab({ available, message, profile, progressTotals, progressDouble }) {
   if (available === null) {
     return <div className="card"><div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>불러오는 중...</div></div>
   }
@@ -483,6 +502,10 @@ function GradTab({ available, message, profile, progressTotals }) {
   const ncProgram = req.requiredNCProgram == null ? '' : String(req.requiredNCProgram)
   const volunteer = req.requiredVolunteer ?? ''
 
+  const doubleMode = Boolean(progressDouble?.doubleMajorMode)
+  const doubleNotice = progressDouble?.doubleMajorNotice
+  const doubleRemaining = progressDouble?.remaining
+
   const totalEarned = Number(progressTotals?.totalEarned || 0)
   const achievedPct = total ? Math.min(100, Math.round((totalEarned / total) * 100)) : 0
   const remaining = Math.max(0, total - totalEarned)
@@ -515,6 +538,22 @@ function GradTab({ available, message, profile, progressTotals }) {
           <ReadonlyField label="교양필수" value={genReq} />
           <ReadonlyField label="교양선택" value={genEl} />
         </div>
+
+        {doubleMode && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ padding: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', fontSize: 12, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700 }}>주전공 {req.doubleMajorPrimaryCredits}학점</div>
+              <div style={{ color: 'var(--text2)' }}>취득 {Number(progressTotals?.primary_major || 0)}학점 · 전필 {doubleRemaining?.majorRequired ?? '-'}·전선 {doubleRemaining?.majorElective ?? '-'}학점 남음</div>
+            </div>
+            <div style={{ padding: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', fontSize: 12, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700 }}>복수전공({profile?.doubleMajor}) {req.doubleMajorCredits}학점</div>
+              <div style={{ color: 'var(--text2)' }}>취득 {Number(progressTotals?.double_major || 0)}학점 · {doubleRemaining?.doubleMajor ?? '-'}학점 남음</div>
+            </div>
+          </div>
+        )}
+        {doubleNotice && (
+          <div style={{ fontSize: 12, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>{doubleNotice}</div>
+        )}
 
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.5px', paddingBottom: 6, borderBottom: '1px solid var(--border)', marginTop: 4 }}>추가 이수 요건</div>
 
