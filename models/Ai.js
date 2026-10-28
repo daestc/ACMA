@@ -234,6 +234,11 @@ const recommendationCandidateSchema = new Schema({
     // 점수를 준 직무 쪽 항목 — 이 필드가 생기기 전 문서에는 없다(화면에서 없으면 줄을 숨김)
     topKnowledge: { type: rankedItemSchema, default: null },
     topAbility: { type: rankedItemSchema, default: null },
+    // 수강 과목 반영 이후 필드 — 그 전 문서에는 null(화면은 예전 문구를 쓴다).
+    // 스키마에 없으면 strict 모드가 저장할 때 조용히 버린다.
+    topicSubjects: { type: [String], default: [] },
+    courseCount: { type: Number, default: null },
+    courseCredits: { type: Number, default: null },
   },
 }, { _id: false });
 

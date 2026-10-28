@@ -58,7 +58,13 @@ function KeyMatchLines({ matched }) {
   const lines = []
   if (matched?.topKnowledge) {
     const { name, rank } = matched.topKnowledge
-    lines.push(`이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
+    // courseCount는 수강 과목 반영 이후 문서에만 있다(그 전은 null → 예전 문구). 0개도 표시해야 해서 != null로 본다.
+    lines.push(matched.courseCount != null
+      ? `이 직무의 핵심 지식 ${name}(${rank}순위) ← 관련 과목 ${matched.courseCount}개 · ${matched.courseCredits}학점`
+      : `이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
+  }
+  if (matched?.topicSubjects?.length) {
+    lines.push(`직무 업무와 맞는 과목${evidenceSummary(matched.topicSubjects, '과목')}`)
   }
   if (matched?.topAbility) {
     const { name, rank } = matched.topAbility

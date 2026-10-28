@@ -418,7 +418,7 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   // subjects·skills·experiences는 직무 안 순위가 높은 항목을 뒷받침하는 것부터 나온다.
   const matched = {
     major: null, certs: [], subjects: [], topicSubjects: [], skills: [], experiences: [], prefs: [],
-    topKnowledge: null, topAbility: null,
+    topKnowledge: null, topAbility: null, courseCount: 0, courseCredits: 0,
   };
 
   const majorHit = signals.majors.find(m => majorMatch(m, job.relatedDepartments));
@@ -448,6 +448,10 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
     ...heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)),
     ...matched.topicSubjects,
   ])];
+  // 화면의 "관련 과목 N개 · M학점" — 성적 가중치를 적용하지 않은 원래 학점
+  const creditsByName = new Map((signals.courses || []).map(course => [course.name, Number(course.credits) || 0]));
+  matched.courseCount = matched.subjects.length;
+  matched.courseCredits = matched.subjects.reduce((sum, name) => sum + (creditsByName.get(name) || 0), 0);
 
   const abilityNames = new Set(signals.skillAbilities.keys());
   const topAbility = bestRankMatch(job.abilities, abilityNames);
