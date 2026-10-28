@@ -195,7 +195,8 @@ async function redistributeWeeklyPlan(req, res) {
       return res.status(409).json({ success: false, message: '완료된 주간계획만 재분배할 수 있습니다.' });
     }
 
-    const result = await planService.runDistribution(doc);
+    // 생성 때 붙은 안내(시간표 없음·목표 비율 등)는 재분배로 바뀌지 않으니 그대로 넘긴다.
+    const result = await planService.runDistribution(doc, doc.distribution?.notices || []);
     return res.json({ dayCount: result.dayCount, itemCount: result.itemCount, errors: result.errors });
   } catch (error) {
     logger.error(`[ai] redistributeWeeklyPlan error: ${error.message}`);
