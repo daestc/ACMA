@@ -200,20 +200,19 @@ async function updateProfile(userEmail, profileData) {
   );
 
   // 학년은 User가 아니라 UniversityProfile.grade에 저장된다(AI 컨텍스트가 여기서
-  // 읽음 — services/ai/contextBuilder.js). 문서가 아직 없으면 만들되(major는 스키마
-  // 필수 필드라 $setOnInsert로 채움), 이미 있으면 grade만 갱신하고 다른 필드는
-  // 건드리지 않는다(enrollmentStatus enum이 User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
+  // 읽음 — services/ai/contextBuilder.js). 전공은 학년 저장과 상관없이 매번 프로필에도 맞춘다 —
+  // 예전엔 문서를 처음 만들 때만 넣어서, 전공을 바꿔도 프로필에는 예전 학과가 남았다.
+  // 다른 필드는 건드리지 않는다(enrollmentStatus enum이 User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
+  const profileSet = { major: (major || user.major || '미설정').trim() || '미설정' };
   const gradeNum = Number(grade);
   if (grade !== undefined && grade !== null && String(grade).trim() !== '' && Number.isFinite(gradeNum)) {
-    await UniversityProfile.findOneAndUpdate(
-      { userId: user._id },
-      {
-        $set: { grade: gradeNum },
-        $setOnInsert: { userId: user._id, major: (major || user.major || '미설정').trim() || '미설정' },
-      },
-      { upsert: true, setDefaultsOnInsert: true },
-    );
+    profileSet.grade = gradeNum;
   }
+  await UniversityProfile.findOneAndUpdate(
+    { userId: user._id },
+    { $set: profileSet, $setOnInsert: { userId: user._id } },
+    { upsert: true, setDefaultsOnInsert: true },
+  );
 
   return { universityChanged, clearedLectureCount };
 }

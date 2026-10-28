@@ -209,27 +209,21 @@ async function getStaffGraduationForStudent(university, major) {
   };
 }
 
-// 대학 마스터 → 전공 추가요건 → 개인 override(UniversityProfile) 순으로 병합한 최종 졸업요건
+// 학생의 최종 졸업요건 = 학과 추가 요건 > 대학 요건 > 기본값.
+// UniversityProfile.GraduationRequirements는 읽지 않는다 — 학생이 저장하는 경로가 없어(403) 스키마
+// 기본값(130/42/40/20/28, 졸업작품 true)만 들어 있는데, 마이페이지에서 학년을 저장하면 그 값으로
+// 문서가 생겨 대학관계자 요건을 전부 덮었다. 필드와 데이터는 남겨 두고 읽기만 멈춘다.
+// 전공은 마이페이지에서 매번 갱신되는 User.major를 먼저 본다.
 async function resolveRequirements(userId) {
   const [user, profile] = await Promise.all([
     User.findById(userId).select('university major').lean(),
-    UniversityProfile.findOne({ userId }).lean(),
+    UniversityProfile.findOne({ userId }).select('major').lean(),
   ]);
 
   const university = user?.university || null;
-  const major = normalizeMajor(profile?.major || user?.major);
+  const major = normalizeMajor(user?.major || profile?.major);
 
-  const base = await getStaffGraduationForStudent(university, major);
-  if (!base.available) return base;
-
-  return {
-    ...base,
-    requirements: mergeGraduationRequirements(
-      base.requirements,
-      null,
-      profile?.GraduationRequirements,
-    ),
-  };
+  return getStaffGraduationForStudent(university, major);
 }
 
 module.exports = {

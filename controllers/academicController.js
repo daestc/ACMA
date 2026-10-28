@@ -300,42 +300,32 @@ const getProgress = async (req, res) => {
     const user = req.session.user.id;
     if (!user) return res.status(404).json({ success: false });
 
-    const records = await academicService.getAllSemesterRecords(user);
+    // 취득 학점은 남은 학점 계산(calcRemainingCredits)과 같은 기준으로 센다 — 예전엔 여기서 따로
+    // 세면서 NP를 취득으로 쳐서, 화면 달성률과 AI가 받는 남은 학점이 어긋났다.
+    // 응답 키(totals.major_required 등)는 EJS(public/js)와 React MyStatus가 같이 읽어서 그대로 둔다.
+    const [credits, profile] = await Promise.all([
+      academicService.calcRemainingCredits(user),
+      academicService.getUniversityProfile(user),
+    ]);
+    const { earned } = credits;
     const totals = {
-      major_required: 0,
-      major_elective: 0,
-      general_required: 0,
-      general_elective: 0,
-      free: 0,
-      totalEarned: 0,
+      major_required: earned.majorRequired,
+      major_elective: earned.majorElective,
+      general_required: earned.generalRequired,
+      general_elective: earned.generalElective,
+      free: earned.free,
+      totalEarned: earned.total,
     };
 
-    records.forEach(r => {
-      (Array.isArray(r.subjects) ? r.subjects : []).forEach(s => {
-        const credits = Number(s.credits) || 0;
-        const grade = s.grade;
-        const passed = grade != null && grade !== 'F';
-        if (!passed) return;
-
-        const type = String(s.subjectType || 'free');
-        if (type in totals) {
-          totals[type] += credits;
-        } else {
-          totals.free += credits;
-        }
-        totals.totalEarned += credits;
-      });
-    });
-
-    const profile = await academicService.getUniversityProfile(user);
-    const graduation = await resolveRequirements(user);
-
+    // MyStatus(React·EJS)는 profile.GraduationRequirements를 요건으로 읽는다. 프로필 문서의 그 필드는
+    // 학생 기본값(130/42/…)이라 대학 요건으로 바꿔 내려 준다(getGraduationRequirements와 같은 방식).
     return res.json({
       success: true,
       totals,
-      profile,
-      graduationAvailable: graduation.available,
-      graduationRequirements: graduation.available ? graduation.requirements : null,
+      profile: profile ? { ...profile, GraduationRequirements: credits.available ? credits.requirements : null } : profile,
+      graduationAvailable: credits.available,
+      graduationRequirements: credits.available ? credits.requirements : null,
+      remaining: credits.remaining,
     });
   } catch (error) {
     console.error(error);
