@@ -93,29 +93,15 @@ exports.postLogin = async (req, res, next) => {
 
     req.session.regenerate((err) => {
       if (err) return next(err);
-      req.session.user = {
-        id:               user._id,
-        name:             user.name,
-        email:            user.email,
-        studentId:        user.studentId,
-        university:       user.university,
-        major:            user.major,
-        grade:            user.grade,
-        provider:         user.provider,
-        role:             user.role || 'student',
-        enrollmentStatus: user.enrollmentStatus || '재학',
-        accountStatus:    user.accountStatus    || 'active',
-        planType:         user.planType         || 'free',
-        pointBalance:     user.pointBalance     || 0,
-        dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
-      };
+      req.session.user = buildSessionUser(user);
       req.session.save((err) => {
         if (err) return next(err);
         logger.info(`로그인 성공 | userId=${user._id} | email=${email} | ip=${ip}`);
+        // 관리자가 비밀번호를 초기화한 경우 강제 변경 안내 플래그를 세션에 담아 홈으로 이동
+        if (user.mustChangePassword) req.session.user.mustChangePassword = true;
         res.redirect(homeByRole(user.role));
       });
     });
-    //세션에 대학정보, 역할 정보 추가
 
   } catch (err) {
     if (err.code === 'NO_USER' || err.code === 'WRONG_PASSWORD') {
@@ -224,28 +210,10 @@ exports.postRegister = async (req, res) => {
 
     req.session.regenerate((err) => {
       if (err) return res.redirect('/auth/login');
-      req.session.user = {
-        id:               user._id,
-        name:             user.name,
-        email:            user.email,
-        studentId:        user.studentId,
-        university:       user.university,
-        major:            user.major,
-        grade:            user.grade,
-        provider:         user.provider,
-        role:             user.role,
-        enrollmentStatus: user.enrollmentStatus || '재학',
-        accountStatus:    user.accountStatus    || 'active',
-        planType:         user.planType         || 'free',
-        pointBalance:     user.pointBalance     || 0,
-        dailyUsage:       user.dailyUsage       || { quiz: { count: 0, date: '' }, summary: { count: 0, date: '' } },
-      };
-      // user.role: student(학생) 또는 staff(대학관계자) 추가
-
+      req.session.user = buildSessionUser(user);
       req.session.save((err) => {
         if (err) return res.redirect('/auth/login');
         logger.info(`회원가입 자동 로그인 | userId=${user._id} | ip=${ip}`);
-        // staff는 강의 관리 페이지로 이동 -> 승인 전이면 안내 페이지가 표시됨
         res.redirect(homeByRole(user.role));
       });
     });
@@ -347,6 +315,9 @@ exports.postChangePassword = async (req, res) => {
 
   try {
     await authService.changePassword({ userId, currentPassword, newPassword });
+    // 관리자 초기화 후 강제 변경 플래그 해제
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(userId, { mustChangePassword: false });
     logger.info(`비밀번호 변경 | userId=${userId} | ip=${ip}`);
     res.json({ ok: true, message: '비밀번호가 변경되었습니다.' });
 

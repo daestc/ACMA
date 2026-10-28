@@ -1,8 +1,10 @@
 // routes/spec.js
 const router = require('express').Router();
 const ctrl = require('../controllers/specController');
+const { requireLogin } = require('../middleware/auth');
 
-// routes/spec.js
+router.use(requireLogin);
+
 router.post('/award', ctrl.addAward);
 router.put('/award/:id', ctrl.updateAward);
 router.delete('/award/:id', ctrl.deleteAward);

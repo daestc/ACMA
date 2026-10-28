@@ -2,7 +2,7 @@ const { CalendarEvent,Timetable, Lecture} = require('../models/Calendar');
 const UniversitySchedule = require('../models/UniversitySchedule');
 const Notice = require('../models/Notice');
 const { UserCertification } = require('../models/Certifications_jobs');
-const { saveSemesterRecord,removeSubjectFromRecord } = require('./academicSevice');
+const { saveSemesterRecord,removeSubjectFromRecord } = require('./academicService');
 
 const {
   buildLectureListFilter,

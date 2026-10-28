@@ -12,6 +12,7 @@ const connectDB   = require('./config/database');
 
 const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
 const { refreshDailyUsage } = require('./middleware/auth');
+const { attachCsrfToken, validateCsrf } = require('./middleware/csrf');
 
 // app 생성
 const app = express();
@@ -33,6 +34,7 @@ const adminRouter = require('./routes/adminRouter');
 const suggestionRouter = require('./routes/suggestionRouter');
 const specRouter    = require('./routes/specRouter');
 const paymentRouter = require('./routes/paymentRouter');
+const subscriptionRouter = require('./routes/subscriptionRouter');
 const aiRouter = require('./routes/ai');
 
 const recruitRouter = require('./routes/recruitRouter');
@@ -48,6 +50,14 @@ const suggestionApiRouter = require('./routes/api/suggestionApiRouter');
 
 //DB 연결
 connectDB();
+
+// 필수 환경변수 검증 — 누락 시 서버 시작 자체를 차단
+const REQUIRED_ENV = ['SESSION_SECRET', 'MONGODB_URI'];
+const missingEnv = REQUIRED_ENV.filter(key => !process.env[key]);
+if (missingEnv.length > 0) {
+  console.error(`[시작 오류] 필수 환경변수가 설정되지 않았습니다: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
 
 // 뷰 엔진 설정
 app.set('view engine', 'ejs');
@@ -68,11 +78,14 @@ app.use(session({
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production', // HTTPS 환경에서만 쿠키 전송
   },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(refreshDailyUsage);
+app.use(attachCsrfToken); // 세션마다 CSRF 토큰 생성 및 res.locals 주입
+app.use(validateCsrf);   // POST/PUT/DELETE/PATCH 요청 토큰 검증
 
 
 //라우터 등록
@@ -95,11 +108,12 @@ app.use('/academic', academicRouter);
 app.use('/mystatus', mystatusRouter);
 app.use('/study', studyRouter);
 app.use('/suggestions', suggestionRouter);
-app.use('/', alertRouter);
+app.use('/alert', alertRouter);
 app.use('/staff', staffRouter);
 app.use('/admin', adminRouter);
 app.use('/spec',    specRouter);
 app.use('/payment', paymentRouter);
+app.use('/subscription', subscriptionRouter);
 
 if (process.env.OPENAI_API_KEY) {
   app.use('/ai', aiRouter);

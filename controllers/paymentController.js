@@ -186,10 +186,21 @@ exports.confirmPayment = async (req, res, next) => {
   const { paymentKey, orderId, amount } = req.query;
 
   try {
-    const payment = await Payment.findOne({ orderId });
-    if (!payment) return res.redirect('/payment/fail?message=주문정보를 찾을 수 없습니다.');
-    if (payment.status === 'done') return res.redirect('/payment?already=1');
-    if (String(payment.amount) !== String(amount)) {
+    // pending → processing 을 atomic하게 전환 — 동시 요청이 들어와도 한 번만 통과
+    const payment = await Payment.findOneAndUpdate(
+      { orderId, status: 'pending' },
+      { $set: { status: 'processing' } },
+      { new: true }
+    );
+    if (!payment) {
+      // null: orderId 자체가 없거나, 이미 다른 요청이 processing/done으로 전환한 경우
+      const existing = await Payment.findOne({ orderId }).lean();
+      if (!existing) return res.redirect('/payment/fail?message=주문정보를 찾을 수 없습니다.');
+      if (existing.status === 'done') return res.redirect('/payment?already=1');
+      return res.redirect('/payment/fail?message=이미 처리 중인 결제입니다.');
+    }
+    if (Number(amount) !== payment.amount) {
+      await Payment.findByIdAndUpdate(payment._id, { $set: { status: 'pending' } });
       return res.redirect('/payment/fail?message=결제금액이 일치하지 않습니다.');
     }
 

@@ -55,4 +55,7 @@ const recruitSchema = new mongoose.Schema({
     isAiProcessed: { type: Boolean, default: false }
 }, { timestamps: true });
 
+recruitSchema.index({ saraminCategory: 1 });                  // 카테고리 필터 조회
+recruitSchema.index({ deadlineText: 1, endDate: 1 });         // 마감 상태(open/closed) 필터 조회
+
 module.exports = mongoose.model('Recruit', recruitSchema, 'Recruits');

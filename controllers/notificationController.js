@@ -1,6 +1,5 @@
-// controller/notificationController.js
 const { fetchHomeNotices } = require('./noticeController');
-const dateCaculate = require('../service/dateCaculateService');
+const dateCaculate = require('../services/dateCalculateService');
 const User = require('../models/User');
 
 // 실시간 긴급 알림 목록 반환 (D-Day 당일 ~ 7일 전 전용 + 페이징)

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const dateCaculate = require('../service/dateCaculateService');
+const dateCaculate = require('../services/dateCalculateService');
 const Notice = require('../models/Notice');
 const UniversitySchedule = require('../models/UniversitySchedule');
 const User = require('../models/User');

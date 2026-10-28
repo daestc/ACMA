@@ -6,7 +6,7 @@ const paymentSchema = new Schema({
   paymentKey:   { type: String, default: null },
   orderName:    { type: String, required: true },
   amount:       { type: Number, required: true },
-  type:         { type: String, enum: ['premium', 'point'], required: true },
+  type:         { type: String, enum: ['premium', 'point', 'subscription'], required: true },
   status:       { type: String, enum: ['pending', 'done', 'canceled', 'failed'], default: 'pending' },
   method:       { type: String, default: null },
   paidAt:       { type: Date, default: null },

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test && python -m unittest python.test_pdf_quiz",
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon --ext js,mjs,cjs,json,ejs app.js"
   },
   "keywords": [],
   "author": "",

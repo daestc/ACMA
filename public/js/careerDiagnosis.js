@@ -45,9 +45,18 @@ function renderStrength(strength) {
     </div>`;
 }
 
+// dateCalculateService.formatDDayText와 동일한 규칙(양수만 "D-n", 0은 "D-Day",
+// 음수는 "마감")을 클라이언트에서도 지킨다 — 그대로 `D-${gap.dDay}`를 붙이면
+// dDay가 음수일 때 "D--242"처럼 마이너스가 겹쳐 보인다(실제 발생).
+function formatDDayBadgeText(dDay) {
+  if (dDay > 0) return `D-${dDay}`;
+  if (dDay === 0) return 'D-Day';
+  return '마감';
+}
+
 function gapScheduleText(gap) {
   if (gap.actionType === 'cert' && gap.dDay != null) {
-    return `<span class="badge badge-red" style="margin-left:6px;">${escapeHtml(gap.examType || '시험')} D-${gap.dDay}</span>`;
+    return `<span class="badge badge-red" style="margin-left:6px;">${escapeHtml(gap.examType || '시험')} ${formatDDayBadgeText(gap.dDay)}</span>`;
   }
   if (gap.relatedCertName) {
     return `<span class="badge badge-amber" style="margin-left:6px;">관련 자격증: ${escapeHtml(gap.relatedCertName)}(일정 확인 필요)</span>`;

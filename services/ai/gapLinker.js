@@ -3,7 +3,7 @@
 
 const { Certification } = require('../../models/Certifications_jobs');
 const Notice = require('../../models/Notice');
-const dateCaculate = require('../../service/dateCaculateService');
+const dateCaculate = require('../dateCalculateService');
 
 function normalize(value) {
   return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();

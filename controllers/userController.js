@@ -1,139 +1,96 @@
 const userService = require('../services/userService');
 
-
 // Todo 항목 추가
 const addTodo = async (req, res) => {
   try {
-    // #후순위 유저 유효성 검사
     const user = req.session.user;
-    if (!user) return res.json({success: false});
-    const {content, note} = req.body;
-    
-    // DB에 추가 + 추가한 todo의 _id 가져오기
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+    const { content, note } = req.body;
     const todoId = await userService.addTodo(user.email, content, note);
-    
-    console.log('todo 추가 완료!')
-
-    // success가 없으면 추가 취소
-    res.json({success: true, todoId});
+    res.json({ success: true, todoId });
   } catch (error) {
     console.error(error.message);
-    res.json({success: false});
+    res.status(500).json({ success: false, message: '할 일 추가에 실패했습니다.' });
   }
-
-} // addTodo()
+};
 
 // Todo 삭제
 const deleteTodo = async (req, res) => {
   try {
     const user = req.session.user;
-    if (!user) return res.json({success: false});
-    const {deletetodoList} = req.body;
-    // 삭제 항목이 없으면 리턴
-    if(deletetodoList.length === 0) return res.json({success: false});
-
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+    const { deletetodoList } = req.body;
+    if (!deletetodoList || deletetodoList.length === 0) {
+      return res.status(400).json({ success: false, message: '삭제할 항목이 없습니다.' });
+    }
     await userService.deleteTodo(user.email, deletetodoList);
-
-    console.log('todo 삭제 완료!!');
-
-    // success가 없으면 삭제 취소
-    res.json({success: true});
+    res.json({ success: true });
   } catch (error) {
-    console.log('todo 삭제 실패!!');
     console.error(error.message);
-    res.json({success: false});
+    res.status(500).json({ success: false, message: '할 일 삭제에 실패했습니다.' });
   }
-
-} // deleteTodo()
+};
 
 // habit 항목 추가
 const addHabit = async (req, res) => {
   try {
-    // #후순위 유저 유효성 검사
     const user = req.session.user;
-    if (!user) return res.json({success: false});
-
-    const {title, category} = req.body;
-    
-    // DB에 추가 + 추가한 habit의 _id 가져오기
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+    const { title, category } = req.body;
     const habitId = await userService.addHabit(user.email, title, category);
-    
-    console.log('habit 추가 완료!')
-
-    // success가 없으면 추가 취소
-    res.json({success: true, habitId});
+    res.json({ success: true, habitId });
   } catch (error) {
     console.error(error.message);
-    res.json({success: false});
+    res.status(500).json({ success: false, message: '습관 추가에 실패했습니다.' });
   }
-
-} // addHabit()
+};
 
 // Habit 수정
 const editHabit = async (req, res) => {
   try {
-    // #후순위 유저 유효성 검사
     const user = req.session.user;
-    if (!user) return res.json({success: false});
-
-    const {habitId, title, category} = req.body;
-    
-    // DB에 추가 + 추가한 habit의 _id 가져오기
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+    const { habitId, title, category } = req.body;
     await userService.editHabit(user.email, habitId, title, category);
-
-    console.log('habit 수정 완료!')
-
-    // success가 없으면 수정 취소
     res.json({ success: true });
   } catch (error) {
     console.error(error.message);
-    res.json({success: false});
+    res.status(500).json({ success: false, message: '습관 수정에 실패했습니다.' });
   }
-} // editHabit()
+};
 
 // Habit 삭제
 const deleteHabit = async (req, res) => {
   try {
-    // #후순위 유저 유효성 검사
     const user = req.session.user;
-    if (!user) return res.json({success: false});
-    const {habitId} = req.body;
-    
-    // DB에 추가 + 추가한 habit의 _id 가져오기
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+    const { habitId } = req.body;
     await userService.deleteHabit(user.email, habitId);
-
-    console.log('habit 삭제 완료!')
-
-    // success가 없으면 삭제 취소
     res.json({ success: true });
   } catch (error) {
     console.error(error.message);
-    res.json({success: false});
+    res.status(500).json({ success: false, message: '습관 삭제에 실패했습니다.' });
   }
-} // deleteHabit()
+};
 
 // isCompleted 변동 사항 저장
 const saveIsCompleted = async (req, res) => {
   try {
-    // #후순위 유저 유효성 검사
     const user = req.session.user;
-    if (!user) return res.json({success: false});
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
     const changes = req.body.changes;
-    
-    // DB에 추가 + 추가한 habit의 _id 가져오기
     await userService.saveIsCompleted(user.email, changes);
-
-    console.log('isCompleted 저장 완료!')
-
+    res.json({ success: true });
   } catch (error) {
     console.error(error.message);
+    res.status(500).json({ success: false, message: '저장에 실패했습니다.' });
   }
-}
+};
 
 const updateProfile = async (req, res) => {
   try {
     const user = req.session.user;
-    if (!user) return res.json({ success: false });
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
 
     if (user.role === 'staff') {
       return res.status(403).json({
@@ -157,42 +114,36 @@ const updateProfile = async (req, res) => {
       grade: grade !== undefined && grade !== null && String(grade).trim() !== '' ? Number(grade) : req.session.user.grade,
     };
 
-    console.log('프로필 업데이트 완료!');
-
-    res.json({
-      success: true,
-      universityChanged,
-      clearedLectureCount,
-    });
+    res.json({ success: true, universityChanged, clearedLectureCount });
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false });
+    res.status(500).json({ success: false, message: '프로필 업데이트에 실패했습니다.' });
   }
 };
 
 const getProfile = async (req, res) => {
   try {
     const user = req.session.user;
-    if (!user) return res.json({ success: false });
-
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
     const profile = await userService.getProfile(user.email);
     res.json({ success: true, user: profile });
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false });
+    res.status(500).json({ success: false, message: '프로필 조회에 실패했습니다.' });
   }
 };
+
 // 수상경력 정보 가져오기
 const getMyAwards = async (req, res) => {
   try {
     const user = req.session.user;
-    if (!user) return res.json({ success: false });
+    if (!user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
     const awards = await userService.getMyAwards(user.email);
     res.json({ success: true, awards });
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false });
+    res.status(500).json({ success: false, message: '수상경력 조회에 실패했습니다.' });
   }
 };
 
-module.exports = {addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile, getMyAwards};
+module.exports = { addTodo, deleteTodo, addHabit, editHabit, deleteHabit, saveIsCompleted, updateProfile, getProfile, getMyAwards };

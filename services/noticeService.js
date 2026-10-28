@@ -1,7 +1,7 @@
 // 자격증 서비스
 const axios = npmrequire('axios');
 const Notice = require('../models/Notice'); 
-const dateCaculate = require('./dateCaculateService'); // 날짜 계산
+const dateCaculate = require('./dateCalculateService'); // 날짜 계산
 
 //자격증 공지사항 가져오기 
 exports.getCerNotice = async () => {

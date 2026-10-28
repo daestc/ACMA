@@ -1,8 +1,8 @@
 // routes/noticeRouter.js
 const express = require('express');
 const router = express.Router();
-const noticeController = require('../controller/noticeController');
-const notificationController = require('../controller/notificationController'); // 🔔 알림 컨트롤러 연결
+const noticeController = require('../controllers/noticeController');
+const notificationController = require('../controllers/notificationController');
 
 // 📋 공지사항 웹 화면 렌더링
 router.get('/', noticeController.getNoticePage);

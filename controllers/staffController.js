@@ -1,5 +1,16 @@
 const staffService = require('../services/staffService');
 const logger = require('../config/logger');
+const User = require('../models/User');
+const Payment = require('../models/Payment');
+const { AcademicRecord, CreditSummary } = require('../models/Academic_records');
+const { CareerPortfolio, CareerDiagnosis, WeeklyPlan } = require('../models/Ai');
+const { CalendarEvent, Timetable, DailyChecklist } = require('../models/Calendar');
+const { UserCertification } = require('../models/Certifications_jobs');
+const Notification = require('../models/Notification');
+const Study = require('../models/Study');
+const University_profile = require('../models/University_profile');
+const User_skills = require('../models/User_skills');
+const Suggestion = require('../models/Suggestion');
 
 const getHomePage = async (req, res, next) => {
   try {
@@ -250,7 +261,6 @@ const saveMajorGraduation = async (req, res) => {
 
 // ── 학생 관리 ─────────────────────────────────────────────
 
-const User = require('../models/User');
 const DORMANT_DAYS = 180; // 6개월
 
 const getStudentsPage = async (req, res, next) => {
@@ -334,13 +344,20 @@ const getStudentDetail = async (req, res, next) => {
   }
 };
 
+const ALLOWED_ACCOUNT_STATUSES = ['active', 'dormant', 'suspended'];
+
 const suspendStudent = async (req, res, next) => {
   try {
     const university = req.user.university;
-    const { action } = req.body; // 'dormant' | 'suspended' | 'active'
+    const { action } = req.body;
+
+    if (!ALLOWED_ACCOUNT_STATUSES.includes(action)) {
+      return res.status(400).json({ ok: false, message: `허용되지 않은 상태값입니다. (허용: ${ALLOWED_ACCOUNT_STATUSES.join(', ')})` });
+    }
+
     const student = await User.findOneAndUpdate(
       { _id: req.params.id, university, role: 'student' },
-      { accountStatus: action || 'suspended' },
+      { accountStatus: action },
       { new: true },
     ).lean();
 
@@ -355,8 +372,32 @@ const suspendStudent = async (req, res, next) => {
 const deleteStudent = async (req, res, next) => {
   try {
     const university = req.user.university;
-    const student = await User.findOneAndDelete({ _id: req.params.id, university, role: 'student' }).lean();
+    const student = await User.findOne({ _id: req.params.id, university, role: 'student' }).lean();
     if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
+
+    const uid = student._id;
+
+    // 연관 데이터 cascade 삭제 (개인정보 잔류 방지)
+    await Promise.all([
+      AcademicRecord.deleteMany({ userId: uid }),
+      CreditSummary.deleteOne({ userId: uid }),
+      CareerPortfolio.deleteMany({ userId: uid }),
+      CareerDiagnosis.deleteMany({ userId: uid }),
+      WeeklyPlan.deleteMany({ userId: uid }),
+      CalendarEvent.deleteMany({ userId: uid }),
+      Timetable.deleteMany({ userId: uid }),
+      DailyChecklist.deleteMany({ userId: uid }),
+      UserCertification.deleteMany({ userId: uid }),
+      Notification.deleteMany({ userId: uid }),
+      Study.deleteMany({ userId: uid }),
+      University_profile.deleteMany({ userId: uid }),
+      User_skills.deleteMany({ userId: uid }),
+      Suggestion.deleteMany({ authorId: uid }),
+      Payment.deleteMany({ userId: uid }),
+    ]);
+
+    await User.deleteOne({ _id: uid });
+
     logger.info(`계정삭제 | target=${student.email} | by=${req.user.email}`);
     res.json({ ok: true });
   } catch (err) {
@@ -372,11 +413,14 @@ const resetStudentPassword = async (req, res, next) => {
     const hashed = await bcrypt.hash(tempPw, 12);
     const student = await User.findOneAndUpdate(
       { _id: req.params.id, university, role: 'student' },
-      { password: hashed },
+      { password: hashed, mustChangePassword: true, passwordChangedAt: new Date() },
+      { new: true },
     ).lean();
     if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
     logger.info(`비밀번호초기화 | target=${student.email} | by=${req.user.email}`);
-    res.json({ ok: true, tempPassword: tempPw });
+    // tempPw를 응답에 포함해 관리자가 학생에게 전달할 수 있도록 함
+    // 이메일 전송 기능 연동 시 이 응답 대신 이메일 발송으로 교체 권장
+    res.json({ ok: true, tempPassword: tempPw, message: '임시 비밀번호가 설정되었습니다. 학생에게 직접 전달해주세요. 학생은 로그인 후 비밀번호를 변경해야 합니다.' });
   } catch (err) {
     next(err);
   }

@@ -24,10 +24,10 @@ const getSubscriptionStatus = (req, res) => {
   });
 };
 
-const createCheckout = (req, res) => {
+const createCheckout = async (req, res) => {
   try {
     const planId = req.body?.plan;
-    const checkout = subscriptionService.createCheckoutOrder(req.session, req.user, planId);
+    const checkout = await subscriptionService.createCheckoutOrder(req.session, req.user, planId);
     const clientKey = tossPaymentService.getClientKey();
 
     if (!clientKey) {
@@ -69,7 +69,7 @@ const confirmSubscriptionPayment = async (req, res) => {
       });
     }
 
-    const pending = subscriptionService.getPendingOrder(orderId);
+    const pending = await subscriptionService.getPendingOrder(orderId);
     if (!pending || pending.userId !== String(req.user.id)) {
       return res.render('pages/subscriptionFail', {
         user: req.user,
@@ -103,9 +103,10 @@ const confirmSubscriptionPayment = async (req, res) => {
       });
     }
 
-    const status = subscriptionService.completeCheckout(req.session, req.user, {
+    const status = await subscriptionService.completeCheckout(req.session, req.user, {
       orderId,
       paymentKey,
+      tossData: payment,
     });
 
     logger.info(`구독 결제 완료 | user=${req.user.email} | plan=${status.plan} | orderId=${orderId}`);
@@ -157,9 +158,13 @@ const useAiQuota = (req, res) => {
   }
 };
 
-const cancelSubscription = (req, res) => {
-  const status = subscriptionService.resetToFreePlan(req.session);
-  res.json({ ok: true, status, message: '무료 플랜으로 변경되었습니다. (세션 기준, DB 미저장)' });
+const cancelSubscription = async (req, res) => {
+  try {
+    const status = await subscriptionService.resetToFreePlan(req.session, req.user?.id);
+    res.json({ ok: true, status, message: '무료 플랜으로 변경되었습니다.' });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: '구독 취소 중 오류가 발생했습니다.' });
+  }
 };
 
 module.exports = {

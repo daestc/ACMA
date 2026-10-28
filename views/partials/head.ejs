@@ -1,5 +1,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<% if (typeof csrfToken !== 'undefined') { %>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<% } %>
+<script>
+// 모든 fetch POST/PUT/DELETE/PATCH 요청에 CSRF 토큰 자동 포함
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]');
+  if (!token) return;
+  var csrfValue = token.content;
+  var _fetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') {
+      opts.headers = Object.assign({ 'X-CSRF-Token': csrfValue }, opts.headers);
+    }
+    return _fetch.call(this, url, opts);
+  };
+})();
+</script>
 <title><%= typeof title !== 'undefined' ? title : 'AcadMe' %> — 학사관리 플랫폼</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

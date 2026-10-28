@@ -1,10 +1,10 @@
 // routes/alertRouter.js
 const express = require('express');
 const router = express.Router();
-const notificationController = require('../controller/notificationController'); // 단수형 controller 반영 완료
+const notificationController = require('../controllers/notificationController');
+const { requireLogin } = require('../middleware/auth');
 
-
-router.get('/list', notificationController.getNotifications);
-router.delete('/clear', notificationController.deleteNotifications);
+router.get('/list', requireLogin, notificationController.getNotifications);
+router.delete('/clear', requireLogin, notificationController.deleteNotifications);
 
 module.exports = router;

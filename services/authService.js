@@ -110,7 +110,7 @@ async function changePassword({ userId, currentPassword, newPassword }) {
   }
 
   const hashed = await bcrypt.hash(newPassword, 12);
-  await User.updateOne({ _id: userId }, { password: hashed });
+  await User.updateOne({ _id: userId }, { password: hashed, passwordChangedAt: new Date() });
 }
 
 // ── 회원 탈퇴 ────────────────────────────────────────────

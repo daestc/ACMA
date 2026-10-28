@@ -1,6 +1,6 @@
 const User = require('../../models/User');
 const calendarService = require('../calendarService');
-const dateCaculate = require('../../service/dateCaculateService');
+const dateCaculate = require('../dateCalculateService');
 
 // 캘린더.js의 parseSemesterRange와 동일한 월 기준 휴리스틱(1학기: 3~6월, 2학기: 9~12월)
 // 주의: contextBuilder.js가 이 반환값을 await 없이 바로 다음 인자로 넘겨쓴다(동기 함수

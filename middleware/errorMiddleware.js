@@ -1,4 +1,5 @@
 const multer = require('multer');
+const logger = require('../config/logger');
 
 const notFoundHandler = (req, res) => {
     res.status(404).render('pages/error', { title: '페이지를 찾을 수 없습니다.', status: 404, error: null });
@@ -47,8 +48,7 @@ const errorHandler = (err, req, res, next) => {
         return respondUploadError(err, res);
     }
 
-    console.error(`[${req.method}] ${req.originalUrl}`);
-    console.error(err.stack);
+    logger.error(`[${req.method}] ${req.originalUrl} — ${err.message}`, { stack: err.stack });
 
     if (err.status === 403) {
         res.status(403).render('pages/error', { title: '권한이 없습니다.', status: 403, error: err.message });

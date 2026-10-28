@@ -12,8 +12,8 @@ const UniversityProfileSchema = new mongoose.Schema({
   // 학적 정보
   enrollmentStatus:   {
     type: String,
-    enum: ['enrolled', 'leave', 'dropout', 'graduated'],
-    default: 'enrolled',          // 재학 | 휴학 | 자퇴 | 졸업
+    enum: ['재학', '휴학', '자퇴', '제적', '졸업', 'enrolled', 'leave', 'dropout', 'graduated'],
+    default: '재학',
   },
   
   major: { type: String, required: true, trim: true }, // 전공

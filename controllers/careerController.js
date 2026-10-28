@@ -1,4 +1,5 @@
 const careerService = require('../services/careerService');
+const logger = require('../config/logger');
 
 // 진로 검색db에서 대분류, 중분류, 소분류, 세분류 가져오기
 const getCategories = async (req, res) => {
@@ -6,7 +7,7 @@ const getCategories = async (req, res) => {
     const categories = await careerService.getCategories();
     res.json(categories);
     } catch (error) {
-    console.error('Error fetching categories:', error);
+    logger.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 };
@@ -43,7 +44,7 @@ const searchCareers = async (req, res) => {
     });
     res.json(mergedCareers);
   } catch (error) {
-    console.error('Error searching careers:', error);
+    logger.error('Error searching careers:', error);
     res.status(500).json({ error: 'Failed to search careers' });
   }
 };
@@ -84,7 +85,7 @@ const searchAllCareers = async (req, res) => {
           collected.push(...items);
         } catch (err) {
           failedCount++;
-          console.error(`전체 직무 로딩 중 categoryId=${categoryId} 실패:`, err.message);
+          logger.error(`전체 직무 로딩 중 categoryId=${categoryId} 실패:`, err.message);
         }
       }
     }
@@ -102,7 +103,7 @@ const searchAllCareers = async (req, res) => {
     allCareersCache = { data: merged, fetchedAt: Date.now() };
     res.json({ items: merged, total: merged.length, categoryCount: categoryIds.length, failedCount, cached: false });
   } catch (error) {
-    console.error('전체 직무 검색 에러:', error);
+    logger.error('전체 직무 검색 에러:', error);
     res.status(500).json({ error: 'Failed to fetch all careers' });
   }
 };
@@ -123,7 +124,7 @@ const getCareerDetails = async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    console.error('Error fetching career details:', error);
+    logger.error('Error fetching career details:', error);
     res.status(500).json({ error: 'Failed to fetch career details' });
   }
 };
@@ -140,7 +141,7 @@ const saveCareerDetails = async (req, res) => {
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {
-    console.error('Error saving career details:', error);
+    logger.error('Error saving career details:', error);
     if (error.message === 'User not found') {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -157,7 +158,7 @@ const getMyCareer=async(req,res)=>{
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {
-    console.error('Error fetching my career:', error);
+    logger.error('Error fetching my career:', error);
     if (error.message === 'User not found') {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -171,7 +172,7 @@ const getCertCategories = async (req, res) => {
     const categories = await careerService.getCertCategories();
     res.json(categories);
   } catch (error) {
-    console.error('Error fetching certification categories:', error);
+    logger.error('Error fetching certification categories:', error);
     res.status(500).json({ error: 'Failed to fetch certification categories' });
   }
 };
@@ -182,7 +183,7 @@ const searchCertifications = async (req, res) => {
     const certs = await careerService.searchCertifications(field1, field2, seriesName, keyword);
     res.json(certs);
   } catch (error) {
-    console.error('Error searching certifications:', error);
+    logger.error('Error searching certifications:', error);
     res.status(500).json({ error: 'Failed to search certifications' });
   }
 };
@@ -206,7 +207,7 @@ const saveCertification = async (req, res) => {
     }
     res.json({ success: true, message: '자격증이 저장되었습니다.', data: userCert });
   } catch (error) {
-    console.error('Error saving certification:', error);
+    logger.error('Error saving certification:', error);
     res.status(500).json({ error: 'Failed to save certification' });
   }
 };
@@ -220,7 +221,7 @@ const getPassRate = async (req, res) => {
     const passRates = await careerService.getPassRate(jmcd);
     res.json(passRates || []);
   } catch (error) {
-    console.error('Error fetching pass rate:', error);
+    logger.error('Error fetching pass rate:', error);
     res.status(500).json({ error: 'Failed to fetch pass rate' });
   }
 };
@@ -231,7 +232,7 @@ const getMyCertifications = async (req, res) => {
     const certs = await careerService.getMyCertifications(userId);
     res.json(certs);
   } catch (error) {
-    console.error('Error fetching user certifications:', error);
+    logger.error('Error fetching user certifications:', error);
     res.status(500).json({ error: 'Failed to fetch user certifications' });
   }
 };
@@ -249,7 +250,7 @@ const removeCertification = async (req, res) => {
     
     res.json({ success: true, message: '자격증이 삭제되었습니다.' });
   } catch (error) {
-    console.error('Error removing certification:', error);
+    logger.error('Error removing certification:', error);
     if (error.message === 'User not found') {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -267,7 +268,7 @@ const getMyJobs = async (req, res) => {
     const jobs = await careerService.getMyJobs(userId);
     res.json(jobs);
   } catch (error) {
-    console.error('Error fetching user jobs:', error);
+    logger.error('Error fetching user jobs:', error);
     res.status(500).json({ error: 'Failed to fetch user jobs' });
   }
 };
@@ -285,7 +286,7 @@ const removeJob = async (req, res) => {
     
     res.json({ success: true, message: '직무가 삭제되었습니다.' });
   } catch (error) {
-    console.error('Error removing job:', error);
+    logger.error('Error removing job:', error);
     if (error.message === 'User not found') {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -307,7 +308,7 @@ const getMyCareerAndCertifications = async (req, res) => {
       certifications: certs,
     });
   } catch (error) {
-    console.error('Error fetching career and certifications:', error);
+    logger.error('Error fetching career and certifications:', error);
     res.status(500).json({ error: 'Failed to fetch career and certifications' });
   }
 };

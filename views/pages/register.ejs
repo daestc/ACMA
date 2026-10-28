@@ -27,6 +27,7 @@
       <% if (error) { %><p class="auth-error"><%= error %></p><% } %>
 
       <form id="registerForm" method="POST" action="/auth/register" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" id="role" name="role" value="student">
 
         <div class="form-group">

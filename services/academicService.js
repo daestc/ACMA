@@ -286,7 +286,7 @@ async function saveUniversityProfile(userId, profileData) {
         userId,
         studentId: mergedProfile.studentId ?? null,
         grade: mergedProfile.grade ?? 1,
-        enrollmentStatus: mergedProfile.enrollmentStatus || 'enrolled',
+        enrollmentStatus: mergedProfile.enrollmentStatus || '재학',
         major: mergedProfile.major,
         doubleMajor: mergedProfile.doubleMajor ?? null,
         GraduationRequirements: {

@@ -73,7 +73,7 @@ const UserSchema = new mongoose.Schema({
   // 전공
   major: { type: String, default: null, trim: true },
   // 재학 상태
-  enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업'], default: '재학' },
+  enrollmentStatus: { type: String, enum: ['재학', '휴학', '졸업', '자퇴', '제적'], default: '재학' },
   // 계정 상태
   accountStatus: { type: String, enum: ['active', 'dormant', 'suspended'], default: 'active' },
   // 접속 현황
@@ -97,7 +97,8 @@ const UserSchema = new mongoose.Schema({
     summary: { count: { type: Number, default: 0 }, date: { type: String, default: '' } },
   },
   // 보안
-  passwordChangedAt: { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
+  passwordChangedAt:  { type: Date,    default: null },  // 마지막 비밀번호 변경 시각
+  mustChangePassword: { type: Boolean, default: false }, // 관리자 초기화 후 최초 로그인 시 강제 변경
   
   // AI 기반 직무 적합도 점수
   careerAptitude: {
@@ -178,6 +179,8 @@ const UserSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+UserSchema.index({ university: 1, role: 1 }); // 대학별 역할 조회 (관리자 학생 목록 등)
 
 // User 모델 내보내기
 module.exports = mongoose.model('User', UserSchema);

@@ -36,7 +36,7 @@ const SUBJECT_TYPE_LABEL = {
 // 어느 쪽에서 오든 한글 라벨로 통일한다.
 const ENROLLMENT_LABEL = {
   enrolled: '재학', leave: '휴학', dropout: '자퇴', graduated: '졸업',
-  재학: '재학', 휴학: '휴학', 졸업: '졸업',
+  재학: '재학', 휴학: '휴학', 졸업: '졸업', 자퇴: '자퇴', 제적: '제적',
 };
 
 // UserSkill.userLanguage.language의 enum → 한글.

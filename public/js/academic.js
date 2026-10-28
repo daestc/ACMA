@@ -558,7 +558,7 @@ function updateGradPreview() {
   if (!totalInput) return;
 
   const total   = parseInt(totalInput.value) || 130;
-  const current = 92;   // TODO: 실제 이수 학점으로 교체
+  const current = parseInt(document.getElementById('semester-gpa-count')?.textContent) || 0;
   const pct     = Math.min(100, Math.round(current / total * 100));
   const rem     = Math.max(0, total - current);
 

@@ -1,9 +1,11 @@
 // routes/notificationRouter.js
 const express = require('express');
 const router = express.Router();
-const notificationController = require('../controller/notificationController');
+const notificationController = require('../controllers/notificationController');
+const { requireLogin } = require('../middleware/auth');
 
-// 알림 목록 조회 및 삭제 
+router.use(requireLogin);
+
 router.get('/list', notificationController.getNotifications);
 router.delete('/clear', notificationController.deleteNotifications);
 

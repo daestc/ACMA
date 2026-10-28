@@ -1,5 +1,6 @@
 const userService = require('../services/userService');
-const noticeController = require("../controller/noticeController");
+const logger = require('../config/logger');
+const noticeController = require("./noticeController");
 const careerService = require('../services/careerService');
 const UniversitySchedule = require('../models/UniversitySchedule'); 
 
@@ -19,7 +20,7 @@ function getDDayLabel(targetDate) {
 // React 프론트엔드 이전 작업(2026-08) 중에 분리했다 — 로직은 기존과 동일하게 유지.
 async function loadHomeData(user) {
   const myCerts = await careerService.getMyCertifications(user.email).catch((err) => {
-    console.error(' 자격증 함수 에러:', err.message);
+    logger.error(' 자격증 함수 에러:', err.message);
     return [];
   });
 
@@ -111,8 +112,8 @@ const getHomePage = async (req, res) => {
     });
 
   } catch (error) {
-    console.log('홈페이지 로딩 실패');
-    console.error(error);
+    logger.info('홈페이지 로딩 실패');
+    logger.error(error);
     res.status(500).send("서버 에러 발생");
   }
 };
@@ -131,8 +132,8 @@ const getHomeApi = async (req, res) => {
     const data = await loadHomeData(loggedInUser);
     res.json({ success: true, ...data });
   } catch (error) {
-    console.log('홈 API 로딩 실패');
-    console.error(error);
+    logger.info('홈 API 로딩 실패');
+    logger.error(error);
     res.status(500).json({ success: false, message: '서버 에러 발생' });
   }
 };

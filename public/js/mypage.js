@@ -60,7 +60,6 @@ function updateGlobalHeader(pageId) {
 
 // 페이지 이동 (URL 방식)
 function switchPage(page, params) {
-  console.log('이동 시도:', page);
   window.location.href = '/' + page;
 }
 
@@ -224,8 +223,6 @@ async function saveProfile() {
   const major = document.getElementById('major').value;
   const grade = document.getElementById('grade')?.value || '';
   const enrollmentStatus = document.getElementById('enrollmentStatus').value;
-  console.log('프로필 저장 시도:', { studentId, university, major, grade, enrollmentStatus });
-
   try {
     const response = await fetch('/user/updateProfile', {
       method: 'POST',

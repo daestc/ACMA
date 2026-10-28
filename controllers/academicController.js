@@ -1,4 +1,5 @@
-const academicService = require('../services/academicSevice');
+const academicService = require('../services/academicService');
+const logger = require('../config/logger');
 const User = require('../models/User');
 const {
   resolveRequirements,
@@ -95,7 +96,7 @@ const addCourse = async (req, res) => {
 
     return res.json({ success: true, redirectUrl: '/academic' });
   } catch (error) {
-    console.error(error.message);
+    logger.error(error.message);
     return res.status(500).json({ success: false, message: 'Failed to save academic data' });
   }
 }
@@ -108,7 +109,7 @@ const editCourse = async (req, res) => {
     await academicService.editCourse(userEmail, courseId, courseName, courseCode, credits);
     res.json({ success: true });
   } catch (error) {
-    console.error(error.message);
+    logger.error(error.message);
     res.json({ success: false });
   }
 }
@@ -147,7 +148,7 @@ const updateBulkGrades = async (req, res) => {
     return res.json({ success: true });
 
   } catch (error) {
-    console.error('Bulk Grade Update Error:', error);
+    logger.error('Bulk Grade Update Error:', error);
     return res.status(500).json({ success: false, message: '성적 업데이트 처리 중 서버 에러가 발생했습니다.' });
   }
 }
@@ -161,7 +162,7 @@ const deleteCourse = async (req, res) => {
     await academicService.deleteCourse(userEmail, courseId);
     res.json({ success: true });
   } catch (error) {
-    console.error(error.message);
+    logger.error(error.message);
     res.json({ success: false });
   }
 }
@@ -178,7 +179,7 @@ const closeSemester = async (req, res) => {
     const record = await academicService.closeSemester(userId, semesterInfo.semester);
     return res.json({ success: true, status: record.status });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     if (error.message.includes('없습니다')) {
       return res.status(404).json({ success: false, message: error.message });
     }
@@ -198,7 +199,7 @@ const reopenSemester = async (req, res) => {
     const record = await academicService.reopenSemester(userId, semesterInfo.semester);
     return res.json({ success: true, status: record.status });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     if (error.message.includes('없습니다')) {
       return res.status(404).json({ success: false, message: error.message });
     }
@@ -218,7 +219,7 @@ const getSemesterRecord = async (req, res) => {
     if (!record) return res.json({ success: true, record: null });
     return res.json({ success: true, record });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return res.status(500).json({ success: false });
   }
 }
@@ -232,7 +233,7 @@ const getSemesterGPA = async (req, res) => {
     const records = await academicService.getAllSemesterGPA(user);
     return res.json({ success: true, records });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return res.status(500).json({ success: false });
   }
 }
@@ -276,7 +277,7 @@ const getGraduationRequirements = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return res.status(500).json({ success: false });
   }
 };
@@ -338,7 +339,7 @@ const getProgress = async (req, res) => {
       graduationRequirements: graduation.available ? graduation.requirements : null,
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return res.status(500).json({ success: false });
   }
 };

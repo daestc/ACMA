@@ -1,11 +1,12 @@
 // controllers/specController.js
 const specService = require('../services/specService');
+const logger = require('../config/logger');
 const UserSkill = require('../models/User_skills');
 
 function makeHandler(type, build) {
   return async (req, res) => {
     try {
-      const userId = req.session.user.id;
+      const userId = req.session?.user?.id || req.session?.user?._id;
       if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
 
       const item = build(req.body);
@@ -14,7 +15,7 @@ function makeHandler(type, build) {
       await specService.pushSpec(userId, type, item);
       res.json({ success: true });
     } catch (err) {
-      console.error(`${type} 추가 에러:`, err);
+      logger.error(`${type} 추가 에러:`, err);
       res.status(500).json({ success: false, message: '서버 에러' });
     }
   };
@@ -50,7 +51,7 @@ const getMySpecs = async (req, res) => {
       skills: doc?.userSkill || [],
     });
   } catch (err) {
-    console.error('스펙 조회 에러:', err);
+    logger.error('스펙 조회 에러:', err);
     res.status(500).json({ success: false });
   }
 };
@@ -69,7 +70,7 @@ function makeUpdateHandler(type, build) {
       if (!result) return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
       res.json({ success: true });
     } catch (err) {
-      console.error(`${type} 수정 에러:`, err);
+      logger.error(`${type} 수정 에러:`, err);
       res.status(500).json({ success: false, message: '서버 에러' });
     }
   };
@@ -84,7 +85,7 @@ function makeDeleteHandler(type) {
       await specService.deleteSpec(userId, type, req.params.id);
       res.json({ success: true });
     } catch (err) {
-      console.error(`${type} 삭제 에러:`, err);
+      logger.error(`${type} 삭제 에러:`, err);
       res.status(500).json({ success: false, message: '서버 에러' });
     }
   };
