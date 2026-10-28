@@ -104,7 +104,17 @@ async function getPlanProgress(userId, plan) {
     };
   });
 
-  return { items, goal: null };
+  // 학생 목표가 있으면 forGoal 항목들의 합. 완료가 계획을 넘은 항목은 계획 시간까지만 센다.
+  let goal = null;
+  if (plan.userGoal) {
+    const goalItems = items.filter(p => plan.items[p.index].forGoal);
+    goal = {
+      plannedHours: round(goalItems.reduce((sum, p) => sum + p.plannedHours, 0)),
+      doneHours: round(goalItems.reduce((sum, p) => sum + Math.min(p.doneHours, p.plannedHours), 0)),
+    };
+  }
+
+  return { items, goal };
 }
 
 // 직전 주 달성률 — 새 주간계획 생성 프롬프트에 넣는다

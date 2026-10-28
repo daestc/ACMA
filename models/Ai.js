@@ -156,6 +156,7 @@ const weeklyPlanSchema = new Schema({
   weekEnd: { type: Date, required: true },
 
   goal: { type: String, default: null },
+  userGoal: { type: String, default: null, maxlength: 100 }, // 학생이 직접 쓴 이번 주 목표 (goal은 AI가 쓴 문장)
   items: [{
     title: { type: String, required: true },
     category: {
@@ -170,6 +171,7 @@ const weeklyPlanSchema = new Schema({
     isDeadline: { type: Boolean, default: false },
     reason: { type: String, default: null },
     dueDate: { type: Date, default: null }, // 마감 항목의 실제 마감일 (서버가 채움, LLM 아님)
+    forGoal: { type: Boolean, default: false }, // userGoal에 직접 기여하는 항목
   }],
 
   computed: {

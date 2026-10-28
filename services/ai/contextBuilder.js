@@ -255,7 +255,7 @@ async function buildUserContext(userId) {
   return compacted;
 }
 
-async function buildWeeklyPlanContext(userId, weekStart) {
+async function buildWeeklyPlanContext(userId, weekStart, userGoal = null) {
   const [userContext, rawAvailability, academicPhase, prevWeekFeedback] = await Promise.all([
     buildUserContext(userId),
     availabilityAdapter.calcAvailableHours(userId, academicPhaseAdapter.deriveSemesterFromDate(weekStart)),
@@ -304,6 +304,8 @@ async function buildWeeklyPlanContext(userId, weekStart) {
 
   return {
     ...userContext,
+    // 학생이 쓴 목표는 시스템 프롬프트가 아니라 이 컨텍스트 JSON의 한 필드로만 보낸다(규칙 14).
+    userGoal: userGoal || null,
     computed: {
       availableHoursByDay,
       availableHoursTotal,

@@ -40,6 +40,8 @@ function validateWeeklyPlan(data, context) {
     }
 
     sanitizedItem.isDeadline = Boolean(sanitizedItem.isDeadline);
+    // 학생 목표가 없는데 true가 오면 false — 목표 진행률에 엉뚱한 항목이 잡히지 않게.
+    sanitizedItem.forGoal = Boolean(sanitizedItem.forGoal) && Boolean(context?.userGoal);
     sanitizedItem.title = String(sanitizedItem.title || '').trim() || `할 일 ${idx + 1}`;
 
     return sanitizedItem;

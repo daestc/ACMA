@@ -41,6 +41,15 @@ function resolveWeekStart(requestedWeekStart) {
 }
 
 // weekStart(일요일 00:00 KST)로부터 토요일 23:59:59.999 KST를 구한다.
+const USER_GOAL_MAX_LENGTH = 100;
+
+// 학생이 쓴 주간 목표 — 줄바꿈·연속 공백을 하나로 접고 100자로 자른다. 비면 null.
+function normalizeUserGoal(value) {
+  if (typeof value !== 'string') return null;
+  const goal = value.replace(/\s+/g, ' ').trim().slice(0, USER_GOAL_MAX_LENGTH);
+  return goal || null;
+}
+
 function computeWeekEnd(weekStart) {
   const weekDates = kstDate.getWeekDateStrings(weekStart);
   const lastDayStart = kstDate.fromKstDateString(weekDates[6]);
@@ -70,17 +79,19 @@ async function requestWeeklyPlan(req, res) {
 
     const weekStart = resolveWeekStart(req.body?.weekStart);
     const weekEnd = computeWeekEnd(weekStart);
+    // 다시 생성할 때 목표를 비우면 옛 목표를 남기지 않고 null로 덮어쓴다.
+    const userGoal = normalizeUserGoal(req.body?.userGoal);
 
     const doc = await WeeklyPlan.findOneAndUpdate(
       { userId, weekStart },
-      { userId, weekStart, weekEnd, status: 'pending', errorMessage: null },
+      { userId, weekStart, weekEnd, userGoal, status: 'pending', errorMessage: null },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
     res.status(202).json({ id: doc._id, status: 'pending' });
 
     setImmediate(() => {
-      planService.generateWeeklyPlan(doc._id, userId, weekStart).catch(error => {
+      planService.generateWeeklyPlan(doc._id, userId, weekStart, userGoal).catch(error => {
         logger.error(`[ai] weekly-plan background crash (docId=${doc._id}): ${error.message}`);
       });
     });

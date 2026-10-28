@@ -115,9 +115,9 @@ async function runDistribution(weeklyPlanDoc, extraNotices = []) {
 }
 
 // 주간 계획 생성 전체 흐름. 컨트롤러의 백그라운드(setImmediate)에서 호출된다.
-async function generateWeeklyPlan(docId, userId, weekStart) {
+async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
   try {
-    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart);
+    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart, userGoal);
 
     const { data, meta } = await aiClient.generateJSON({
       system: weeklyPlanPrompt.buildSystem(),
@@ -138,6 +138,16 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
 
     const extraNotices = [];
     injectDueDates(sanitized.items, context.certSchedule, extraNotices);
+
+    // 규칙 14는 목표 항목을 50% 이상으로 잡게 하지만 마감·시험 규칙이 우선이라 정당하게 모자랄
+    // 수 있다. 항목을 고치거나 다시 생성하지 않고 안내만 한다.
+    if (context.userGoal && sanitized.allocatedHours > 0) {
+      const goalHours = sanitized.items.filter(item => item.forGoal).reduce((sum, item) => sum + item.estimatedHours, 0);
+      const goalPct = Math.round((goalHours / sanitized.allocatedHours) * 100);
+      if (goalPct < 50) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다. 마감·시험 일정이 먼저 배치되었습니다.`);
+      }
+    }
 
     // hasTimetable:false면 availableHoursByDay가 실제 시간표가 아니라 기본값(하루
     // 6시간 균일)으로 채워졌다는 뜻이다 — 방학이라 정말 시간표가 없는 것과 학생이
