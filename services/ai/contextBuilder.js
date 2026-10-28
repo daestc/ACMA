@@ -324,4 +324,4 @@ async function buildPortfolioContext(userId) {
   return buildUserContext(userId);
 }
 
-module.exports = { buildUserContext, buildWeeklyPlanContext, buildPortfolioContext };
+module.exports = { buildUserContext, buildWeeklyPlanContext, buildPortfolioContext, cleanSubjectName };

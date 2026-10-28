@@ -10,6 +10,16 @@ const PREF_POINTS = { work: 12, style: 4, salary: 4 };
 const RANK_WEIGHT = [1.0, 0.8, 0.6, 0.4, 0.2];
 const MIN_SIGNAL_KINDS = 3; // 학생 쪽 입력 신호가 이만큼 있어야 신뢰도 normal
 
+// 수강 과목의 가중 학점 = 학점 × 성적 계수. 평점(4.5 척도)을 쓰지 않는 건 P/NP가 평점에서 빠지기 때문.
+// 성적 미입력(수강 중 포함)은 근거로 인정하되 끝까지 들은 과목보다 약하게 본다.
+const GRADE_FACTOR = {
+  'A+': 1.0, A: 1.0, 'B+': 0.85, B: 0.85, 'C+': 0.7, C: 0.7, 'D+': 0.55, D: 0.55, P: 0.85,
+};
+const PENDING_GRADE_FACTOR = 0.5;
+const FAILED_GRADES = new Set(['F', 'NP']);
+// 이름만 넘어오는 옛 경로(context.academic)의 과목 학점
+const DEFAULT_COURSE_CREDITS = 3;
+
 // ── 정규화 ─────────────────────────────────────────────
 
 const norm = v => String(v || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
@@ -232,14 +242,50 @@ function mapSubjectsToKnowledge(subjects) {
   return knowledgeSubjects;
 }
 
+function courseWeight(course) {
+  const factor = course?.grade ? (GRADE_FACTOR[course.grade] ?? 0) : PENDING_GRADE_FACTOR;
+  return (Number(course?.credits) || 0) * factor;
+}
+
+// 재수강 등 같은 이름 과목은 가중 학점이 가장 큰 한 건만 남긴다. 처음 나온 순서는 유지한다.
+function dedupeCourses(courses) {
+  const byName = new Map();
+  (courses || []).forEach(course => {
+    if (!course?.name || FAILED_GRADES.has(course.grade)) return;
+    const key = norm(course.name);
+    const prev = byName.get(key);
+    if (!prev || courseWeight(course) > courseWeight(prev)) byName.set(key, course);
+  });
+  return [...byName.values()];
+}
+
+// courses가 없으면 context.academic(전공 이수 과목 + 이번 학기 과목, 이름만)으로 만든다 —
+// attachCertGaps(certIndex만 씀)와 점검 스크립트의 옛 호출이 그대로 돈다.
+function coursesFromContext(context) {
+  return [
+    ...(context?.academic?.majorCourses || []).map(s => ({ name: s?.name, credits: DEFAULT_COURSE_CREDITS, grade: s?.grade ?? null })),
+    ...(context?.academic?.currentSubjects || []).map(s => ({ name: s?.name, credits: DEFAULT_COURSE_CREDITS, grade: null })),
+  ];
+}
+
+// 지식 이름 → 그 지식으로 매핑된 과목들의 가중 학점 합
+function sumKnowledgeWeight(courses) {
+  const weights = new Map();
+  courses.forEach(course => {
+    mapSubjectsToKnowledge([course.name]).forEach((_, name) => {
+      weights.set(name, (weights.get(name) || 0) + courseWeight(course));
+    });
+  });
+  return weights;
+}
+
 // buildUserContext 결과는 compact()로 null·빈 배열 키가 통째로 사라진다 → 전부 ?.와 || []로 읽는다.
-function extractUserSignals(context) {
+// courses: [{ name, credits, grade }] — 추천 서비스가 학기 기록에서 직접 읽은 수강 과목(교양 포함).
+function extractUserSignals(context, courses) {
   const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
   const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
-  const subjects = [...new Set([
-    ...(context?.academic?.majorCourses || []).map(s => s?.name),
-    ...(context?.academic?.currentSubjects || []).map(s => s?.name),
-  ].filter(Boolean))];
+  const scoringCourses = dedupeCourses(courses === undefined ? coursesFromContext(context) : courses);
+  const subjects = scoringCourses.map(c => c.name);
   const skills = (context?.specs?.skills || []).map(s => s?.name).filter(Boolean);
   const experiences = (context?.specs?.experiences || []).map(e => e?.title).filter(Boolean);
 
@@ -248,8 +294,10 @@ function extractUserSignals(context) {
 
   return {
     majors, certs, subjects, skills, experiences,
+    courses: scoringCourses,
     certIndex,
     knowledgeSubjects: mapSubjectsToKnowledge(subjects),
+    knowledgeWeight: sumKnowledgeWeight(scoringCourses),
     skillAbilities: mapSkillsToAbilities(skills, experiences),
   };
 }
@@ -449,6 +497,8 @@ module.exports = {
   SKILL_ABILITY_MAP,
   SKILL_ONLY_ABILITY_MAP,
   RANK_WEIGHT,
+  GRADE_FACTOR,
+  courseWeight,
   PREF_OPTIONS,
   WORK_PREF_TARGETS,
   STYLE_TARGETS,
