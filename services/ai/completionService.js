@@ -56,6 +56,57 @@ async function collectCompletedSlices(userId, weeklyPlanId, weekDates) {
   return slices;
 }
 
+// 항목별 진행률(시간 기준). 화면은 표시만 하고 계산은 여기서 한다 — 일별 보기만으로는 지난 날의
+// 미완료 조각이 재분배로 지워진 뒤를 알 수 없다. 주간 달성률(rateOf, 조각 개수 기준)과는 별개다.
+async function getPlanProgress(userId, plan) {
+  const today = kstDate.toKstDateString(new Date());
+  const checklists = await DailyChecklist.find({ userId, date: { $in: kstDate.getWeekDateStrings(plan.weekStart) } })
+    .select('date items')
+    .lean();
+
+  const byIndex = new Map();
+  checklists.forEach(doc => {
+    (doc.items || []).forEach(item => {
+      if (item.source !== 'ai' || item.planItemIndex == null || String(item.weeklyPlanId) !== String(plan._id)) return;
+      const bucket = byIndex.get(item.planItemIndex) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
+      const hours = sliceHours(item);
+      if (item.isCompleted) {
+        bucket.done += hours;
+        bucket.doneSlices += 1;
+      } else if (doc.date >= today) {
+        bucket.scheduled += hours;
+      } else {
+        bucket.overdue += hours;
+      }
+      byIndex.set(item.planItemIndex, bucket);
+    });
+  });
+
+  const round = n => +n.toFixed(1);
+  const items = (plan.items || []).map((item, index) => {
+    const b = byIndex.get(index) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
+    const plannedHours = item.estimatedHours || 0;
+    const unplacedHours = Math.max(0, plannedHours - b.done - b.scheduled - b.overdue);
+    let status;
+    if (!(plannedHours > 0)) status = b.doneSlices > 0 ? 'done' : 'on_track';
+    else if (b.done >= plannedHours) status = 'done';
+    else if (b.overdue > 0) status = 'overdue';
+    else if (unplacedHours > 0) status = 'unplaced';
+    else status = 'on_track';
+    return {
+      index,
+      plannedHours,
+      doneHours: round(b.done),
+      scheduledHours: round(b.scheduled),
+      overdueHours: round(b.overdue),
+      unplacedHours: round(unplacedHours),
+      status,
+    };
+  });
+
+  return { items, goal: null };
+}
+
 // 직전 주 달성률 — 새 주간계획 생성 프롬프트에 넣는다
 async function getPreviousWeekFeedback(userId, weekStart) {
   const prevWeekStart = new Date(weekStart);
@@ -211,5 +262,5 @@ async function getWeeklyPlanStats(userId) {
 }
 
 module.exports = {
-  sliceHours, collectCompletedSlices, calcCompletionRate, getPreviousWeekFeedback, getWeeklyPlanHistory, getWeeklyPlanStats,
+  sliceHours, collectCompletedSlices, getPlanProgress, calcCompletionRate, getPreviousWeekFeedback, getWeeklyPlanHistory, getWeeklyPlanStats,
 };

@@ -100,7 +100,8 @@ async function getWeeklyPlan(req, res) {
     if (doc.status !== 'done') {
       return res.json({ status: doc.status, errorMessage: doc.errorMessage || null });
     }
-    return res.json({ status: doc.status, data: doc });
+    const progress = await completionService.getPlanProgress(req.user.id, doc);
+    return res.json({ status: doc.status, data: doc, progress });
   } catch (error) {
     logger.error(`[ai] getWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -120,7 +121,8 @@ async function getCurrentWeeklyPlan(req, res) {
       // React 쪽(CareerPlan.jsx)이 이 id로 폴링을 재개할 수 있도록 추가했다.
       return res.json({ id: doc._id, status: doc.status, errorMessage: doc.errorMessage || null });
     }
-    return res.json({ status: doc.status, data: doc });
+    const progress = await completionService.getPlanProgress(req.user.id, doc);
+    return res.json({ status: doc.status, data: doc, progress });
   } catch (error) {
     logger.error(`[ai] getCurrentWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });
