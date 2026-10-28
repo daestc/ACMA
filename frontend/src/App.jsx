@@ -18,6 +18,7 @@ import Recruit from './pages/Recruit'
 import CareerPlan from './pages/CareerPlan'
 import CareerPortfolio from './pages/CareerPortfolio'
 import CareerDiagnosis from './pages/CareerDiagnosis'
+import CareerRecommend from './pages/CareerRecommend'
 import AdminUsers from './pages/AdminUsers'
 import AdminStaff from './pages/AdminStaff'
 import AdminStatistics from './pages/AdminStatistics'
@@ -154,6 +155,17 @@ function App() {
             <RequireAuth>
               <AppShell currentPage="careerPortfolio" pageTitle="포트폴리오">
                 <CareerPortfolio />
+              </AppShell>
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/career/recommend"
+          element={
+            <RequireAuth>
+              <AppShell currentPage="careerRecommend" pageTitle="진로 추천">
+                <CareerRecommend />
               </AppShell>
             </RequireAuth>
           }

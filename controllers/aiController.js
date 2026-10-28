@@ -8,6 +8,7 @@ const planService = require('../services/ai/planService');
 const completionService = require('../services/ai/completionService');
 const portfolioService = require('../services/ai/portfolioService');
 const diagnosisService = require('../services/ai/diagnosisService');
+const recommendationService = require('../services/ai/recommendationService');
 const kstDate = require('../utils/kstDate');
 const logger = require('../config/logger');
 
@@ -149,13 +150,21 @@ async function getWeeklyPlanStats(req, res) {
   }
 }
 
-// 오늘 날짜의 AI 일별 계획 항목만 뽑아온다 (홈 화면용 — 어느 WeeklyPlan에서 왔는지는
-// 몰라도 되고, 오늘 날짜 하나만 알면 된다).
+// 오늘 날짜의 AI 일별 계획 항목만 뽑아온다 (홈 화면용). 이번 주 WeeklyPlan(getCurrentWeeklyPlan과
+// 동일한 기준)의 항목으로 한정한다 — 그렇지 않으면 재생성 등으로 지난 계획이 오늘 날짜에
+// 남겨둔 미정리 항목(dailyDistributor.js 참고)까지 같이 보여서 주간 계획 탭과 어긋난다.
 async function getTodayChecklist(req, res) {
   try {
     const today = kstDate.toKstDateString(new Date());
+    const weekStart = kstDate.getWeekStart(new Date());
+    const currentPlan = await WeeklyPlan.findOne({ userId: req.user.id, weekStart }).select('_id').lean();
+
     const doc = await DailyChecklist.findOne({ userId: req.user.id, date: today }).select('items').lean();
-    const items = (doc?.items || []).filter(item => item.source === 'ai');
+    const items = currentPlan
+      ? (doc?.items || []).filter(
+          item => item.source === 'ai' && String(item.weeklyPlanId) === String(currentPlan._id),
+        )
+      : [];
     return res.json({ success: true, date: today, items });
   } catch (error) {
     logger.error(`[ai] getTodayChecklist error: ${error.message}`);
@@ -512,7 +521,13 @@ async function addGapToWeeklyPlan(req, res) {
       });
     }
 
-    const weekStart = resolveWeekStart(req.body?.weekStart);
+    // resolveWeekStart는 "새 계획을 생성할 weekStart"를 고르는 함수라 화~토엔 다음 주를
+    // 기본값으로 삼는다(주석 참고). 여기서는 반대로 "이미 있는 이번 주 계획"에 추가하는
+    // 것이므로 getCurrentWeeklyPlan과 같은 기준(오늘이 속한 주)을 써야 한다. resolveWeekStart를
+    // 그대로 쓰면 화~토에는 이번 주 계획이 있어도 다음 주 weekStart로 조회해 404가 났다.
+    const weekStart = req.body?.weekStart
+      ? kstDate.getWeekStart(kstDate.fromKstDateString(req.body.weekStart))
+      : kstDate.getWeekStart(new Date());
     const plan = await WeeklyPlan.findOne({ userId, weekStart });
     if (!plan) {
       return res.status(404).json({ success: false, message: '먼저 주간 계획을 생성해 주세요.' });
@@ -542,6 +557,66 @@ async function addGapToWeeklyPlan(req, res) {
   }
 }
 
+// ── 진로 추천 ─────────────────────────────────────────
+
+async function getRecommendationForm(req, res) {
+  try {
+    const form = await recommendationService.getForm(req.user.id);
+    return res.json({ success: true, ...form });
+  } catch (error) {
+    logger.error(`[ai] getRecommendationForm error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function requestRecommendation(req, res) {
+  try {
+    const { httpStatus, body } = await recommendationService.requestRecommendation(
+      req.user.id, req.body?.prefs, req.body?.interests,
+    );
+    return res.status(httpStatus).json(body);
+  } catch (error) {
+    logger.error(`[ai] requestRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false, message: '요청 처리에 실패했습니다.' });
+  }
+}
+
+async function getRecommendation(req, res) {
+  try {
+    const doc = await recommendationService.getRecommendation(req.user.id, req.params.id);
+    if (!doc) return res.status(404).json({ success: false });
+
+    if (doc.status === 'pending') return res.json({ status: doc.status });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+  } catch (error) {
+    logger.error(`[ai] getRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function getLatestRecommendation(req, res) {
+  try {
+    const doc = await recommendationService.getLatestRecommendation(req.user.id);
+    if (!doc) return res.status(404).json({ success: false });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+  } catch (error) {
+    logger.error(`[ai] getLatestRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function selectRecommendation(req, res) {
+  try {
+    const { httpStatus, body } = await recommendationService.selectJob(
+      req.user.id, req.params.id, String(req.body?.jobCode || ''),
+    );
+    return res.status(httpStatus).json(body);
+  } catch (error) {
+    logger.error(`[ai] selectRecommendation error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
 module.exports = {
   requestWeeklyPlan,
   getWeeklyPlan,
@@ -564,4 +639,9 @@ module.exports = {
   getDiagnosis,
   getLatestDiagnosis,
   addGapToWeeklyPlan,
+  getRecommendationForm,
+  requestRecommendation,
+  getRecommendation,
+  getLatestRecommendation,
+  selectRecommendation,
 };

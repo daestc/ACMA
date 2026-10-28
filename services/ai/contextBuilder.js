@@ -309,6 +309,8 @@ async function buildWeeklyPlanContext(userId, weekStart) {
       availableHoursTotal,
       academicPhase: academicPhase?.phase ?? null,
       semester: academicPhase?.semester ?? null,
+      // 시험 2주 전부터 과목 비중을 올리는 규칙(weeklyPlan 4-4)용. 시험 일정이 없으면 null → buildUser가 키를 뺀다.
+      daysUntilNextExam: academicPhase?.daysUntilNextExam ?? null,
       hasTimetable,
     },
     prevCompletionRate: prevWeekFeedback?.rate ?? null,

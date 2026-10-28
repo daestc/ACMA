@@ -186,21 +186,22 @@ exports.confirmPayment = async (req, res, next) => {
   const { paymentKey, orderId, amount } = req.query;
 
   try {
-    // pending → processing 을 atomic하게 전환 — 동시 요청이 들어와도 한 번만 통과
-    const payment = await Payment.findOneAndUpdate(
-      { orderId, status: 'pending' },
-      { $set: { status: 'processing' } },
-      { new: true }
-    );
-    if (!payment) {
-      // null: orderId 자체가 없거나, 이미 다른 요청이 processing/done으로 전환한 경우
-      const existing = await Payment.findOne({ orderId }).lean();
-      if (!existing) return res.redirect('/payment/fail?message=주문정보를 찾을 수 없습니다.');
-      if (existing.status === 'done') return res.redirect('/payment?already=1');
-      return res.redirect('/payment/fail?message=이미 처리 중인 결제입니다.');
+    const payment = await Payment.findOne({ orderId });
+
+    // 토스 승인을 부르기 전에 주문 주인을 확인한다 — 승인 전까지는 결제가 확정되지 않으므로 여기서
+    // 멈추면 돈이 나가지 않는다. 이 검사를 승인 뒤로 옮기면 돈이 나간 뒤에 거부하게 된다.
+    const sessionUserId = req.session?.user?.id;
+    if (!sessionUserId) {
+      return res.redirect(`/payment/fail?message=${encodeURIComponent('로그인이 만료되었습니다. 다시 로그인한 뒤 결제해 주세요.')}`);
     }
-    if (Number(amount) !== payment.amount) {
-      await Payment.findByIdAndUpdate(payment._id, { $set: { status: 'pending' } });
+    if (!payment) return res.redirect('/payment/fail?message=주문정보를 찾을 수 없습니다.');
+    if (String(payment.userId) !== String(sessionUserId)) {
+      logger.warn(`결제승인 거부(주문 소유자 불일치) | orderId=${orderId} | orderUserId=${payment.userId} | sessionUserId=${sessionUserId}`);
+      return res.redirect(`/payment/fail?message=${encodeURIComponent('주문 정보가 일치하지 않습니다.')}`);
+    }
+
+    if (payment.status === 'done') return res.redirect('/payment?already=1');
+    if (String(payment.amount) !== String(amount)) {
       return res.redirect('/payment/fail?message=결제금액이 일치하지 않습니다.');
     }
 

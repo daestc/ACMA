@@ -1,16 +1,7 @@
 const staffService = require('../services/staffService');
 const logger = require('../config/logger');
 const User = require('../models/User');
-const Payment = require('../models/Payment');
-const { AcademicRecord, CreditSummary } = require('../models/Academic_records');
-const { CareerPortfolio, CareerDiagnosis, WeeklyPlan } = require('../models/Ai');
-const { CalendarEvent, Timetable, DailyChecklist } = require('../models/Calendar');
-const { UserCertification } = require('../models/Certifications_jobs');
-const Notification = require('../models/Notification');
-const Study = require('../models/Study');
-const University_profile = require('../models/University_profile');
-const User_skills = require('../models/User_skills');
-const Suggestion = require('../models/Suggestion');
+const { deleteUserAccount, countDeleted } = require('../services/accountDeletionService');
 
 const getHomePage = async (req, res, next) => {
   try {
@@ -372,33 +363,11 @@ const suspendStudent = async (req, res, next) => {
 const deleteStudent = async (req, res, next) => {
   try {
     const university = req.user.university;
-    const student = await User.findOne({ _id: req.params.id, university, role: 'student' }).lean();
+    // 같은 대학의 학생인지 먼저 확인한다 — 확인 전에 정리를 시작하면 다른 대학 학생 데이터가 지워진다.
+    const student = await User.findOne({ _id: req.params.id, university, role: 'student' }).select('email').lean();
     if (!student) return res.status(404).json({ ok: false, message: '학생을 찾을 수 없습니다.' });
-
-    const uid = student._id;
-
-    // 연관 데이터 cascade 삭제 (개인정보 잔류 방지)
-    await Promise.all([
-      AcademicRecord.deleteMany({ userId: uid }),
-      CreditSummary.deleteOne({ userId: uid }),
-      CareerPortfolio.deleteMany({ userId: uid }),
-      CareerDiagnosis.deleteMany({ userId: uid }),
-      WeeklyPlan.deleteMany({ userId: uid }),
-      CalendarEvent.deleteMany({ userId: uid }),
-      Timetable.deleteMany({ userId: uid }),
-      DailyChecklist.deleteMany({ userId: uid }),
-      UserCertification.deleteMany({ userId: uid }),
-      Notification.deleteMany({ userId: uid }),
-      Study.deleteMany({ userId: uid }),
-      University_profile.deleteMany({ userId: uid }),
-      User_skills.deleteMany({ userId: uid }),
-      Suggestion.deleteMany({ authorId: uid }),
-      Payment.deleteMany({ userId: uid }),
-    ]);
-
-    await User.deleteOne({ _id: uid });
-
-    logger.info(`계정삭제 | target=${student.email} | by=${req.user.email}`);
+    const result = await deleteUserAccount(student._id);
+    logger.info(`계정삭제 | target=${student.email} | by=${req.user.email} | 연관 문서 ${countDeleted(result)}건 삭제`);
     res.json({ ok: true });
   } catch (err) {
     next(err);

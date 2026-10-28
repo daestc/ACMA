@@ -133,4 +133,5 @@ async function linkGapsToActions(gaps, context) {
   return linked;
 }
 
-module.exports = { linkGapsToActions };
+// findDirectCertMatch는 진로 추천의 보완 자격증 일정 조회에도 쓴다(export만 추가, 로직 동일).
+module.exports = { linkGapsToActions, findDirectCertMatch };

@@ -18,33 +18,36 @@ const CREDIT_CATEGORY_MAP = {
   free: 'free',
 };
 
+// 학기 요약(신청·취득 학점, 학기 평점)을 한 곳에서 계산한다.
+// attemptedCredits(신청 학점)는 성적 미입력 과목도 포함하지만, 평점 분모(gpaCredits)는 성적이
+// 입력된 과목만 센다 — 미입력 과목을 분모에 넣으면 진행 중 학기 평점이 0.00으로 저장됐다.
+// 성적이 하나도 없으면 semesterGPA는 null(화면 평균·그래프에서 빠진다).
 function calculateSemesterSummary(subjects) {
-  return subjects.reduce((summary, subject) => {
+  const s = subjects.reduce((sum, subject) => {
     const credits = Number(subject.credits) || 0;
     const grade = subject.grade;
 
     // P/NP는 GPA 계산(분모/분자) 대상이 아님. P는 취득학점에는 포함.
     if (grade === 'P' || grade === 'NP') {
-      if (grade === 'P') summary.earnedCredits += credits;
-      return summary;
+      if (grade === 'P') sum.earnedCredits += credits;
+      return sum;
     }
 
     const gradePoint = GRADE_POINTS[grade] ?? null;
-
-    summary.attemptedCredits += credits;
+    sum.attemptedCredits += credits;
     if (gradePoint !== null) {
-      summary.semesterPoints += gradePoint * credits;
-      if (grade !== 'F') {
-        summary.earnedCredits += credits;
-      }
+      sum.gpaCredits += credits;
+      sum.semesterPoints += gradePoint * credits;
+      if (grade !== 'F') sum.earnedCredits += credits;
     }
+    return sum;
+  }, { attemptedCredits: 0, earnedCredits: 0, semesterPoints: 0, gpaCredits: 0 });
 
-    return summary;
-  }, {
-    attemptedCredits: 0,
-    earnedCredits: 0,
-    semesterPoints: 0,
-  });
+  return {
+    attemptedCredits: s.attemptedCredits,
+    earnedCredits: s.earnedCredits,
+    semesterGPA: s.gpaCredits ? Number((s.semesterPoints / s.gpaCredits).toFixed(2)) : null,
+  };
 }
 // 학기별 GPA 계산기 저장 (강의 개별 추가 대응)
 async function saveSemesterRecord(data, options = {}) {
@@ -68,9 +71,7 @@ async function saveSemesterRecord(data, options = {}) {
       semesterSummary: {
         attemptedCredits: semesterSummary.attemptedCredits,
         earnedCredits: semesterSummary.earnedCredits,
-        semesterGPA: semesterSummary.attemptedCredits
-          ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
-          : null,
+        semesterGPA: semesterSummary.semesterGPA,
       }
     });
   } else {
@@ -93,9 +94,7 @@ async function saveSemesterRecord(data, options = {}) {
     record.semesterSummary = {
       attemptedCredits: semesterSummary.attemptedCredits,
       earnedCredits: semesterSummary.earnedCredits,
-      semesterGPA: semesterSummary.attemptedCredits
-        ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
-        : null,
+      semesterGPA: semesterSummary.semesterGPA,
     };
   }
 
@@ -131,9 +130,7 @@ async function updateBulkGrades({ userId, semester, updates }, options = {}) {
   record.semesterSummary = {
     attemptedCredits: semesterSummary.attemptedCredits,
     earnedCredits: semesterSummary.earnedCredits,
-    semesterGPA: semesterSummary.attemptedCredits
-      ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
-      : null,
+    semesterGPA: semesterSummary.semesterGPA,
   };
 
   // 4. 변경된 내역 DB에 최종 저장
@@ -189,9 +186,7 @@ async function removeSubjectFromRecord({ userId, semester, subjectName }, option
   record.semesterSummary = {
     attemptedCredits: semesterSummary.attemptedCredits,
     earnedCredits: semesterSummary.earnedCredits,
-    semesterGPA: semesterSummary.attemptedCredits
-      ? Number((semesterSummary.semesterPoints / semesterSummary.attemptedCredits).toFixed(2))
-      : null,
+    semesterGPA: semesterSummary.semesterGPA,
   };
 
   // 4. 변경된 내역 DB에 최종 저장
@@ -378,6 +373,7 @@ async function calcRemainingCredits(userId) {
 }
 
 module.exports = {
+  calculateSemesterSummary,
   saveSemesterRecord,
   calcRemainingCredits,
   getSemesterRecord,

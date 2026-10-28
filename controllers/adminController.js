@@ -1,15 +1,7 @@
-const path = require('path');
 const User = require('../models/User'); const logger = require('../config/logger');
 
-const ROOT_DIR = path.join(__dirname, '..');
-const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
-
-function verificationFilePath(relativePath) {
-  if (relativePath.startsWith('uploads/')) {
-    return path.join(ROOT_DIR, relativePath);
-  }
-  return path.join(PUBLIC_DIR, relativePath);
-}
+const { verificationFilePath } = require('../config/upload');
+const { deleteUserAccount, countDeleted } = require('../services/accountDeletionService');
 
 // 대학관계자 가입 승인 페이지
 exports.getStaffApprovalPage = async (req, res, next) => {
@@ -301,9 +293,11 @@ exports.adminResetPassword = async (req, res, next) => {
 // 계정 삭제
 exports.adminDeleteUser = async (req, res, next) => {
   try {
-    const target = await User.findOneAndDelete({ _id: req.params.id, role: { $ne: 'admin' } }).lean();
+    // 대상 확인을 먼저 하고(관리자 계정은 삭제 불가) 그 뒤에 소유 데이터까지 정리한다.
+    const target = await User.findOne({ _id: req.params.id, role: { $ne: 'admin' } }).select('email').lean();
     if (!target) return res.status(404).json({ ok: false, message: '계정을 찾을 수 없습니다.' });
-    logger.info(`계정삭제 | target=${target.email} | by=${req.user.email}`);
+    const result = await deleteUserAccount(target._id);
+    logger.info(`계정삭제 | target=${target.email} | by=${req.user.email} | 연관 문서 ${countDeleted(result)}건 삭제`);
     res.json({ ok: true });
   } catch (err) {
     next(err);

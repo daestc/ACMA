@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User   = require('../models/User');
 const logger = require('../config/logger');
+const { deleteUserAccount } = require('./accountDeletionService');
 
 // ── 로그인 검증 ───────────────────────────────────────────
 async function loginUser(email, password) {
@@ -131,8 +132,9 @@ async function withdrawUser({ userId, provider, password }) {
     }
   }
 
-  await User.deleteOne({ _id: userId });
-  return { provider: user.provider };
+  // 성적·일정·AI 기록 등 사용자 소유 데이터까지 정리하고 마지막에 User를 지운다.
+  const { deleted } = await deleteUserAccount(userId);
+  return { provider: user.provider, deleted };
 }
 
 module.exports = { loginUser, registerUser, checkEmailExists, findOrCreateSocialUser, changePassword, withdrawUser };

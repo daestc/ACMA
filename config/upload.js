@@ -187,8 +187,19 @@ const uploadQuizPdf = [
   requireUploadedFile('PDF 파일', quizPdfUploadOptions),
 ];
 
+// 관계자 인증 사진(User.verificationImage)의 디스크 경로. "uploads/…"는 프로젝트 루트 기준,
+// 그 밖(예전 "upload/…")은 public 기준이다. 관리자 이미지 조회와 계정 삭제가 같이 쓴다.
+const PROJECT_ROOT = path.join(__dirname, '..');
+function verificationFilePath(relativePath) {
+  if (relativePath.startsWith('uploads/')) {
+    return path.join(PROJECT_ROOT, relativePath);
+  }
+  return path.join(PROJECT_ROOT, 'public', relativePath);
+}
+
 module.exports = {
   UPLOAD_ROOT,
+  verificationFilePath,
   removeUploadedFile,
   removeUploadedFiles,
   uploadVerificationImage,

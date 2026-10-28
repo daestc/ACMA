@@ -29,6 +29,7 @@ const NAV_GROUPS = [
       { page: 'recruit', href: '/recruit', label: '채용정보', spa: true },
       { page: 'careerPlan', href: '/career/plan', label: '주간 계획', spa: true },
       { page: 'careerPortfolio', href: '/career/portfolio', label: '포트폴리오', spa: true },
+      { page: 'careerRecommend', href: '/career/recommend', label: '추천', spa: true },
       { page: 'careerDiagnosis', href: '/career/diagnosis', label: '진단', spa: true },
     ],
   },

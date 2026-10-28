@@ -48,4 +48,24 @@ const aiQuizLimiter = rateLimit({
   },
 });
 
-module.exports = { loginLimiter, registerLimiter, aiQuizLimiter };
+// OpenAI를 부르는 AI 생성 API 4개(주간 계획·포트폴리오·진단·추천)가 카운터 하나를 공유한다 —
+// 인스턴스 하나를 네 라우트에 걸면 같은 저장소·같은 키를 쓴다. pending 409는 동시 생성만 막아
+// 끝날 때마다 다시 누르면 비용이 무제한이었다. 키가 req.user.id라 requireLogin 뒤에 걸어야 한다.
+const aiGenerateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator(req) {
+    return String(req.user.id);
+  },
+  handler(_req, res) {
+    res.status(429).json({
+      success: false,
+      code: 'TOO_MANY_REQUESTS',
+      message: 'AI 생성 요청이 너무 많습니다. 1시간 후 다시 시도해 주세요.',
+    });
+  },
+});
+
+module.exports = { loginLimiter, registerLimiter, aiQuizLimiter, aiGenerateLimiter };

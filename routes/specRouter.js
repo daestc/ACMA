@@ -1,9 +1,10 @@
 // routes/spec.js
 const router = require('express').Router();
 const ctrl = require('../controllers/specController');
-const { requireLogin } = require('../middleware/auth');
+const { isLoggedIn } = require('../middleware/auth');
 
-router.use(requireLogin);
+// MyStatus 화면이 fetch로 부르는 JSON API라 302(requireLogin) 대신 401 JSON을 주는 isLoggedIn을 쓴다.
+router.use(isLoggedIn);
 
 router.post('/award', ctrl.addAward);
 router.put('/award/:id', ctrl.updateAward);
