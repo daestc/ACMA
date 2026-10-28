@@ -142,10 +142,10 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const { studentId, university, major, enrollmentStatus, grade } = req.body;
+    const { studentId, university, major, doubleMajor, enrollmentStatus, grade } = req.body;
     const { universityChanged, clearedLectureCount } = await userService.updateProfile(
       user.email,
-      { studentId, university, major, enrollmentStatus, grade },
+      { studentId, university, major, doubleMajor, enrollmentStatus, grade },
     );
 
     req.session.user = {
@@ -165,6 +165,9 @@ const updateProfile = async (req, res) => {
       clearedLectureCount,
     });
   } catch (error) {
+    if (error.code === 'SAME_MAJOR') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error(error.message);
     res.json({ success: false });
   }

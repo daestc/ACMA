@@ -185,6 +185,16 @@ async function updateProfile(userEmail, profileData) {
   }
 
   const { studentId, university, major, enrollmentStatus, grade } = profileData;
+  // 복수전공은 User.major에 섞지 않고 프로필에만 둔다(합친 문자열은 학과 요건·학과 목록·전공 점수
+  // 비교를 모두 깨뜨린다). 본문에 없으면(예전 화면) 건드리지 않고, 빈값이면 null로 지운다.
+  const doubleMajorProvided = profileData.doubleMajor !== undefined;
+  const doubleMajor = String(profileData.doubleMajor ?? '').trim() || null;
+  const primaryMajor = String(major ?? '').trim();
+  if (doubleMajorProvided && doubleMajor && doubleMajor === primaryMajor) {
+    const err = new Error('주전공과 복수전공이 같습니다.');
+    err.code = 'SAME_MAJOR';
+    throw err;
+  }
   const oldUniversity = user.university?.trim() || '';
   const newUniversity = university?.trim() || '';
   const universityChanged = oldUniversity !== newUniversity;
@@ -204,6 +214,7 @@ async function updateProfile(userEmail, profileData) {
   // 예전엔 문서를 처음 만들 때만 넣어서, 전공을 바꿔도 프로필에는 예전 학과가 남았다.
   // 다른 필드는 건드리지 않는다(enrollmentStatus enum이 User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
   const profileSet = { major: (major || user.major || '미설정').trim() || '미설정' };
+  if (doubleMajorProvided) profileSet.doubleMajor = doubleMajor;
   const gradeNum = Number(grade);
   if (grade !== undefined && grade !== null && String(grade).trim() !== '' && Number.isFinite(gradeNum)) {
     profileSet.grade = gradeNum;
@@ -222,7 +233,7 @@ async function getProfile(userEmail) {
     const user = await User.findOne({ email: userEmail });
     if (!user) throw new Error('사용자를 찾지 못했습니다.');
 
-    const universityProfile = await UniversityProfile.findOne({ userId: user._id }).select('grade').lean();
+    const universityProfile = await UniversityProfile.findOne({ userId: user._id }).select('grade doubleMajor').lean();
 
     return {
       name: user.name,
@@ -231,6 +242,7 @@ async function getProfile(userEmail) {
       studentId: user.studentId,
       university: user.university,
       major: user.major,
+      doubleMajor: universityProfile?.doubleMajor ?? null,
       enrollmentStatus: user.enrollmentStatus,
       grade: universityProfile?.grade ?? null,
     };
