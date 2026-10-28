@@ -1,6 +1,7 @@
 // 진로 추천 점수 규칙을 실제 카탈로그로 점검한다 (DB 읽기 전용). Phase5 계획서 v3 §5-1.
 // 실행: node scripts/checkRecommendScorer.js
-// 종료 코드: 매핑표 이름이 카탈로그에 없거나, 샘플 전공 중 매칭 0건이 3개 이상이면 1.
+// 종료 코드: 매핑표 이름이 카탈로그에 없거나, 샘플 전공 중 매칭 0건이 3개 이상이거나,
+//           주제 매핑표 용어가 관문(직무 1~40개)을 벗어나면 1.
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -15,6 +16,10 @@ const SAMPLE_MAJORS = [
 const SAMPLE_SKILLS = ['Java', 'Python', 'JavaScript', 'React', 'SQL', 'Excel', 'Figma'];
 const SAMPLE_CERTS = ['정보처리기사', '컴퓨터활용능력1급', '빅데이터분석기사', '전산회계1급'];
 const C_PRIME_PREFS = { work: ['analyze'], style: 'solo' };
+const TOPIC_TERM_MIN_JOBS = 1;
+const TOPIC_TERM_MAX_JOBS = 40;
+// 학점·성적이 있는 새 경로(recommendationService.loadScoringCourses)를 흉내 낸 과목
+const toCourses = (names, credits = 3, grade = 'A') => names.map(name => ({ name, credits, grade }));
 
 // splitCertNames 단위 사례 (계획서 v3.2 §5-0 표 + 재적재 샘플에서 본 실제 표기)
 const CERT_SPLIT_CASES = [
@@ -46,6 +51,7 @@ const ACCOUNTS = [
       },
       academic: { majorCourses: ['자바프로그래밍', '데이터베이스론', '컴퓨터알고리즘'].map(name => ({ name })) },
     },
+    courses: toCourses(['자바프로그래밍', '데이터베이스론', '컴퓨터알고리즘']),
     prefs: null,
   },
   {
@@ -58,6 +64,7 @@ const ACCOUNTS = [
       },
       academic: { majorCourses: ['경영통계', '회계원리', '마케팅원론'].map(name => ({ name })) },
     },
+    courses: toCourses(['경영통계', '회계원리', '마케팅원론']),
     prefs: null,
   },
   { label: 'C: 컴퓨터공학전공, 나머지 없음', context: { profile: { major: '컴퓨터공학전공' } }, prefs: null },
@@ -184,10 +191,34 @@ function checkCerts(jobs) {
   });
 }
 
+// 주제 매핑표 용어마다 searchText에 그 용어가 든 직무 수와 예시. 관문을 벗어난 용어가 있으면 false.
+function checkTopicTerms(jobs) {
+  section('3-3. 주제 매핑표 용어 실측 (searchText)');
+  const bare = jobs.filter(j => !(j.responsibilities || []).length && !String(j.summary || '').trim());
+  console.log(`  업무 문장 없는 직무(responsibilities·summary 모두 빈 값): ${bare.length}건`);
+  const outOfGate = [];
+  scorer.SUBJECT_TOPIC_MAP.forEach(([pattern, terms]) => {
+    console.log(`  ${pattern}`);
+    terms.forEach(term => {
+      const hits = jobs.filter(j => (j.searchText || '').includes(scorer.norm(term)));
+      const ok = hits.length >= TOPIC_TERM_MIN_JOBS && hits.length <= TOPIC_TERM_MAX_JOBS;
+      if (!ok) outOfGate.push(`${term}(${hits.length})`);
+      console.log(`    ${ok ? '✅' : '❌'} ${term}: ${hits.length}건${hits.length ? ` (예: ${hits.slice(0, 3).map(j => j.title).join(', ')})` : ''}`);
+    });
+  });
+  console.log(outOfGate.length
+    ? `❌ 관문(${TOPIC_TERM_MIN_JOBS}~${TOPIC_TERM_MAX_JOBS}건)을 벗어난 용어: ${outOfGate.join(', ')}`
+    : `✅ 모든 용어가 관문(${TOPIC_TERM_MIN_JOBS}~${TOPIC_TERM_MAX_JOBS}건) 안`);
+  return outOfGate.length === 0;
+}
+
 function checkAccounts(jobs) {
   section('4. 테스트 계정 가상 순위');
-  ACCOUNTS.forEach(({ label, context, prefs, interests }) => {
-    const signals = scorer.extractUserSignals(context);
+  const runs = ACCOUNTS.flatMap(account => (account.courses
+    ? [{ ...account, courses: undefined, label: `${account.label} (이름만)` }, { ...account, label: `${account.label} (학점 3·성적 A)` }]
+    : [account]));
+  runs.forEach(({ label, context, courses, prefs, interests }) => {
+    const signals = scorer.extractUserSignals(context, courses);
     const safePrefs = scorer.sanitizePrefs(prefs);
     const pool = interests ? jobs.filter(j => interests.includes(j.jobLrclNm)) : jobs;
     const ranked = scorer.rankCandidates(signals, safePrefs, pool, { limit: 10, perMidClass: 3 });
@@ -211,6 +242,7 @@ function checkAccounts(jobs) {
         c.matched.major && `전공:${c.matched.major}`,
         c.matched.certs.length && `자격:${c.matched.certs.join('/')}`,
         c.matched.subjects.length && `과목:${c.matched.subjects.join('/')}`,
+        c.matched.topicSubjects.length && `주제:${c.matched.topicSubjects.join('/')}`,
         c.matched.skills.length && `기술:${c.matched.skills.join('/')}`,
         c.matched.prefs.length && c.matched.prefs.join('/'),
       ].filter(Boolean).join(' ');
@@ -223,7 +255,7 @@ function checkAccounts(jobs) {
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   const jobs = await JobCatalog.find({ source: 'jobInfo', syncError: '' })
-    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames averageSalary')
+    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames averageSalary searchText summary responsibilities')
     .lean();
   console.log(`카탈로그 직무 ${jobs.length}건`);
 
@@ -233,10 +265,11 @@ async function main() {
   checkSkills(jobs);
   checkImportance(jobs);
   checkCerts(jobs);
+  const topicOk = checkTopicTerms(jobs);
   checkAccounts(jobs);
 
   await mongoose.connection.close();
-  if (!certSplitOk || !namesOk || !deptOk) process.exitCode = 1;
+  if (!certSplitOk || !namesOk || !deptOk || !topicOk) process.exitCode = 1;
 }
 
 main().catch(async error => {
