@@ -19,6 +19,11 @@ const PENDING_GRADE_FACTOR = 0.5;
 const FAILED_GRADES = new Set(['F', 'NP']);
 // 이름만 넘어오는 옛 경로(context.academic)의 과목 학점
 const DEFAULT_COURSE_CREDITS = 3;
+// 지식 25점 = 영역(직무 지식을 얼마나 깊게 들었나) + 주제(직무 업무 문장과 맞는 과목을 들었나).
+// 가중 학점 9(3학점 A 과목 3개)에서 깊이가 포화된다 — CS 학생은 '컴퓨터와 전자공학'이 어차피 포화되므로
+// 차이는 주제에서 나고, 깊이는 타 전공 학생이 관련 과목을 한두 개 들은 경우를 가른다.
+const COURSE_FULL_CREDITS = 9;
+const KNOWLEDGE_SPLIT = { area: 17, topic: 8 };
 
 // ── 정규화 ─────────────────────────────────────────────
 
@@ -342,6 +347,18 @@ function bestRankWeight(items, names) {
   return bestRankMatch(items, names)?.weight || 0;
 }
 
+// 직무 지식마다 (순위 가중치 × 이수 깊이)를 구해 가장 큰 것. 최고 순위 하나만 보면 1순위 지식을 한 과목
+// 들은 경우(1.0 × 0.17)가 2순위 지식을 깊게 들은 경우(0.8 × 1.0)보다 높게 나온다. 없으면 null.
+function bestKnowledgeDepth(items, knowledgeWeight) {
+  let best = null;
+  rankedItems(items).forEach((item, idx) => {
+    const depth = Math.min(1, (knowledgeWeight?.get(item.name) || 0) / COURSE_FULL_CREDITS);
+    const score = (RANK_WEIGHT[idx] || 0) * depth;
+    if (score > 0 && (!best || score > best.score)) best = { name: item.name, rank: idx + 1, score };
+  });
+  return best;
+}
+
 function targetStrength(job, target) {
   return Math.max(...TARGET_FIELDS.map(field => bestRankWeight(job[field], target[field])));
 }
@@ -380,8 +397,11 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   matched.certs = heldCerts;
 
   const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
-  const topKnowledge = bestRankMatch(job.knowledge, knowledgeNames);
-  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.weight || 0));
+  const topKnowledge = bestKnowledgeDepth(job.knowledge, signals.knowledgeWeight);
+  const area = KNOWLEDGE_SPLIT.area * (topKnowledge?.score || 0);
+  const topic = 0;
+  // 합을 반올림 전에 25로 자른다
+  breakdown.knowledge = Math.round(Math.min(WEIGHTS.knowledge, area + topic));
   if (topKnowledge) matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
   const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
   matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
