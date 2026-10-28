@@ -113,6 +113,9 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
       // 하루 6시간 여유가 있는 날 하나뿐인데 3시간씩 끊어야 함) 그 날을 다시 방문해
       // 남은 시간을 마저 채운다. 한 바퀴 돌아도 진전이 없으면(용량이 다 찼거나
       // MIN_SLOT_HOURS 미만만 남음) 종료 — 무한루프 방지.
+      // 다시 방문한 날에 이 항목 조각이 이미 있으면 새 줄을 만들지 않고 그 조각에 더한다
+      // (같은 날 "(1/2, 3h)"·"(2/2, 1h)"가 두 줄로 나오지 않게). 그래서 합친 조각은
+      // MAX_SLOT_HOURS를 넘을 수 있다 — 이 상수는 한 번 방문당 상한이다.
       let progressed = true;
       while (remaining > 0 && progressed) {
         progressed = false;
@@ -120,7 +123,9 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
         for (const date of availableDates) {
           if (remaining <= 0) break;
           if (dueDateStr && date > dueDateStr) continue; // 마감 지난 날짜만 건너뜀
-          if ((itemCountByDate.get(date) || 0) >= MAX_ITEMS_PER_DAY) continue;
+          const sameDaySlot = slots.find(s => s.date === date);
+          // 이미 이 항목이 있는 날은 합쳐도 줄 수가 늘지 않으므로 하루 항목 수 상한에 걸리지 않는다.
+          if (!sameDaySlot && (itemCountByDate.get(date) || 0) >= MAX_ITEMS_PER_DAY) continue;
 
           const dow = kstDate.getKstDayOfWeek(kstDate.fromKstDateString(date));
           const capacity = (availableHoursByDay?.[dow] || 0) - (usedHoursByDate.get(date) || 0);
@@ -130,9 +135,13 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
           slot = Math.round(slot * 2) / 2; // 0.5시간 단위 반올림
           if (slot < MIN_SLOT_HOURS) continue;
 
-          slots.push({ date, hours: slot });
+          if (sameDaySlot) {
+            sameDaySlot.hours += slot;
+          } else {
+            slots.push({ date, hours: slot });
+            itemCountByDate.set(date, (itemCountByDate.get(date) || 0) + 1);
+          }
           usedHoursByDate.set(date, (usedHoursByDate.get(date) || 0) + slot);
-          itemCountByDate.set(date, (itemCountByDate.get(date) || 0) + 1);
           remaining -= slot;
           progressed = true;
         }
