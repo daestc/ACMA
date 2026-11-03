@@ -23,8 +23,9 @@ function isNameMatch(gapItem, certName) {
   return normalize(gapItem).includes(normalizedCertName);
 }
 
+// 지난 일정(dDay < 0)은 다음 시험으로 안내하지 않는다. 다 지났으면 null → 직접 조회 폴백으로 간다.
 function findCertScheduleMatch(gapItem, certSchedule) {
-  const candidates = (certSchedule || []).filter(c => isNameMatch(gapItem, c.certName));
+  const candidates = (certSchedule || []).filter(c => c.dDay >= 0 && isNameMatch(gapItem, c.certName));
   if (candidates.length === 0) return null;
   return candidates.reduce((min, c) => (c.dDay < min.dDay ? c : min));
 }
