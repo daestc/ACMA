@@ -26,8 +26,10 @@ function injectDueDates(items, certSchedule, notices) {
     if (!item.isDeadline) return;
 
     const normalizedTitle = normalizeForMatch(item.title);
+    // 지난 일정(dDay < 0)은 후보에서 뺀다 — 조회에서 이미 거르지만, 데이터가 어긋나도 과거 날짜가
+    // 마감으로 들어가 배치할 날이 없는 항목이 되지 않게 한 번 더 막는다.
     const candidates = (certSchedule || []).filter(
-      cert => cert.certName && normalizedTitle.includes(normalizeForMatch(cert.certName)),
+      cert => cert.certName && cert.dDay >= 0 && normalizedTitle.includes(normalizeForMatch(cert.certName)),
     );
 
     if (candidates.length === 0) {
