@@ -185,6 +185,20 @@ const getLectureSemesters = async (req, res) => {
     }
 };
 
+// 시간표 탭·시간표 입력창의 학기 선택지 (대학이 없어도 시간표·학기 기록 학기는 나온다)
+const getUserSemesters = async (req, res) => {
+    try {
+        const university = await resolveUserUniversity(req);
+        const semesters = await calendarService.getUserSemesters(req.user.id, university);
+        res.json({ semesters });
+    } catch (error) {
+        res.status(500).json({
+            message: '학기 목록 조회 실패',
+            error: error.message,
+        });
+    }
+};
+
 const addLectureToTimetable = async (req,res) => {
     try {
         const university = await resolveUserUniversity(req);
@@ -255,6 +269,7 @@ module.exports = {
     deletedTimetable,
     getLectureList,
     getLectureSemesters,
+    getUserSemesters,
     addLectureToTimetable,
     getAvailableUniversities,
 

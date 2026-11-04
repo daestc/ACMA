@@ -26,6 +26,21 @@ const TT_END_HOUR = 22
 const TT_SLOT_MIN = 30
 const TT_SLOT_HEIGHT = 40
 
+// 시간표 탭의 학기 선택: 학기 값은 'YYYY-1' / 'YYYY-2'. 오늘(한국 시간)이 속한 학기는 3~6월 1학기, 9~12월 2학기.
+function currentSemesterValue() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric' }).formatToParts(new Date())
+  const year = Number(parts.find((p) => p.type === 'year').value)
+  const month = Number(parts.find((p) => p.type === 'month').value)
+  if (month >= 3 && month <= 6) return `${year}-1`
+  if (month >= 9) return `${year}-2`
+  return null
+}
+
+function formatSemesterOption(value) {
+  const match = /^(\d{4})-([12])$/.exec(value)
+  return match ? `${match[1]}년 ${match[2]}학기` : value
+}
+
 function TimetableGrid({ timetables, onSelect }) {
   const slotCount = ((TT_END_HOUR - TT_START_HOUR) * 60) / TT_SLOT_MIN
   const startMinutes = TT_START_HOUR * 60
@@ -114,6 +129,9 @@ function Calendar() {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [events, setEvents] = useState([])
   const [timetables, setTimetables] = useState([])
+  const [ttSemester, setTtSemester] = useState(null) // 시간표 탭에서 고른 학기('2026-2'), null이면 학기 구분 없음
+  const [semesterList, setSemesterList] = useState([]) // GET /calendar/semesters: [{ semester, hasTimetable }] 최신순
+  const [ttRecordSubjects, setTtRecordSubjects] = useState([]) // 시간표 없는 학기의 학기 기록 과목명
   const [weatherMap, setWeatherMap] = useState({})
   const [selectedDateStr, setSelectedDateStr] = useState(null)
 
@@ -122,17 +140,58 @@ function Calendar() {
   const [lectureSearchOpen, setLectureSearchOpen] = useState(false)
 
   const loadCalendarData = useCallback(async () => {
-    const [eventRes, timetableRes] = await Promise.all([
+    const [eventRes, timetableRes, semesterRes] = await Promise.all([
       fetch('/calendar/events'),
       fetch('/calendar/timetables'),
+      fetch('/calendar/semesters'),
     ])
     setEvents(await eventRes.json())
     setTimetables(await timetableRes.json())
+    const semesterData = semesterRes.ok ? await semesterRes.json().catch(() => null) : null
+    setSemesterList(semesterData?.semesters || [])
   }, [])
 
   useEffect(() => {
     loadCalendarData()
   }, [loadCalendarData])
+
+  // 시간표 탭 학기 선택지: 시간표·학기 기록·소속 대학 강의 학기와 오늘 학기(서버가 최신순으로 줌).
+  // 학기 없는 일정(알바 등)은 어느 학기에나 보인다.
+  const ttSemesterOptions = useMemo(() => semesterList.map((s) => s.semester), [semesterList])
+  const ttSelectedHasTimetable = semesterList.find((s) => s.semester === ttSemester)?.hasTimetable ?? true
+  useEffect(() => {
+    if (ttSemesterOptions.length === 0) {
+      setTtSemester(null)
+      return
+    }
+    // 고른 학기가 아직 있으면 유지, 없으면 기본값: 오늘이 속한 학기 → 가장 최근 학기
+    setTtSemester((prev) => {
+      if (prev && ttSemesterOptions.includes(prev)) return prev
+      const now = currentSemesterValue()
+      return ttSemesterOptions.includes(now) ? now : ttSemesterOptions[0]
+    })
+  }, [ttSemesterOptions])
+  // 시간표가 없는 학기를 고르면 그 학기 학기 기록의 과목명을 안내에 보여 준다
+  useEffect(() => {
+    if (!ttSemester || ttSelectedHasTimetable) {
+      setTtRecordSubjects([])
+      return
+    }
+    let cancelled = false
+    fetch(`/academic/record/${encodeURIComponent(ttSemester)}`, { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled) return
+        setTtRecordSubjects((json?.record?.subjects || []).map((s) => s.subjectName).filter(Boolean))
+      })
+      .catch(() => { if (!cancelled) setTtRecordSubjects([]) })
+    return () => { cancelled = true }
+  }, [ttSemester, ttSelectedHasTimetable])
+
+  const visibleTimetables = useMemo(
+    () => (ttSemester ? (timetables || []).filter((t) => !t.semester || t.semester === ttSemester) : timetables),
+    [timetables, ttSemester],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -297,7 +356,12 @@ function Calendar() {
         <div className="card">
           <div className="cal-header">
             <span className="cal-month">주간 시간표</span>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {ttSemesterOptions.length > 0 && (
+                <select className="select-field" value={ttSemester || ''} onChange={(e) => setTtSemester(e.target.value)} aria-label="시간표 학기">
+                  {ttSemesterOptions.map((s) => <option key={s} value={s}>{formatSemesterOption(s)}</option>)}
+                </select>
+              )}
               <button className="btn btn-ghost btn-sm" onClick={() => setLectureSearchOpen(true)}>강의 검색</button>
               <button
                 className="btn btn-accent btn-sm"
@@ -308,8 +372,17 @@ function Calendar() {
             </div>
           </div>
 
+          {ttSemester && !ttSelectedHasTimetable && (
+            <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.6, marginBottom: 10 }}>
+              <div style={{ fontWeight: 700 }}>이 학기에는 시간표가 없습니다.</div>
+              {ttRecordSubjects.length > 0 && (
+                <div style={{ color: 'var(--text2)' }}>학기 기록 과목: {ttRecordSubjects.join(', ')}</div>
+              )}
+            </div>
+          )}
+
           <TimetableGrid
-            timetables={timetables}
+            timetables={visibleTimetables}
             onSelect={(tt) => setTimetableModal({ open: true, timetable: tt })}
           />
         </div>
@@ -326,6 +399,8 @@ function Calendar() {
       <TimetableModal
         open={timetableModal.open}
         timetable={timetableModal.timetable}
+        semesters={ttSemesterOptions}
+        defaultSemester={ttSemester || ''}
         onClose={() => setTimetableModal({ open: false, timetable: null })}
         onSaved={afterSaved}
       />

@@ -3,6 +3,8 @@ const UniversitySchedule = require('../models/UniversitySchedule');
 const Notice = require('../models/Notice');
 const { UserCertification } = require('../models/Certifications_jobs');
 const { saveSemesterRecord,removeSubjectFromRecord } = require('./academicService');
+const { AcademicRecord } = require('../models/Academic_records');
+const kstDate = require('../utils/kstDate');
 
 const {
   buildLectureListFilter,
@@ -212,7 +214,7 @@ async function getTimetableListByUser(userId) {
 //시간표 생성
 async function createNewTimetable(userId, timetableData) {
     validateTimetableData(timetableData);
-    await validateTimetableOverlap(userId, timetableData.schedule);
+    await validateTimetableOverlap(userId, timetableData.schedule, null, timetableData.semester || null);
 
     const isLecture = !!timetableData.semester;
 
@@ -234,7 +236,7 @@ async function createNewTimetable(userId, timetableData) {
 //시간표 수정
 async function updateTimetable(userId, timetableId, updateData) {
     validateTimetableData(updateData);
-    await validateTimetableOverlap(userId, updateData.schedule, timetableId);
+    await validateTimetableOverlap(userId, updateData.schedule, timetableId, updateData.semester || null);
 
     const isLecture = !!updateData.semester;
 
@@ -449,6 +451,43 @@ async function getLectureSemesters(university) {
     .sort((a, b) => b.year - a.year || (SEMESTER_ORDER[b.semester] || 0) - (SEMESTER_ORDER[a.semester] || 0));
 }
 
+// 시간표·학기 기록에서 쓰는 학기 값 형식. 계절학기는 이 형식이 없어 시간표에 넣지 않는다.
+const SEMESTER_VALUE_PATTERN = /^\d{4}-[12]$/;
+const compareSemesterValueDesc = (a, b) => {
+  const [ay, at] = a.split('-').map(Number);
+  const [by, bt] = b.split('-').map(Number);
+  return by - ay || bt - at;
+};
+
+// 오늘(한국 시간)이 속한 학기 값: 3~6월 'YYYY-1', 9~12월 'YYYY-2', 그 밖의 달은 null
+function currentSemesterValue(date = new Date()) {
+  const [year, month] = kstDate.toKstDateString(date).split('-').map(Number);
+  if (month >= 3 && month <= 6) return `${year}-1`;
+  if (month >= 9) return `${year}-2`;
+  return null;
+}
+
+// 시간표 탭·시간표 입력창의 학기 선택지: 내 시간표 학기 ∪ 학기 기록 학기 ∪ 소속 대학 강의 학기(1·2학기만)
+// ∪ 오늘이 속한 학기. 최신순, 중복 없이, 그 학기 시간표가 있는지(hasTimetable)와 함께.
+async function getUserSemesters(userId, university) {
+  const univ = normalizeUniversity(university);
+  const [timetableSemesters, recordSemesters, lectureTerms] = await Promise.all([
+    Timetable.distinct('semester', { userId, isActive: true }),
+    AcademicRecord.distinct('semester', { userId }),
+    univ ? getLectureSemesters(univ) : Promise.resolve([]),
+  ]);
+
+  const lectureSemesters = lectureTerms
+    .filter(t => t.semester === '1학기' || t.semester === '2학기')
+    .map(t => `${t.year}-${t.semester === '1학기' ? '1' : '2'}`);
+  const withTimetable = new Set(timetableSemesters.filter(Boolean));
+
+  return [...new Set([...timetableSemesters, ...recordSemesters, ...lectureSemesters, currentSemesterValue()])]
+    .filter(s => typeof s === 'string' && SEMESTER_VALUE_PATTERN.test(s))
+    .sort(compareSemesterValueDesc)
+    .map(semester => ({ semester, hasTimetable: withTimetable.has(semester) }));
+}
+
 // 강의가 등록된 대학 목록 (페이징)
 async function getAvailableUniversities({ page = 1, limit = 10 } = {}) {
   const raw = await Lecture.distinct('university');
@@ -501,6 +540,12 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', unive
     throw new Error('강의 시간 정보가 없습니다.');
   }
 
+  // 학기 문자열(YYYY-1/2)과 학기 기록(semesterNumber 1·2)은 정규 학기만 표현한다. 계절학기를 2로 바꾸면
+  // 2학기 시간표·학기 기록에 섞이므로, 지원하기 전까지는 추가를 막는다(컨트롤러가 400으로 응답).
+  if (lecture.semester !== '1학기' && lecture.semester !== '2학기') {
+    throw new Error('계절학기 강의는 아직 시간표에 추가할 수 없습니다.');
+  }
+
   //timetableSchema는 요일이 숫자로 구성되어있음
   const dayMap = {
     '일': 0,
@@ -518,11 +563,11 @@ async function addLectureToTimetable(userId, lectureId, color = '#60A5FA', unive
     endTime: String(sch.endTime || '').trim(),
   }));
 
-  //시간표 겹침 검증 함수 불러오기
-  await validateTimetableOverlap(userId, schedule);
-
-  //학기 표시 규격에 맞게 변경 (년도 + 학기)
+  //학기 표시 규격에 맞게 변경 (년도 + 학기) — 위에서 1·2학기만 통과시켰다
   const semesterValue = `${lecture.year}-${lecture.semester === '1학기' ? '1' : '2'}`;
+
+  //시간표 겹침 검증 — 같은 학기 시간표와 학기 없는 반복 일정만 비교한다
+  await validateTimetableOverlap(userId, schedule, null, semesterValue);
 
   const classificationMap = {
     '전필': 'major_required',
@@ -685,7 +730,10 @@ function isScheduleOverlap(a, b) {
 }
 
 //시간표 겹침 검증
-async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId = null) {
+// semester가 있으면(강의, 예: '2026-2') 같은 학기 시간표 + 학기 없는 시간표(알바 등 반복 일정)와만 비교한다
+// — 다음 학기 강의를 미리 넣을 때 이번 학기 같은 시간대 강의에 막히지 않게. semester가 없으면(알바 등)
+// 어느 학기 강의와도 겹치면 안 되므로 모든 시간표와 비교한다(예전과 같음).
+async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId = null, semester = null) {
   //같은 시간표 내부 schedule끼리 겹치는지 검사
   for (let i = 0; i < newSchedule.length; i++) {
     for (let j = i + 1; j < newSchedule.length; j++) {
@@ -703,6 +751,10 @@ async function validateTimetableOverlap(userId, newSchedule, excludeTimetableId 
 
   if (excludeTimetableId) {
     query._id = { $ne: excludeTimetableId };
+  }
+
+  if (semester) {
+    query.$or = [{ semester }, { semester: null }, { semester: '' }];
   }
 
   const existingTimetables = await Timetable.find(query);
@@ -957,6 +1009,8 @@ module.exports = {getEventsListByUser,
                 clearUserLectureTimetables,
                 getLectureList,
                 getLectureSemesters,
+                getUserSemesters,
+                currentSemesterValue,
                 addLectureToTimetable,
                 getAvailableUniversities,
 

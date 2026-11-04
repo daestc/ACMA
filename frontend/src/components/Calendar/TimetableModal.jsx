@@ -11,19 +11,21 @@ const DAY_OPTIONS = [
   { value: 5, label: '금' },
 ]
 
-function semesterOptions() {
-  const year = new Date().getFullYear()
+// 학기 선택지: GET /calendar/semesters 목록(시간표 탭과 같은 목록) + "학기 없음".
+// 수정 중인 시간표의 학기가 목록에 없으면(예: 오래된 학기) 그 값도 넣어 둔다.
+function semesterOptions(semesters, current) {
+  const values = [...(semesters || [])]
+  if (current && !values.includes(current)) values.push(current)
   return [
     { value: '', label: '학기 없음' },
-    { value: `${year}-1`, label: `${year}-1` },
-    { value: `${year}-2`, label: `${year}-2` },
+    ...values.map((v) => ({ value: v, label: v })),
   ]
 }
 
 const emptyRow = () => ({ dayOfWeek: 1, startTime: '', endTime: '' })
 const emptyForm = () => ({ id: '', semester: '', title: '', location: '', type: 'lecture', professorName: '', credits: 0, color: '#60A5FA' })
 
-function TimetableModal({ open, timetable, onClose, onSaved }) {
+function TimetableModal({ open, timetable, semesters = [], defaultSemester = '', onClose, onSaved }) {
   const [form, setForm] = useState(emptyForm)
   const [schedule, setSchedule] = useState([emptyRow()])
 
@@ -31,7 +33,8 @@ function TimetableModal({ open, timetable, onClose, onSaved }) {
     if (!open) return
 
     if (!timetable) {
-      setForm(emptyForm())
+      // 새로 추가할 때는 시간표 탭에서 고른 학기를 기본값으로
+      setForm({ ...emptyForm(), semester: defaultSemester || '' })
       setSchedule([emptyRow()])
       return
     }
@@ -157,7 +160,7 @@ function TimetableModal({ open, timetable, onClose, onSaved }) {
           <label>
             학기 구분
             <select value={form.semester} onChange={(e) => update('semester', e.target.value)}>
-              {semesterOptions().map((o) => (
+              {semesterOptions(semesters, form.semester).map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
