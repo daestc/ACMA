@@ -100,6 +100,9 @@ function KeyMatchLines({ matched }) {
     const { name, rank } = matched.topKnowledge
     lines.push(`이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
   }
+  if (matched?.topicSubjects?.length) {
+    lines.push(`직무 업무와 맞는 과목${evidenceSummary(matched.topicSubjects, '과목')}`)
+  }
   if (matched?.topAbility) {
     const { name, rank } = matched.topAbility
     const evidence = [...(matched.skills || []), ...(matched.experiences || [])]

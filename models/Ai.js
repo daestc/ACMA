@@ -267,6 +267,8 @@ const recommendationCandidateSchema = new Schema({
     major: { type: String, default: null },
     certs: { type: [String], default: [] },
     subjects: { type: [String], default: [] },
+    // 직무 업무 문장(searchText)과 주제가 맞는 과목 — 스키마에 없으면 strict 모드가 저장할 때 조용히 버린다
+    topicSubjects: { type: [String], default: [] },
     skills: { type: [String], default: [] },
     experiences: { type: [String], default: [] },
     prefs: { type: [String], default: [] },

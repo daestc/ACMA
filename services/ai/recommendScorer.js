@@ -17,6 +17,10 @@ const DEFAULT_CERT_POINT = 12;
 // 과목 하나만 맞아도 만점이 나오던 문제(교수 상담 반영)를 막는다. 성적은 보조 지표라 최대 20%만 깎는다.
 // 수강 중인 과목(성적 없음)은 이수 과목의 절반으로 센다.
 const KNOWLEDGE_STRENGTH = { base: 0.4, perCourse: 0.2, currentCourseWeight: 0.5 };
+// 지식 25점 = 영역 17점(위 근거 강도 × 성적 계수 × 순위 가중) + 주제 8점(직무 업무 문장과 과목 주제 일치).
+// 주제 점수도 과목 수로 센다(이수 1, 수강 중 0.5) — 근거 강도와 같은 셈법, 같은 포화 기준(3과목).
+const KNOWLEDGE_SPLIT = { area: 17, topic: 8 };
+const TOPIC_FULL_COURSES = 3;
 const GRADE_POINTS = { 'A+': 4.5, A: 4.0, 'B+': 3.5, B: 3.0, 'C+': 2.5, C: 2.0, 'D+': 1.5, D: 1.0 };
 const GRADE_FACTORS = [[3.5, 1.0], [2.5, 0.9], [0, 0.8]]; // [평균 평점 이상, 계수] — B+ 이상 / C+~B / 그 미만
 const PREF_POINTS = { work: 12, style: 4, salary: 4 };
@@ -139,6 +143,31 @@ const SUBJECT_KNOWLEDGE_MAP = [
   [/무역|물류|교통|운송|항공/, ['운송']],
   [/안전|소방|재난|경호|보안/, ['안전과 보안']],
   [/사무|문서|오피스|엑셀/, ['사무']],
+];
+
+// 과목명 → 직무 업무 문장(JobCatalog.searchText)에서 찾을 용어. 고용24 지식 분류는 33개뿐이라 CS 과목이
+// 전부 '컴퓨터와 전자공학' 하나로 모여 웹 쪽을 들었든 네트워크 쪽을 들었든 같은 점수가 나온다 — 직무를
+// 가르는 건 업무 문장뿐이다. 용어마다 searchText에 든 직무 수가 1~40(492개 중 약 8%)이어야 남긴다
+// (흔한 용어는 모든 직무에 점수를 줘서 아무것도 가르지 못한다). scripts/checkRecommendScorer.js가 잰다.
+// 직무 knowledge 이름과는 비교하지 않는다(정확 일치 원칙, 계획서 §6).
+// 초안에서 바뀐 것(2026-10 실측): 0건 용어(보안시스템·머신러닝·딥러닝·웹애플리케이션·애플리케이션·
+// 임베디드·펌웨어) 제거. 대상 직무 글이 다른 말을 써서 초안 용어로는 0점이던 줄에 실측 용어 추가
+// (웹개발자 "웹프로그래밍", 웹 운영자 "웹서버", 모바일앱개발자 "앱", 시스템 소프트웨어 개발자 "운영체계",
+// 정보보안 "정보보호"·"보안정책"). "인사"는 인사말(홀서빙원·숙박시설 등 24건)에 걸려 "인사관리"·"인적자원"으로 좁힘.
+const SUBJECT_TOPIC_MAP = [
+  [/데이터베이스/, ['데이터베이스']],
+  [/네트워크|통신/, ['네트워크']],
+  [/보안|해킹|정보보호|암호/, ['정보보안', '해킹', '정보보호', '보안정책']],
+  [/인공지능|머신러닝|딥러닝/, ['인공지능']],
+  [/웹(?!툰)/, ['웹사이트', '웹서비스', '웹프로그래밍', '웹서버']],
+  [/모바일|앱|안드로이드/, ['모바일', '앱']],
+  [/운영체제|임베디드|리눅스|시스템프로그래밍/, ['운영체제', '운영체계']],
+  [/빅데이터|데이터분석|데이터사이언스|통계/, ['데이터분석', '빅데이터', '통계']],
+  [/그래픽스|게임/, ['게임']],
+  [/회계|재무/, ['회계', '재무']],
+  [/세무/, ['세무']],
+  [/마케팅|광고/, ['마케팅', '광고']],
+  [/인사관리|인적자원|노사/, ['인사관리', '인적자원', '노무']],
 ];
 
 // 스킬명·경험 제목 → 그 도구가 증명하는 능력(abilities) 이름. 고용24 직무 설명에는 도구 이름이
@@ -368,6 +397,25 @@ function bestKnowledgeMatch(items, signals) {
   return best;
 }
 
+// 주제 매핑표 줄의 과목 정규식에 걸리고, 그 줄의 용어 하나라도 직무 업무 문장에 있는 과목명.
+// searchText가 없거나 비면 빈 배열(주제 점수 0).
+function topicMatchedCourses(subjects, searchText) {
+  if (!searchText) return [];
+  return (subjects || []).filter(subject => {
+    const compactName = String(subject).replace(/\s+/g, '');
+    return SUBJECT_TOPIC_MAP.some(([pattern, terms]) => pattern.test(compactName)
+      && terms.some(term => searchText.includes(norm(term))));
+  });
+}
+
+// 주제 일치 과목의 가중치 합 — knowledgeBasis와 같은 셈법(이수 1, 수강 중 0.5).
+function topicWeight(subjectNames, subjectInfo) {
+  return (subjectNames || []).reduce((sum, name) => {
+    const info = subjectInfo?.get(name);
+    return sum + (info && !info.completed ? KNOWLEDGE_STRENGTH.currentCourseWeight : 1);
+  }, 0);
+}
+
 // 이 직무가 요구하는 핵심 지식·능력 상위 항목과, 학생 입력에서 근거를 찾았는지(화면의 "평가 기준").
 function buildCriteria(job, knowledgeNames, abilityNames) {
   const top = (items, names) => rankedItems(items).slice(0, RANK_WEIGHT.length)
@@ -381,7 +429,7 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   // topKnowledge/topAbility: 점수를 준 직무 쪽 항목(화면의 "이 직무의 핵심 지식 ○○(n순위)").
   // subjects·skills·experiences는 직무 안 순위가 높은 항목을 뒷받침하는 것부터 나온다.
   const matched = {
-    major: null, certs: [], subjects: [], skills: [], experiences: [], prefs: [],
+    major: null, certs: [], subjects: [], topicSubjects: [], skills: [], experiences: [], prefs: [],
     topKnowledge: null, topAbility: null,
     knowledgeBasis: null, criteria: null,
   };
@@ -400,13 +448,22 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
 
   const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
   const topKnowledge = bestKnowledgeMatch(job.knowledge, signals);
-  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.value || 0));
+  const area = KNOWLEDGE_SPLIT.area * (topKnowledge?.value || 0);
+  const topicSubjects = topicMatchedCourses(signals.subjects, job.searchText);
+  const topic = KNOWLEDGE_SPLIT.topic * Math.min(1, topicWeight(topicSubjects, signals.subjectInfo) / TOPIC_FULL_COURSES);
+  // 합을 반올림 전에 25로 자른다
+  breakdown.knowledge = Math.round(Math.min(WEIGHTS.knowledge, area + topic));
   if (topKnowledge) {
     matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
     matched.knowledgeBasis = topKnowledge.basis;
   }
   const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
-  matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
+  matched.topicSubjects = topicSubjects;
+  // 직무 지식을 뒷받침하는 과목(순위 높은 지식부터) 다음에 주제 일치 과목
+  matched.subjects = [...new Set([
+    ...heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)),
+    ...topicSubjects,
+  ])];
 
   const abilityNames = new Set(signals.skillAbilities.keys());
   matched.criteria = buildCriteria(job, knowledgeNames, abilityNames);
@@ -528,6 +585,7 @@ module.exports = {
   splitDept,
   majorMatch,
   SUBJECT_KNOWLEDGE_MAP,
+  SUBJECT_TOPIC_MAP,
   MAJOR_ALIASES,
   SKILL_ABILITY_MAP,
   SKILL_ONLY_ABILITY_MAP,
@@ -546,7 +604,10 @@ module.exports = {
   CERT_GRADE_POINTS,
   DEFAULT_CERT_POINT,
   KNOWLEDGE_STRENGTH,
+  KNOWLEDGE_SPLIT,
+  TOPIC_FULL_COURSES,
   GRADE_FACTORS,
+  topicMatchedCourses,
   certPoint,
   knowledgeBasis,
 };

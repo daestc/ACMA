@@ -1,6 +1,7 @@
 // 진로 추천 점수 규칙을 실제 카탈로그로 점검한다 (DB 읽기 전용). Phase5 계획서 v3 §5-1.
 // 실행: node scripts/checkRecommendScorer.js
-// 종료 코드: 매핑표 이름이 카탈로그에 없거나, 샘플 전공 중 매칭 0건이 3개 이상이거나, 점수 규칙 단위 사례가 틀리면 1.
+// 종료 코드: 매핑표 이름이 카탈로그에 없거나, 샘플 전공 중 매칭 0건이 3개 이상이거나, 점수 규칙 단위 사례가 틀리거나,
+//           주제 매핑표 용어가 관문(직무 1~40개)을 벗어나면 1.
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -15,6 +16,14 @@ const SAMPLE_MAJORS = [
 const SAMPLE_SKILLS = ['Java', 'Python', 'JavaScript', 'React', 'SQL', 'Excel', 'Figma'];
 const SAMPLE_CERTS = ['정보처리기사', '컴퓨터활용능력1급', '빅데이터분석기사', '전산회계1급'];
 const C_PRIME_PREFS = { work: ['analyze'], style: 'solo' };
+const TOPIC_TERM_MIN_JOBS = 1;
+const TOPIC_TERM_MAX_JOBS = 40;
+// 지식 영역 점수만으로는 같은 점수가 나오던 두 학생(설계서 확인 1번). 모두 A, 3학점.
+const WEB_COURSES = ['웹프로그래밍', '웹서버프로그래밍', '데이터베이스', '데이터베이스설계', '모바일프로그래밍', '안드로이드앱개발',
+  '자바프로그래밍', '객체지향프로그래밍', '자료구조', '알고리즘', '소프트웨어공학', '웹프레임워크'];
+const NETWORK_COURSES = ['컴퓨터네트워크', '데이터통신', '네트워크보안', '정보보호개론', '암호학', '해킹과보안',
+  '운영체제', '리눅스시스템관리', '무선통신', '시스템프로그래밍', '자료구조', '알고리즘'];
+const gradedCourses = names => names.map(name => ({ name, grade: 'A', credits: 3 }));
 
 // splitCertNames 단위 사례 (계획서 v3.2 §5-0 표 + 재적재 샘플에서 본 실제 표기)
 const CERT_SPLIT_CASES = [
@@ -58,6 +67,21 @@ const ACCOUNTS = [
       },
       academic: { majorCourses: ['경영통계', '회계원리', '마케팅원론'].map(name => ({ name })) },
     },
+    prefs: null,
+  },
+  {
+    label: 'D: 컴공 + 웹·DB·모바일 위주 12과목(모두 A)',
+    context: { profile: { major: '컴퓨터공학과' }, academic: { majorCourses: gradedCourses(WEB_COURSES) } },
+    prefs: null,
+  },
+  {
+    label: 'E: 컴공 + 네트워크·보안 위주 12과목(모두 A)',
+    context: { profile: { major: '컴퓨터공학과' }, academic: { majorCourses: gradedCourses(NETWORK_COURSES) } },
+    prefs: null,
+  },
+  {
+    label: 'F: 컴공 + 컴퓨터개론 1과목(A)',
+    context: { profile: { major: '컴퓨터공학과' }, academic: { majorCourses: gradedCourses(['컴퓨터개론']) } },
     prefs: null,
   },
   { label: 'C: 컴퓨터공학전공, 나머지 없음', context: { profile: { major: '컴퓨터공학전공' } }, prefs: null },
@@ -212,19 +236,36 @@ function checkScoringRules() {
     console.log(`  ${ok ? '✅' : '❌'} ${name}: ${JSON.stringify(actual)}${ok ? '' : ` (기대 ${JSON.stringify(expected)})`}`);
   };
 
-  // 지식 점수 = 25 × 순위 가중 × 근거 강도 × 성적 계수
+  // 지식 점수 = 영역(17 × 순위 가중 × 근거 강도 × 성적 계수) + 주제(8 × min(1, 주제 가중치 합 / 3)).
+  // 이 가상 직무는 searchText가 없어 주제 점수가 0이다 — 영역 점수만 본다.
   const dbOnly = '데이터베이스';
-  check('수강 중 1과목만 → 13점 (기존엔 25점)', score({ academic: { currentSubjects: [{ name: dbOnly }] } }).breakdown.knowledge, 13);
-  check('이수 1과목(A) → 15점', score({ academic: { majorCourses: courses('A', dbOnly) } }).breakdown.knowledge, 15);
-  check('이수 2과목(A) → 20점', score({ academic: { majorCourses: courses('A', dbOnly, '자료구조') } }).breakdown.knowledge, 20);
-  check('이수 3과목(A) → 25점', score({ academic: { majorCourses: courses('A', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 25);
-  check('이수 3과목 평균 B(3.0) → 23점(×0.9)', score({ academic: { majorCourses: courses('B', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 23);
-  check('이수 3과목 평균 C(2.0) → 20점(×0.8)', score({ academic: { majorCourses: courses('C', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 20);
-  check('성적이 기록되지 않은 이수 과목은 성적 계수 1.0', score({ academic: { majorCourses: [{ name: dbOnly }, { name: '자료구조' }, { name: '운영체제' }] } }).breakdown.knowledge, 25);
+  check('수강 중 1과목만 → 9점 (17×0.5)', score({ academic: { currentSubjects: [{ name: dbOnly }] } }).breakdown.knowledge, 9);
+  check('이수 1과목(A) → 10점 (17×0.6)', score({ academic: { majorCourses: courses('A', dbOnly) } }).breakdown.knowledge, 10);
+  check('이수 2과목(A) → 14점 (17×0.8)', score({ academic: { majorCourses: courses('A', dbOnly, '자료구조') } }).breakdown.knowledge, 14);
+  check('이수 3과목(A) → 17점 (영역 만점)', score({ academic: { majorCourses: courses('A', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 17);
+  check('이수 3과목 평균 B(3.0) → 15점(×0.9)', score({ academic: { majorCourses: courses('B', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 15);
+  check('이수 3과목 평균 C(2.0) → 14점(×0.8)', score({ academic: { majorCourses: courses('C', dbOnly, '자료구조', '운영체제') } }).breakdown.knowledge, 14);
+  check('성적이 기록되지 않은 이수 과목은 성적 계수 1.0', score({ academic: { majorCourses: [{ name: dbOnly }, { name: '자료구조' }, { name: '운영체제' }] } }).breakdown.knowledge, 17);
   const both = score({ academic: { majorCourses: courses('A', dbOnly), currentSubjects: [{ name: dbOnly }] } });
-  check('같은 과목이 이수·수강 중에 같이 있으면 이수로만 센다', [both.breakdown.knowledge, both.matched.knowledgeBasis.completed, both.matched.knowledgeBasis.current], [15, 1, 0]);
+  check('같은 과목이 이수·수강 중에 같이 있으면 이수로만 센다', [both.breakdown.knowledge, both.matched.knowledgeBasis.completed, both.matched.knowledgeBasis.current], [10, 1, 0]);
   const pick = score({ academic: { currentSubjects: [{ name: dbOnly }], majorCourses: courses('A', '미적분학', '선형대수학', '확률과통계') } });
-  check('1순위 지식이 수강 중뿐이면 이수 3과목인 2순위 지식을 쓴다', [pick.matched.topKnowledge.name, pick.breakdown.knowledge], ['산수와 수학', 20]);
+  check('1순위 지식이 수강 중뿐이면 이수 3과목인 2순위 지식을 쓴다', [pick.matched.topKnowledge.name, pick.breakdown.knowledge], ['산수와 수학', 14]);
+
+  // 주제 점수: 직무 업무 문장(searchText)에 과목 주제 용어가 있으면 8점까지(이수 1, 수강 중 0.5, 3과목에서 포화)
+  const webJob = { ...job, searchText: scorer.norm('웹사이트를 기획하고 웹프로그래밍으로 구현한다') };
+  const topicScore = context => {
+    const signals = scorer.extractUserSignals(context);
+    return scorer.scoreJob(signals, scorer.sanitizePrefs(null), webJob, []);
+  };
+  const web1 = topicScore({ academic: { majorCourses: courses('A', '웹프로그래밍') } });
+  check('웹 이수 1과목 → 영역 10 + 주제 2.7 = 13', [web1.breakdown.knowledge, web1.matched.topicSubjects], [13, ['웹프로그래밍']]);
+  const web3 = topicScore({ academic: { majorCourses: courses('A', '웹프로그래밍', '웹서버구축', '웹디자인') } });
+  check('웹 이수 3과목 → 영역 17 + 주제 8 = 25', web3.breakdown.knowledge, 25);
+  const webCur = topicScore({ academic: { currentSubjects: [{ name: '웹프로그래밍' }] } });
+  check('웹 수강 중 1과목 → 영역 9(8.5) + 주제 1.3 = 10', webCur.breakdown.knowledge, 10);
+  const net1 = topicScore({ academic: { majorCourses: courses('A', '컴퓨터네트워크') } });
+  check('업무 문장에 없는 주제(네트워크) → 주제 0', [net1.breakdown.knowledge, net1.matched.topicSubjects], [10, []]);
+  check('근거 과목 목록 뒤에 주제 일치 과목이 붙는다', web1.matched.subjects, ['웹프로그래밍']);
   check('근거 강도 정보가 결과에 남는다', score({ academic: { currentSubjects: [{ name: dbOnly }] } }).matched.knowledgeBasis, { completed: 0, current: 1, strength: 0.5, gradeFactor: 1 });
 
   // 자격증: 등급별 점수, 상한 20
@@ -258,6 +299,27 @@ function checkScoringRules() {
   return failed === 0;
 }
 
+// 주제 매핑표 용어마다 searchText에 그 용어가 든 직무 수와 예시. 관문을 벗어난 용어가 있으면 false.
+function checkTopicTerms(jobs) {
+  section('3-3. 주제 매핑표 용어 실측 (searchText)');
+  const bare = jobs.filter(j => !(j.responsibilities || []).length && !String(j.summary || '').trim());
+  console.log(`  업무 문장 없는 직무(responsibilities·summary 모두 빈 값): ${bare.length}건`);
+  const outOfGate = [];
+  scorer.SUBJECT_TOPIC_MAP.forEach(([pattern, terms]) => {
+    console.log(`  ${pattern}`);
+    terms.forEach(term => {
+      const hits = jobs.filter(j => (j.searchText || '').includes(scorer.norm(term)));
+      const ok = hits.length >= TOPIC_TERM_MIN_JOBS && hits.length <= TOPIC_TERM_MAX_JOBS;
+      if (!ok) outOfGate.push(`${term}(${hits.length})`);
+      console.log(`    ${ok ? '✅' : '❌'} ${term}: ${hits.length}건${hits.length ? ` (예: ${hits.slice(0, 3).map(j => j.title).join(', ')})` : ''}`);
+    });
+  });
+  console.log(outOfGate.length
+    ? `❌ 관문(${TOPIC_TERM_MIN_JOBS}~${TOPIC_TERM_MAX_JOBS}건)을 벗어난 용어: ${outOfGate.join(', ')}`
+    : `✅ 모든 용어가 관문(${TOPIC_TERM_MIN_JOBS}~${TOPIC_TERM_MAX_JOBS}건) 안`);
+  return outOfGate.length === 0;
+}
+
 function checkAccounts(jobs) {
   section('4. 테스트 계정 가상 순위');
   ACCOUNTS.forEach(({ label, context, prefs, interests }) => {
@@ -285,6 +347,7 @@ function checkAccounts(jobs) {
         c.matched.major && `전공:${c.matched.major}`,
         c.matched.certs.length && `자격:${c.matched.certs.join('/')}`,
         c.matched.subjects.length && `과목:${c.matched.subjects.join('/')}`,
+        c.matched.topicSubjects.length && `주제:${c.matched.topicSubjects.join('/')}`,
         c.matched.skills.length && `기술:${c.matched.skills.join('/')}`,
         c.matched.prefs.length && c.matched.prefs.join('/'),
       ].filter(Boolean).join(' ');
@@ -297,7 +360,7 @@ function checkAccounts(jobs) {
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   const jobs = await JobCatalog.find({ source: 'jobInfo', syncError: '' })
-    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames averageSalary')
+    .select('jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics relatedDepartments certNames averageSalary searchText summary responsibilities')
     .lean();
   console.log(`카탈로그 직무 ${jobs.length}건`);
 
@@ -307,11 +370,12 @@ async function main() {
   checkSkills(jobs);
   checkImportance(jobs);
   checkCerts(jobs);
+  const topicOk = checkTopicTerms(jobs);
   checkAccounts(jobs);
   const rulesOk = checkScoringRules();
 
   await mongoose.connection.close();
-  if (!certSplitOk || !namesOk || !deptOk || !rulesOk) process.exitCode = 1;
+  if (!certSplitOk || !namesOk || !deptOk || !rulesOk || !topicOk) process.exitCode = 1;
 }
 
 main().catch(async error => {

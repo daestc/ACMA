@@ -17,7 +17,7 @@ const logger = require('../../config/logger');
 
 const CATALOG_QUERY = { source: 'jobInfo', syncError: '' };
 const SCORING_FIELDS = 'jobCode title jobLrclNm jobMdclNm knowledge abilities characteristics '
-  + 'relatedDepartments relatedCertifications certNames averageSalary summary';
+  + 'relatedDepartments relatedCertifications certNames averageSalary summary searchText';
 const GENERIC_FAILURE_MESSAGE = 'AI 추천 사유 생성에 실패했습니다. 점수 기준 추천을 보여드립니다.';
 const PICK_COUNT = 3;
 const CERT_GAP_LIMIT = 2;
