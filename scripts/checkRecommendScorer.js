@@ -55,6 +55,7 @@ const ACCOUNTS = [
       },
       academic: { majorCourses: ['자바프로그래밍', '데이터베이스론', '컴퓨터알고리즘'].map(name => ({ name })) },
     },
+    courses: gradedCourses(['자바프로그래밍', '데이터베이스론', '컴퓨터알고리즘']),
     prefs: null,
   },
   {
@@ -67,6 +68,7 @@ const ACCOUNTS = [
       },
       academic: { majorCourses: ['경영통계', '회계원리', '마케팅원론'].map(name => ({ name })) },
     },
+    courses: gradedCourses(['경영통계', '회계원리', '마케팅원론']),
     prefs: null,
   },
   {
@@ -77,6 +79,12 @@ const ACCOUNTS = [
   {
     label: 'E: 컴공 + 네트워크·보안 위주 12과목(모두 A)',
     context: { profile: { major: '컴퓨터공학과' }, academic: { majorCourses: gradedCourses(NETWORK_COURSES) } },
+    prefs: null,
+  },
+  {
+    label: 'G: 경영 + 교양 통계학 1과목(A, 수강 과목 로더 경로)',
+    context: { profile: { major: '경영학과' } },
+    courses: gradedCourses(['통계학']),
     prefs: null,
   },
   {
@@ -266,6 +274,16 @@ function checkScoringRules() {
   const net1 = topicScore({ academic: { majorCourses: courses('A', '컴퓨터네트워크') } });
   check('업무 문장에 없는 주제(네트워크) → 주제 0', [net1.breakdown.knowledge, net1.matched.topicSubjects], [10, []]);
   check('근거 과목 목록 뒤에 주제 일치 과목이 붙는다', web1.matched.subjects, ['웹프로그래밍']);
+
+  // 수강 과목 로더 경로(courses): 교양 포함, 성적 있으면 이수·없으면 수강 중, 같은 이름은 성적이 좋은 쪽, F·NP 제외
+  const viaCourses = list => scorer.extractUserSignals({}, list).subjectInfo;
+  check('교양 통계학(A)도 근거 과목이 된다', [...viaCourses([{ name: '통계학', grade: 'A', credits: 3 }])], [['통계학', { completed: true, grade: 'A' }]]);
+  check('재수강은 성적이 좋은 쪽 하나만', [...viaCourses([{ name: '자료구조', grade: 'C' }, { name: '자료구조', grade: 'A+' }])], [['자료구조', { completed: true, grade: 'A+' }]]);
+  check('성적 없음 = 수강 중, 이수 기록이 있으면 이수', [...viaCourses([{ name: '운영체제', grade: null }, { name: '운영체제', grade: 'B' }, { name: '컴파일러', grade: null }])],
+    [['운영체제', { completed: true, grade: 'B' }], ['컴파일러', { completed: false, grade: null }]]);
+  check('F·NP는 근거가 아니다', viaCourses([{ name: '회로이론', grade: 'F' }, { name: '봉사', grade: 'NP' }]).size, 0);
+  const ctxOnly = { academic: { majorCourses: courses('A', dbOnly) } };
+  check('courses가 undefined면 context 경로 그대로', JSON.stringify(score(ctxOnly).breakdown), JSON.stringify(scorer.scoreJob(scorer.extractUserSignals(ctxOnly, undefined), scorer.sanitizePrefs(null), job, []).breakdown));
   check('근거 강도 정보가 결과에 남는다', score({ academic: { currentSubjects: [{ name: dbOnly }] } }).matched.knowledgeBasis, { completed: 0, current: 1, strength: 0.5, gradeFactor: 1 });
 
   // 자격증: 등급별 점수, 상한 20
@@ -322,8 +340,12 @@ function checkTopicTerms(jobs) {
 
 function checkAccounts(jobs) {
   section('4. 테스트 계정 가상 순위');
-  ACCOUNTS.forEach(({ label, context, prefs, interests }) => {
-    const signals = scorer.extractUserSignals(context);
+  // courses가 있는 계정은 이름만 넘기는 옛 경로(context)와 수강 과목 로더 경로(courses)를 둘 다 돌린다.
+  const runs = ACCOUNTS.flatMap(account => (account.courses && account.context?.academic
+    ? [{ ...account, courses: undefined, label: `${account.label} (context 경로)` }, { ...account, label: `${account.label} (courses 경로)` }]
+    : [account]));
+  runs.forEach(({ label, context, courses, prefs, interests }) => {
+    const signals = scorer.extractUserSignals(context, courses);
     const safePrefs = scorer.sanitizePrefs(prefs);
     const pool = interests ? jobs.filter(j => interests.includes(j.jobLrclNm)) : jobs;
     const ranked = scorer.rankCandidates(signals, safePrefs, pool, { limit: 10, perMidClass: 3 });

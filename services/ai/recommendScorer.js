@@ -276,17 +276,45 @@ function mapSubjectsToKnowledge(subjects) {
   return knowledgeSubjects;
 }
 
-// buildUserContext 결과는 compact()로 null·빈 배열 키가 통째로 사라진다 → 전부 ?.와 || []로 읽는다.
-function extractUserSignals(context) {
-  const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
-  const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
-  // 이수 과목(성적 있음)이 먼저고, 같은 이름이 수강 중에도 있으면 이수로 본다.
+// context.academic(전공 이수 과목 최대 40개 + 이번 학기 과목)으로 과목 정보를 만든다.
+// 이수 과목(성적 있음)이 먼저고, 같은 이름이 수강 중에도 있으면 이수로 본다.
+function subjectInfoFromContext(context) {
   const completedCourses = (context?.academic?.majorCourses || []).filter(c => c?.name);
   const completedNames = new Set(completedCourses.map(c => c.name));
   const currentCourses = (context?.academic?.currentSubjects || []).filter(s => s?.name && !completedNames.has(s.name));
   const subjectInfo = new Map(); // 과목명 → { completed, grade }
   completedCourses.forEach(c => subjectInfo.set(c.name, { completed: true, grade: c.grade ?? null }));
   currentCourses.forEach(s => { if (!subjectInfo.has(s.name)) subjectInfo.set(s.name, { completed: false, grade: null }); });
+  return subjectInfo;
+}
+
+const FAILED_GRADES = new Set(['F', 'NP']);
+// 같은 이름 과목(재수강 등) 중 남길 쪽: 성적이 좋은 쪽. P는 평점이 없어 어떤 등급보다 낮게,
+// 성적 없음(수강 중)보다는 높게 본다.
+const courseRank = grade => (grade ? (GRADE_POINTS[grade] ?? 0.5) : -1);
+
+// recommendationService.loadScoringCourses 결과(전공·교양·일선, 개수 제한 없음)로 과목 정보를 만든다.
+// 성적이 있으면 이수, 없으면 수강 중이다. F·NP는 근거가 아니다.
+function subjectInfoFromCourses(courses) {
+  const byName = new Map(); // norm(이름) → { name, grade }
+  (courses || []).forEach(course => {
+    if (!course?.name || FAILED_GRADES.has(course.grade)) return;
+    const key = norm(course.name);
+    const prev = byName.get(key);
+    if (!prev || courseRank(course.grade) > courseRank(prev.grade)) byName.set(key, { name: prev?.name || course.name, grade: course.grade ?? null });
+  });
+  const subjectInfo = new Map();
+  byName.forEach(({ name, grade }) => subjectInfo.set(name, { completed: Boolean(grade), grade }));
+  return subjectInfo;
+}
+
+// buildUserContext 결과는 compact()로 null·빈 배열 키가 통째로 사라진다 → 전부 ?.와 || []로 읽는다.
+// courses(추천 점수용 과목 목록)가 없으면(undefined) context의 majorCourses·currentSubjects를 쓴다 —
+// attachCertGaps(certIndex만 씀)와 점검 스크립트의 옛 호출이 그대로 돈다.
+function extractUserSignals(context, courses) {
+  const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
+  const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
+  const subjectInfo = courses === undefined ? subjectInfoFromContext(context) : subjectInfoFromCourses(courses);
   const subjects = [...subjectInfo.keys()];
   const skills = (context?.specs?.skills || []).map(s => s?.name).filter(Boolean);
   const experiences = (context?.specs?.experiences || []).map(e => e?.title).filter(Boolean);

@@ -3,6 +3,7 @@
 // AI가 실패해도 후보와 점수 picks는 남는다.
 
 const { CareerRecommendation } = require('../../models/Ai');
+const { AcademicRecord } = require('../../models/Academic_records');
 const { JobCatalog } = require('../../models/JobCatalog');
 const { Job } = require('../../models/Certifications_jobs');
 const contextBuilder = require('./contextBuilder');
@@ -84,9 +85,23 @@ function sanitizeInterests(raw, categories) {
   return [...new Set(raw.filter(name => valid.has(name)))];
 }
 
+// 추천 점수 전용 수강 과목: 계획(planned) 학기만 빼고 전공·교양·일선을 모두, 개수 제한 없이 성적과 함께
+// 읽는다. buildUserContext의 majorCourses(전공만, 40개)는 포트폴리오·진단 프롬프트와 준비도 판정이 같이
+// 쓰므로 건드리지 않는다. 같은 이름(재수강) 정리는 scorer.extractUserSignals가 한다.
+async function loadScoringCourses(userId) {
+  const records = await AcademicRecord.find({ userId, status: { $ne: 'planned' } }).select('subjects').lean();
+  return records.flatMap(record => (record.subjects || [])
+    .filter(s => s.grade !== 'F' && s.grade !== 'NP')
+    .map(s => ({ name: contextBuilder.cleanSubjectName(s.subjectName), credits: s.credits, grade: s.grade ?? null }))
+    .filter(c => c.name));
+}
+
 async function buildCandidates(userId, prefs, interests) {
-  const context = await contextBuilder.buildUserContext(userId);
-  const signals = scorer.extractUserSignals(context);
+  const [context, courses] = await Promise.all([
+    contextBuilder.buildUserContext(userId),
+    loadScoringCourses(userId),
+  ]);
+  const signals = scorer.extractUserSignals(context, courses);
 
   const query = interests.length > 0 ? { ...CATALOG_QUERY, jobLrclNm: { $in: interests } } : CATALOG_QUERY;
   const jobs = await JobCatalog.find(query).select(SCORING_FIELDS).lean();
@@ -229,8 +244,14 @@ function buildGenerationMeta(meta) {
 async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode, inputState) {
   try {
     const prefLabels = buildPrefLabels(prefs);
-    // 공용 collectEvidenceFacts는 진단·포트폴리오와 공유하므로 고치지 않고, 체크리스트 문구는 여기서만 합친다.
-    const facts = [...new Set([...validator.collectEvidenceFacts(context), ...prefLabels])];
+    // 공용 collectEvidenceFacts는 진단·포트폴리오와 공유하므로 고치지 않고, 체크리스트 문구와 후보 근거
+    // 과목은 여기서만 합친다. 후보 과목에는 context에 없는 교양 과목이 있어 더하지 않으면 칩에는 보이는데
+    // AI 사유에서는 인용할 수 없다.
+    const facts = [...new Set([
+      ...validator.collectEvidenceFacts(context),
+      ...candidates.flatMap(c => c.matched?.subjects || []),
+      ...prefLabels,
+    ])];
     const candidateCodes = candidates.map(c => c.jobCode);
 
     const { data, meta } = await aiClient.generateJSON({
@@ -342,6 +363,7 @@ module.exports = {
   getForm,
   getInterestCategories,
   buildCandidates,
+  loadScoringCourses,
   attachCertGaps,
   requestRecommendation,
   generateRecommendation,
