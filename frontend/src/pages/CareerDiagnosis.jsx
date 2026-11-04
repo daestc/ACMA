@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi, pollUntilDone, ScoreBreakdown, MissingList, AllBlockedBanner, formatDDay, todayKstDateString } from '../components/CareerAi/careerAiUtils'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const SEVERITY_BADGE = { high: 'badge-red', medium: 'badge-amber', low: 'badge-blue' }
 const ACTION_TYPE_LABEL = { cert: '자격증', project: '프로젝트', course: '과목', language: '어학', experience: '경험', none: '기타' }
@@ -15,12 +15,14 @@ function gapScheduleBadge(gap) {
   return null
 }
 
+// 졸업 카드는 진단만 줄 수 있는 내용(분야 제안·준비할 것)만 보여 준다. 영역별 학점 숫자는 내 현황과
+// 겹치고 값이 어긋나 보일 수 있어 빼고 링크로 보낸다. 남은 학점은 서버에서 AI가 분야를 고르는 근거로 계속 쓴다.
 function GraduationCard({ graduation }) {
-  if (!graduation?.hasData) return null
-  const r = graduation.remaining || {}
-  const isTotal = graduation.horizon === 'total'
+  const hasSuggested = graduation?.suggestedFields?.length > 0
+  const hasPending = graduation?.pendingRequirements?.length > 0
+  if (!hasSuggested && !hasPending) return null
 
-  const suggested = graduation.suggestedFields?.length > 0 && (
+  const suggested = hasSuggested && (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>이런 분야를 채우면 좋습니다</div>
       {graduation.suggestedFields.map((f, i) => (
@@ -32,31 +34,22 @@ function GraduationCard({ graduation }) {
     </div>
   )
 
-  const pendingLabel = isTotal ? '남은 졸업 요건' : (graduation.horizon === 'semester' ? '졸업 전까지 준비할 것' : '남은 졸업 요건')
-  const pending = graduation.pendingRequirements?.length > 0 && (
+  const pending = hasPending && (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{pendingLabel}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>졸업 전까지 준비할 것</div>
       {graduation.pendingRequirements.map((req, i) => <span className="badge badge-amber" style={{ marginRight: 6, marginBottom: 4, display: 'inline-block' }} key={i}>{req}</span>)}
     </div>
   )
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="card-title">{isTotal ? '🎓 졸업까지 남은 학점' : '🎓 다음 학기 이수 계획'}</div>
+      <div className="card-title">🎓 졸업까지 이수 방향</div>
       <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.8, marginTop: 8 }}>
-        {isTotal ? (
-          <>
-            <strong>총 {r.total ?? 0}학점</strong>{graduation.estimatedSemesters != null && ` · 약 ${graduation.estimatedSemesters}학기`}
-            <div>전공필수 {r.majorRequired ?? 0} · 전공선택 {r.majorElective ?? 0} · 교양필수 {r.generalRequired ?? 0} · 교양선택 {r.generalElective ?? 0}</div>
-          </>
-        ) : (
-          <>
-            <strong>채울 수 있는 학점 [전공선택 {r.majorElective ?? 0}학점 · 교양선택 {r.generalElective ?? 0}학점]</strong>
-            <div>남은 요건(선택 여지 없음): 전공필수 {r.majorRequired ?? 0}학점 · 교양필수 {r.generalRequired ?? 0}학점</div>
-          </>
-        )}
         {suggested}
         {pending}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 10 }}>
+        영역별 이수 현황은 내 현황에서 확인하세요 · <Link to="/mystatus">내 현황</Link>
       </div>
     </div>
   )

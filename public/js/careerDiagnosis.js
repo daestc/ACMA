@@ -83,22 +83,23 @@ function renderGap(gap) {
     </div>`;
 }
 
-// "직무 갭" 축과 별개인 "시간 제약" 축(졸업까지 학점) — graduationAdvisor.summarizeGraduation
-// 계산값 + suggestedFields(LLM). horizon에 따라 표시 관점을 다르게 한다: 저학년은
-// "다음 학기에 뭘 채울지", 졸업 임박이면 "졸업까지 뭐가 남았는지".
+// "직무 갭" 축과 별개인 졸업 축. 진단만 줄 수 있는 내용(suggestedFields: AI 분야 제안,
+// pendingRequirements: 준비할 것)만 보여 준다. 영역별 학점 숫자는 내 현황과 겹치고 값이 어긋나 보일 수
+// 있어 빼고 링크로 보낸다. 남은 학점은 서버에서 AI가 분야를 고르는 근거로 계속 쓴다.
 function renderGraduation(graduation) {
   const card = document.getElementById('dg-graduation-card');
-  if (!graduation?.hasData) {
+  const hasSuggested = (graduation?.suggestedFields || []).length > 0;
+  const hasPending = (graduation?.pendingRequirements || []).length > 0;
+  if (!hasSuggested && !hasPending) {
     card.style.display = 'none';
     return;
   }
   card.style.display = 'block';
 
-  const r = graduation.remaining || {};
   const titleEl = document.getElementById('dg-graduation-title');
   const bodyEl = document.getElementById('dg-graduation-body');
 
-  const suggestedHtml = (graduation.suggestedFields || []).length
+  const suggestedHtml = hasSuggested
     ? `<div style="margin-top:14px;">
         <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">이런 분야를 채우면 좋습니다</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
@@ -111,42 +112,22 @@ function renderGraduation(graduation) {
       </div>`
     : '';
 
-  const pendingLabel = graduation.horizon === 'semester' ? '졸업 전까지 준비할 것' : '남은 졸업 요건';
-  const pendingHtml = (graduation.pendingRequirements || []).length
+  const pendingHtml = hasPending
     ? `<div style="margin-top:14px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">${pendingLabel}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">졸업 전까지 준비할 것</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
           ${graduation.pendingRequirements.map(p => `<span class="badge badge-amber">${escapeHtml(p)}</span>`).join('')}
         </div>
       </div>`
     : '';
 
-  if (graduation.horizon === 'semester') {
-    // 전공필수·교양필수는 지정된 과목을 그대로 들어야 해서 "채운다"는 개념이 없다 —
-    // "남은 요건"으로만 보여주고, 실제로 분야를 골라 채울 수 있는 전공선택·교양선택만
-    // "채울 수 있는 학점"으로 강조한다.
-    titleEl.textContent = '🎓 다음 학기 이수 계획';
-    bodyEl.innerHTML = `
-      <div style="font-size:13px;color:var(--text2);">
-        채울 수 있는 학점 <strong style="color:var(--text1);">전공선택 ${r.majorElective ?? 0}학점 · 교양선택 ${r.generalElective ?? 0}학점</strong>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px;">
-        남은 요건(선택 여지 없음): 전공필수 ${r.majorRequired ?? 0}학점 · 교양필수 ${r.generalRequired ?? 0}학점
-      </div>
-      ${suggestedHtml}
-      ${pendingHtml}`;
-  } else {
-    titleEl.textContent = '🎓 졸업까지 남은 학점';
-    bodyEl.innerHTML = `
-      <div style="font-size:13px;color:var(--text2);">
-        총 <strong style="color:var(--text1);">${r.total ?? 0}학점</strong>${graduation.estimatedSemesters != null ? ` · 약 ${graduation.estimatedSemesters}학기` : ''}
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px;">
-        전공필수 ${r.majorRequired ?? 0} · 전공선택 ${r.majorElective ?? 0} · 교양필수 ${r.generalRequired ?? 0} · 교양선택 ${r.generalElective ?? 0}
-      </div>
-      ${suggestedHtml}
-      ${pendingHtml}`;
-  }
+  titleEl.textContent = '🎓 졸업까지 이수 방향';
+  bodyEl.innerHTML = `
+    ${suggestedHtml}
+    ${pendingHtml}
+    <div style="font-size:12px;color:var(--text2);margin-top:14px;">
+      영역별 이수 현황은 내 현황에서 확인하세요 · <a href="/mystatus">내 현황</a>
+    </div>`;
 }
 
 // 생성 시점 목표 직무(doc.jobCode)와 지금 목표 직무가 다르면 배너를 띄운다 —
