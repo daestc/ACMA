@@ -34,6 +34,7 @@ router.get('/timetables', requireLogin, calendarController.getTimetableList); //
 router.post('/timetables',requireLogin, calendarController.createTimetable); //시간표 생성
 router.put('/timetables/:timetableId', requireLogin, calendarController.updatedTimetable); //시간표 수정
 router.delete('/timetables/:timetableId', requireLogin, calendarController.deletedTimetable); //시간표 삭제
+router.get('/lectures/semesters', requireLogin, calendarController.getLectureSemesters); // 강의가 등록된 학기 목록
 router.get('/lectures', requireLogin, calendarController.getLectureList); // 강의 목록
 router.get('/universities', requireLogin, calendarController.getAvailableUniversities); // 등록 가능한 대학 목록
 router.post('/timetables/lecture', requireLogin, calendarController.addLectureToTimetable);// 강의를 내 시간표에 추가

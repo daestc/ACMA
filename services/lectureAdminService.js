@@ -64,11 +64,14 @@ function buildStaffUniversityFilter(staffUniversity) {
   return { university: univ };
 }
 
+// 검색어를 정규식 리터럴로 — "C++"처럼 정규식 문자가 든 검색어가 $regex 오류(500)를 내지 않게 한다.
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function buildLectureListFilter(staffUniversity, search = '') {
   const univFilter = buildStaffUniversityFilter(staffUniversity);
   if (!univFilter) return null;
 
-  const term = search.trim();
+  const term = escapeRegex(search.trim());
   if (!term) return univFilter;
 
   return {

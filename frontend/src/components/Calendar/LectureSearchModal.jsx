@@ -8,6 +8,32 @@ const DEFAULT_LECTURE_COLOR = '#60A5FA'
 
 const emptyPage = () => ({ items: [], page: 1, totalPages: 0, total: 0, loading: false })
 
+// 학기 선택: 값은 "2026|2학기" 형식. 시간표에 넣을 수 있는 정규 학기는 1·2학기뿐이다(계절학기는 표시만).
+const REGULAR_SEMESTERS = ['1학기', '2학기']
+const termKey = (t) => (t ? `${t.year}|${t.semester}` : '')
+const parseTermKey = (key) => {
+  if (!key) return null
+  const [year, semester] = key.split('|')
+  return { year: Number(year), semester }
+}
+
+// 오늘(한국 시간)이 속한 학기: 3~6월 1학기, 9~12월 2학기. 그 밖의 달은 없음.
+function currentTerm() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric' }).formatToParts(new Date())
+  const year = Number(parts.find((p) => p.type === 'year').value)
+  const month = Number(parts.find((p) => p.type === 'month').value)
+  if (month >= 3 && month <= 6) return { year, semester: '1학기' }
+  if (month >= 9) return { year, semester: '2학기' }
+  return null
+}
+
+// 기본 선택: 오늘이 속한 학기가 목록에 있으면 그 학기, 없으면 목록의 첫 항목(가장 최근). 목록이 비면 학기 필터 없음.
+function defaultTermKey(semesters) {
+  if (!semesters.length) return ''
+  const now = termKey(currentTerm())
+  return semesters.some((s) => termKey(s) === now) ? now : termKey(semesters[0])
+}
+
 function Pagination({ state, onPage }) {
   if (state.total === 0) return null
   if (state.totalPages <= 1) {
@@ -30,6 +56,8 @@ function LectureSearchModal({ open, university, onClose, onAdded }) {
   const [credits, setCredits] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [semesters, setSemesters] = useState([]) // [{ year, semester }] 최신순
+  const [term, setTerm] = useState('')
 
   const [lectures, setLectures] = useState(emptyPage)
   const [universities, setUniversities] = useState(emptyPage)
@@ -38,7 +66,7 @@ function LectureSearchModal({ open, university, onClose, onAdded }) {
     if (!open) return
     if (hasUniversity) {
       setKeyword('')
-      loadLectures(1, '')
+      loadSemestersThenLectures()
     } else {
       loadUniversities(1)
     }
@@ -47,10 +75,34 @@ function LectureSearchModal({ open, university, onClose, onAdded }) {
 
   if (!open) return null
 
-  async function loadLectures(page, keywordOverride) {
+  async function loadSemestersThenLectures() {
+    let list = []
+    try {
+      const res = await fetch('/calendar/lectures/semesters')
+      if (res.ok) list = (await res.json()).semesters || []
+    } catch {
+      list = []
+    }
+    const key = defaultTermKey(list)
+    setSemesters(list)
+    setTerm(key)
+    loadLectures(1, '', key)
+  }
+
+  function handleTermChange(key) {
+    setTerm(key)
+    loadLectures(1, undefined, key) // 학기를 바꾸면 1페이지부터
+  }
+
+  async function loadLectures(page, keywordOverride, termOverride) {
     setLectures((l) => ({ ...l, loading: true }))
 
     const params = new URLSearchParams({ page, limit: 10 })
+    const selectedTerm = parseTermKey(termOverride !== undefined ? termOverride : term)
+    if (selectedTerm) {
+      params.append('year', selectedTerm.year)
+      params.append('semester', selectedTerm.semester)
+    }
     const kw = (keywordOverride !== undefined ? keywordOverride : keyword).trim()
     if (kw) params.append('keyword', kw)
     if (classification) params.append('classification', classification)
@@ -133,6 +185,13 @@ function LectureSearchModal({ open, university, onClose, onAdded }) {
         ) : (
           <div>
             <div className="lecture-search-controls">
+              {semesters.length > 0 && (
+                <select value={term} onChange={(e) => handleTermChange(e.target.value)} aria-label="학기">
+                  {semesters.map((s) => (
+                    <option key={termKey(s)} value={termKey(s)}>{s.year}년 {s.semester}</option>
+                  ))}
+                </select>
+              )}
               <input
                 type="text"
                 placeholder="강의명 검색"
@@ -187,7 +246,11 @@ function LectureSearchModal({ open, university, onClose, onAdded }) {
                   <div className="lecture-search-item" key={lecture._id}>
                     <div>
                       <strong>{lecture.courseName}</strong>
-                      <span> {lecture.section}분반</span><br />
+                      <span> {lecture.section}분반</span>
+                      {!REGULAR_SEMESTERS.includes(lecture.semester) && (
+                        <span className="badge badge-amber" style={{ marginLeft: 6 }} title="계절학기 강의는 아직 시간표에 추가할 수 없습니다.">계절학기</span>
+                      )}
+                      <br />
                       <small>{lecture.classification} / {lecture.credits}학점 / {lecture.professor || '미정'}</small><br />
                       <small>{(lecture.schedules || []).map((s) => `${s.day} ${s.startTime}~${s.endTime}`).join(', ')}</small>
                     </div>

@@ -165,6 +165,26 @@ const getLectureList = async (req,res) => {
     }
 };
 
+// 강의 검색 화면의 학기 선택지 — 소속 대학에 등록된 (연도, 학기) 목록, 최신순
+const getLectureSemesters = async (req, res) => {
+    try {
+        const university = await resolveUserUniversity(req);
+        if (!university) {
+            return noUniversityResponse(res);
+        }
+        const semesters = await calendarService.getLectureSemesters(university);
+        res.json({ semesters });
+    } catch (error) {
+        if (error.code === 'NO_UNIVERSITY') {
+            return noUniversityResponse(res);
+        }
+        res.status(500).json({
+            message: '강의 학기 목록 조회 실패',
+            error: error.message,
+        });
+    }
+};
+
 const addLectureToTimetable = async (req,res) => {
     try {
         const university = await resolveUserUniversity(req);
@@ -234,6 +254,7 @@ module.exports = {
     updatedTimetable,
     deletedTimetable,
     getLectureList,
+    getLectureSemesters,
     addLectureToTimetable,
     getAvailableUniversities,
 

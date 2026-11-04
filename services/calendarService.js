@@ -427,6 +427,28 @@ async function getLectureList(filter = {}) {
   };
 }
 
+// 학기 안의 순서(늦은 학기가 큼). 목록은 최신 학기부터 보여 준다.
+const SEMESTER_ORDER = { '1학기': 1, '여름학기': 2, '2학기': 3, '겨울학기': 4 };
+
+// 학생 소속 대학에 강의가 등록된 (연도, 학기) 목록 — 최신순. 강의 검색 화면의 학기 선택지.
+async function getLectureSemesters(university) {
+  const univFilter = buildStaffUniversityFilter(normalizeUniversity(university));
+  if (!univFilter) {
+    const err = new Error('대학등록이 필요합니다');
+    err.code = 'NO_UNIVERSITY';
+    throw err;
+  }
+
+  const rows = await Lecture.aggregate([
+    { $match: { ...univFilter, year: { $ne: null }, semester: { $ne: null } } },
+    { $group: { _id: { year: '$year', semester: '$semester' } } },
+  ]);
+
+  return rows
+    .map(r => ({ year: r._id.year, semester: r._id.semester }))
+    .sort((a, b) => b.year - a.year || (SEMESTER_ORDER[b.semester] || 0) - (SEMESTER_ORDER[a.semester] || 0));
+}
+
 // 강의가 등록된 대학 목록 (페이징)
 async function getAvailableUniversities({ page = 1, limit = 10 } = {}) {
   const raw = await Lecture.distinct('university');
@@ -934,6 +956,7 @@ module.exports = {getEventsListByUser,
                 calcAvailableHours,
                 clearUserLectureTimetables,
                 getLectureList,
+                getLectureSemesters,
                 addLectureToTimetable,
                 getAvailableUniversities,
 
