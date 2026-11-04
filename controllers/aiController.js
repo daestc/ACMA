@@ -250,7 +250,8 @@ async function redistributeWeeklyPlan(req, res) {
       return res.status(409).json({ success: false, message: '완료된 주간계획만 재분배할 수 있습니다.' });
     }
 
-    const result = await planService.runDistribution(doc);
+    // 생성 때 붙은 안내(시간표 없음·목표 비율 등)는 재분배로 바뀌지 않으니 그대로 넘긴다.
+    const result = await planService.runDistribution(doc, doc.distribution?.notices || []);
     return res.json({ dayCount: result.dayCount, itemCount: result.itemCount, errors: result.errors });
   } catch (error) {
     logger.error(`[ai] redistributeWeeklyPlan error: ${error.message}`);
@@ -617,6 +618,12 @@ async function addGapToWeeklyPlan(req, res) {
       relatedId: diagnosis._id,
     });
     await plan.save();
+
+    // 추가한 항목을 바로 일별 보기에 배치한다. 재분배가 완료한 조각을 보존하므로 이미 한 일은
+    // 그대로 남는다. 생성 중(pending)인 계획은 생성이 끝날 때 어차피 다시 배치된다.
+    if (plan.status === 'done') {
+      await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+    }
 
     return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1 });
   } catch (error) {

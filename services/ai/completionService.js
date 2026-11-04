@@ -5,6 +5,16 @@ const kstDate = require('../../utils/kstDate');
 const MAX_INCOMPLETE_ITEMS = 5;
 const DEFAULT_HISTORY_LIMIT = 12;
 
+// 조각의 시간. plannedHours를 먼저 보고, 이 필드가 생기기 전에 만든 조각은 content 끝의
+// "(1/2, 3h)"·"(3h)"에서 읽는다. 0h 항목(시간 표기 없음)이나 80자에서 "…"로 잘린 문자열은
+// 읽을 수 없어 0으로 본다.
+const SLICE_HOURS_PATTERN = /(\d+(?:\.\d+)?)h\)$/;
+function sliceHours(item) {
+  if (Number.isFinite(item.plannedHours)) return item.plannedHours;
+  const match = SLICE_HOURS_PATTERN.exec(item.content || '');
+  return match ? Number(match[1]) : 0;
+}
+
 function collectAiItems(checklists, weeklyPlanId) {
   const items = [];
   checklists.forEach(doc => {
@@ -29,6 +39,22 @@ async function calcCompletionRate(userId, weeklyPlanId) {
 
   const completed = aiItems.filter(item => item.isCompleted).length;
   return +(completed / aiItems.length).toFixed(2);
+}
+
+// 이 계획에서 이미 완료한 AI 조각 — 재분배가 완료한 시간을 다시 배치하지 않게 distribute()에 넘긴다.
+async function collectCompletedSlices(userId, weeklyPlanId, weekDates) {
+  const checklists = await DailyChecklist.find({ userId, date: { $in: weekDates } })
+    .select('date items')
+    .lean();
+
+  const slices = [];
+  checklists.forEach(doc => {
+    (doc.items || []).forEach(item => {
+      if (item.source !== 'ai' || !item.isCompleted || String(item.weeklyPlanId) !== String(weeklyPlanId)) return;
+      slices.push({ date: doc.date, planItemIndex: item.planItemIndex ?? null, hours: sliceHours(item) });
+    });
+  });
+  return slices;
 }
 
 // 직전 주 달성률 — 새 주간계획 생성 프롬프트에 넣는다
@@ -346,6 +372,8 @@ async function saveReview(userId, planId, rawAnswers) {
 }
 
 module.exports = {
+  sliceHours,
+  collectCompletedSlices,
   calcCompletionRate,
   getPreviousWeekFeedback,
   getWeeklyPlanHistory,
