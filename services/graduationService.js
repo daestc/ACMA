@@ -15,72 +15,75 @@ const DEFAULT_REQUIREMENTS = {
   requiredCapstonDesign: null,
   requiredNCProgram: null,
   requiredVolunteer: null,
+  doubleMajorPrimaryCredits: null,
+  doubleMajorCredits: null,
 };
 
 function normalizeMajor(major) {
   return major?.trim() || null;
 }
 
-// 학점 항목: 입학년도별 덮어쓰기가 대상. 학과 추가요건·학점 외 항목은 입학년도와 무관하다.
-const CREDIT_FIELDS = [
-  'requiredTotalCredits',
-  'requiredMajorCredits',
-  'requiredMajorElective',
-  'requiredGeneralCredits',
-  'requiredGeneralElective',
-];
-
 const MIN_ADMISSION_YEAR = 1990;
-const MAX_ADMISSION_YEAR = 2100;
 
-function isValidYear(year) {
-  return Number.isInteger(year) && year >= MIN_ADMISSION_YEAR && year <= MAX_ADMISSION_YEAR;
+// 학번에서 입학연도를 판정한다. 형식이 학교마다 달라 저장을 막지 않고, 판정 결과를 화면에 보여
+// 학생이 틀리면 학번을 고치게 한다. 저장하지 않고 조회할 때마다 계산한다(학번을 고치면 어긋나므로).
+// 숫자만 남겨 앞 4자리가 1990~올해면 그 해, 아니고 2~7자리면 2000+앞 2자리(올해 이하), 그 외 null.
+function admissionYearFromStudentId(studentId, now = new Date()) {
+  const digits = String(studentId || '').replace(/\D/g, '');
+  const thisYear = now.getFullYear();
+  if (digits.length >= 4) {
+    const year = Number(digits.slice(0, 4));
+    if (year >= MIN_ADMISSION_YEAR && year <= thisYear) return year;
+  }
+  if (digits.length >= 2 && digits.length <= 7) {
+    const year = 2000 + Number(digits.slice(0, 2));
+    if (year <= thisYear) return year;
+  }
+  return null;
 }
 
-function validationError(message) {
-  const err = new Error(message);
-  err.code = 'VALIDATION';
-  return err;
+// 입학연도 이하인 fromYear 중 가장 큰 항목. 없거나 연도를 모르면 null(기본 요건).
+function pickYearEntry(entries, year) {
+  if (year == null) return null;
+  return (entries || [])
+    .filter((entry) => entry.fromYear <= year)
+    .reduce((best, entry) => (!best || entry.fromYear > best.fromYear ? entry : best), null);
 }
 
-// 학교 기본값 → (입학년도별 학점 덮어쓰기) → 학과 추가요건 순으로 병합한다.
-// 학생 개인 값은 더 이상 쓰지 않는다: 학생은 졸업요건을 수정할 수 없고, 프로필에 자동 저장된
-// 시스템 기본값이 학교 등록값을 가리는 문제가 있었다.
-function mergeGraduationRequirements(schoolRequirements = {}, majorAdditional = {}, cohortRequirements = {}) {
+function mergeGraduationRequirements(schoolRequirements = {}, majorAdditional = {}, studentRequirements = {}) {
   const school = { ...DEFAULT_REQUIREMENTS, ...schoolRequirements };
   const major = majorAdditional || {};
-  const cohort = cohortRequirements || {};
+  const student = studentRequirements || {};
 
-  const pick = (majorValue, schoolValue) => (majorValue !== undefined && majorValue !== null ? majorValue : schoolValue);
-  const pickArray = (majorValue, schoolValue) => {
+  const pick = (studentValue, majorValue, schoolValue) => {
+    if (studentValue !== undefined && studentValue !== null) return studentValue;
+    if (majorValue !== undefined && majorValue !== null) return majorValue;
+    return schoolValue;
+  };
+
+  const pickArray = (studentValue, majorValue, schoolValue) => {
+    if (Array.isArray(studentValue) && studentValue.length > 0) return studentValue;
     if (Array.isArray(majorValue) && majorValue.length > 0) return majorValue;
     return Array.isArray(schoolValue) ? schoolValue : [];
   };
-  const credit = (key) => (cohort[key] !== undefined && cohort[key] !== null ? cohort[key] : school[key]);
 
   return {
-    requiredTotalCredits: credit('requiredTotalCredits'),
-    requiredMajorCredits: credit('requiredMajorCredits'),
-    requiredMajorElective: credit('requiredMajorElective'),
-    requiredGeneralCredits: credit('requiredGeneralCredits'),
-    requiredGeneralElective: credit('requiredGeneralElective'),
-    requiresGraduationWork: pick(major.requiresGraduationWork, school.requiresGraduationWork),
-    requiredCertifications: pickArray(major.requiredCertifications, school.requiredCertifications),
-    requiredLanguageScore: pick(major.requiredLanguageScore, school.requiredLanguageScore),
-    requiredInternship: pick(major.requiredInternship, school.requiredInternship),
-    requiredCapstonDesign: pick(major.requiredCapstonDesign, school.requiredCapstonDesign),
-    requiredNCProgram: pick(major.requiredNCProgram, school.requiredNCProgram),
-    requiredVolunteer: pick(major.requiredVolunteer, school.requiredVolunteer),
+    requiredTotalCredits: pick(student.requiredTotalCredits, null, school.requiredTotalCredits),
+    requiredMajorCredits: pick(student.requiredMajorCredits, null, school.requiredMajorCredits),
+    requiredMajorElective: pick(student.requiredMajorElective, null, school.requiredMajorElective),
+    requiredGeneralCredits: pick(student.requiredGeneralCredits, null, school.requiredGeneralCredits),
+    requiredGeneralElective: pick(student.requiredGeneralElective, null, school.requiredGeneralElective),
+    requiresGraduationWork: pick(student.requiresGraduationWork, major.requiresGraduationWork, school.requiresGraduationWork),
+    requiredCertifications: pickArray(student.requiredCertifications, major.requiredCertifications, school.requiredCertifications),
+    requiredLanguageScore: pick(student.requiredLanguageScore, major.requiredLanguageScore, school.requiredLanguageScore),
+    requiredInternship: pick(student.requiredInternship, major.requiredInternship, school.requiredInternship),
+    requiredCapstonDesign: pick(student.requiredCapstonDesign, major.requiredCapstonDesign, school.requiredCapstonDesign),
+    requiredNCProgram: pick(student.requiredNCProgram, major.requiredNCProgram, school.requiredNCProgram),
+    requiredVolunteer: pick(student.requiredVolunteer, major.requiredVolunteer, school.requiredVolunteer),
+    // 학점 항목이라 학과 단계를 건너뛴다. 여기서 빠뜨리면 병합할 때 사라진다.
+    doubleMajorPrimaryCredits: pick(student.doubleMajorPrimaryCredits, null, school.doubleMajorPrimaryCredits),
+    doubleMajorCredits: pick(student.doubleMajorCredits, null, school.doubleMajorCredits),
   };
-}
-
-// 학생 입학년도 이하의 fromYear 중 가장 큰 것(= 그 학생에게 적용되는 가장 최근 개정)
-function findCohortRequirements(doc, admissionYear) {
-  const year = Number(admissionYear);
-  if (!doc || !isValidYear(year)) return null;
-  return (doc.cohortRequirements || [])
-    .filter((item) => item.fromYear <= year)
-    .sort((a, b) => b.fromYear - a.fromYear)[0] || null;
 }
 
 async function getUniversityGraduationDoc(university) {
@@ -177,66 +180,18 @@ async function saveMajorAdditionalRequirements(university, major, additionalRequ
   return findMajorRequirements(doc.toObject(), normalized);
 }
 
-// 대학관계자: 입학년도별 학점 덮어쓰기 저장(같은 fromYear가 있으면 교체)
-async function saveCohortRequirements(university, fromYear, creditValues, updatedBy) {
-  const univ = university?.trim();
-  if (!univ) {
-    const err = new Error('소속 대학 정보가 없습니다.');
-    err.code = 'NO_UNIVERSITY';
-    throw err;
+// 입학연도 결정: 마이페이지에서 직접 입력한 값이 우선이고, 없으면 학번에서 판정한다
+// (학번 형식은 학교마다 달라 직접 입력이 더 정확하다).
+function resolveAdmissionYear(user) {
+  const typed = Number(user?.admissionYear);
+  if (Number.isInteger(typed) && typed >= MIN_ADMISSION_YEAR && typed <= 2100) {
+    return { admissionYear: typed, source: 'input' };
   }
-
-  const year = Number(fromYear);
-  if (!isValidYear(year)) {
-    throw validationError(`입학년도는 ${MIN_ADMISSION_YEAR}~${MAX_ADMISSION_YEAR} 사이의 4자리 연도로 입력해주세요.`);
-  }
-
-  const requirements = {};
-  CREDIT_FIELDS.forEach((key) => {
-    const raw = creditValues?.[key];
-    if (raw === undefined || raw === null || raw === '') return;
-    const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0) {
-      throw validationError('학점은 0 이상의 정수로 입력해주세요.');
-    }
-    requirements[key] = value;
-  });
-  if (Object.keys(requirements).length === 0) {
-    throw validationError('달라지는 학점 항목을 하나 이상 입력해주세요.');
-  }
-
-  const doc = await UniversityGraduation.findOneAndUpdate(
-    { university: univ },
-    { $setOnInsert: { university: univ, requirements: DEFAULT_REQUIREMENTS } },
-    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
-  );
-
-  const nextEntry = { fromYear: year, requirements, updatedBy };
-  const existingIndex = doc.cohortRequirements.findIndex((item) => item.fromYear === year);
-  if (existingIndex >= 0) {
-    doc.cohortRequirements[existingIndex] = nextEntry;
-  } else {
-    doc.cohortRequirements.push(nextEntry);
-  }
-
-  await doc.save();
-  return doc.toObject().cohortRequirements.sort((a, b) => a.fromYear - b.fromYear);
+  const fromId = admissionYearFromStudentId(user?.studentId);
+  return fromId == null ? { admissionYear: null, source: null } : { admissionYear: fromId, source: 'studentId' };
 }
 
-async function deleteCohortRequirements(university, fromYear) {
-  const univ = university?.trim();
-  const year = Number(fromYear);
-  if (!univ || !isValidYear(year)) throw validationError('삭제할 입학년도를 확인해주세요.');
-
-  const doc = await UniversityGraduation.findOne({ university: univ });
-  if (!doc) return [];
-
-  doc.cohortRequirements = doc.cohortRequirements.filter((item) => item.fromYear !== year);
-  await doc.save();
-  return doc.toObject().cohortRequirements.sort((a, b) => a.fromYear - b.fromYear);
-}
-
-async function getStaffGraduationForStudent(university, major, admissionYear) {
+async function getStaffGraduationForStudent(university, major, admissionYear = null, yearSource = null) {
   const univ = university?.trim() || null;
   const majorNorm = normalizeMajor(major);
 
@@ -280,12 +235,12 @@ async function getStaffGraduationForStudent(university, major, admissionYear) {
   }
 
   const majorEntry = findMajorRequirements(graduationDoc, majorNorm);
-  const year = Number(admissionYear);
-  const cohortEntry = findCohortRequirements(graduationDoc, year);
+  // 학과 추가 요건은 연도를 나누지 않고, 고른 연도(또는 기본) 대학 요건 위에 그대로 덮는다.
+  const yearEntry = pickYearEntry(graduationDoc.requirementsByYear, admissionYear);
   const requirements = mergeGraduationRequirements(
-    graduationDoc.requirements,
+    yearEntry ? yearEntry.requirements : graduationDoc.requirements,
     majorEntry?.additionalRequirements,
-    cohortEntry?.requirements,
+    {},
   );
 
   return {
@@ -296,42 +251,49 @@ async function getStaffGraduationForStudent(university, major, admissionYear) {
     major: majorNorm,
     requirements,
     hasMajorSpecific: Boolean(majorEntry),
+    admissionYear,
+    appliedFromYear: yearEntry ? yearEntry.fromYear : null,
     // 화면에 "어떤 기준으로 계산했는지" 보여 주기 위한 근거 정보
     basis: {
       university: univ,
       major: majorNorm,
-      admissionYear: isValidYear(year) ? year : null,
-      cohortFromYear: cohortEntry?.fromYear ?? null,
-      schoolHasCohorts: (graduationDoc.cohortRequirements || []).length > 0,
+      admissionYear,
+      admissionYearSource: yearSource, // 'input'(직접 입력) | 'studentId'(학번 판정) | null
+      appliedFromYear: yearEntry ? yearEntry.fromYear : null,
+      schoolHasYearEntries: (graduationDoc.requirementsByYear || []).length > 0,
       hasMajorSpecific: Boolean(majorEntry),
+      doubleMajorCreditsRegistered: requirements.doubleMajorPrimaryCredits != null && requirements.doubleMajorCredits != null,
       updatedAt: graduationDoc.updatedAt || null,
     },
   };
 }
 
-// 학교 기본값 → 입학년도별 학점 → 학과 추가요건 순으로 병합한 최종 졸업요건.
-// 전공은 항상 회원 정보(User.major) 기준이다. 학사 프로필의 전공은 처음 만들 때만 기록되어
-// 전공을 바꿔도 갱신되지 않으므로, 회원 전공이 비어 있을 때만 대체값으로 쓴다.
+// 학생의 최종 졸업요건 = 학과 추가 요건 > 대학 요건 > 기본값.
+// UniversityProfile.GraduationRequirements는 읽지 않는다 — 학생이 저장하는 경로가 없어(403) 스키마
+// 기본값(130/42/40/20/28, 졸업작품 true)만 들어 있는데, 마이페이지에서 학년을 저장하면 그 값으로
+// 문서가 생겨 대학관계자 요건을 전부 덮었다. 필드와 데이터는 남겨 두고 읽기만 멈춘다.
+// 전공은 마이페이지에서 매번 갱신되는 User.major를 먼저 본다.
 async function resolveRequirements(userId) {
   const [user, profile] = await Promise.all([
-    User.findById(userId).select('university major admissionYear').lean(),
+    User.findById(userId).select('university major studentId admissionYear').lean(),
     UniversityProfile.findOne({ userId }).select('major').lean(),
   ]);
 
   const university = user?.university || null;
   const major = normalizeMajor(user?.major || profile?.major);
 
-  return getStaffGraduationForStudent(university, major, user?.admissionYear);
+  const { admissionYear, source } = resolveAdmissionYear(user);
+  return getStaffGraduationForStudent(university, major, admissionYear, source);
 }
 
 module.exports = {
   DEFAULT_REQUIREMENTS,
   mergeGraduationRequirements,
+  admissionYearFromStudentId,
+  resolveAdmissionYear,
+  pickYearEntry,
   getUniversityGraduationDoc,
   findMajorRequirements,
-  findCohortRequirements,
-  saveCohortRequirements,
-  deleteCohortRequirements,
   getMajorList,
   getMajorAdditionalRequirements,
   saveMajorAdditionalRequirements,

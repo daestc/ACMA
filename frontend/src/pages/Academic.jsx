@@ -13,7 +13,7 @@ import {
 const CREDIT_OPTIONS = ['3', '2', '1']
 
 function blankRows() {
-  return [0, 1, 2].map(() => ({ subjectName: '', subjectType: 'free', credits: '3', grade: 'A' }))
+  return [0, 1, 2].map(() => ({ subjectName: '', subjectType: 'free', credits: '3', grade: 'A', majorTrack: 'primary' }))
 }
 
 const PROGRESS_CATEGORIES = [
@@ -40,6 +40,8 @@ function Academic() {
   const [trendLoading, setTrendLoading] = useState(true)
   const [progressTotals, setProgressTotals] = useState(null)
   const [progressReq, setProgressReq] = useState(null)
+  // 복수전공 계산 결과(진도 API): { doubleMajorMode, doubleMajorNotice, remaining }
+  const [progressDouble, setProgressDouble] = useState(null)
 
 
   const [gradAvailable, setGradAvailable] = useState(null) // null = 로딩중
@@ -68,6 +70,7 @@ function Academic() {
           subjectType: s.subjectType || 'free',
           credits: String(s.credits ?? '3'),
           grade: s.grade || 'A',
+          majorTrack: s.majorTrack || 'primary',
         })))
       }
     } catch (err) {
@@ -109,6 +112,7 @@ function Academic() {
       if (!json.success) return
       setProgressTotals(json.totals || {})
       setProgressReq(json.graduationRequirements || null)
+      setProgressDouble({ doubleMajorMode: Boolean(json.doubleMajorMode), doubleMajorNotice: json.doubleMajorNotice || null, remaining: json.remaining || null })
     } catch (err) {
       console.error(err)
     }
@@ -153,9 +157,16 @@ function Academic() {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, grade } : row)))
   }
 
+  function handleTrackChange(index, majorTrack) {
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, majorTrack } : row)))
+  }
+
+  // 복수전공이 있는 학생만 전공 과목 행에 주전공/복수전공 선택을 보인다
+  const hasDoubleMajor = Boolean(gradProfile?.doubleMajor)
+
   async function handleSave() {
     const subjects = rows
-      .map((row) => ({ subjectName: row.subjectName.trim(), subjectType: row.subjectType, credits: row.credits, grade: row.grade }))
+      .map((row) => ({ subjectName: row.subjectName.trim(), subjectType: row.subjectType, credits: row.credits, grade: row.grade, majorTrack: row.majorTrack }))
       .filter((s) => s.subjectName)
 
     if (!subjects.length) {
@@ -176,6 +187,7 @@ function Academic() {
 
       setSaveState('saved')
       setTimeout(() => setSaveState('idle'), 1500)
+      loadProgress()
     } catch (err) {
       alert(err.message || '저장에 실패했습니다.')
       setSaveState('idle')
@@ -264,6 +276,12 @@ function Academic() {
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                    {hasDoubleMajor && String(row.subjectType).startsWith('major_') && (
+                      <select className="select-field" name="majorTrack" value={row.majorTrack} onChange={(e) => handleTrackChange(i, e.target.value)} title="이 전공 과목이 어느 전공 학점인지">
+                        <option value="primary">주전공</option>
+                        <option value="double">복수전공</option>
+                      </select>
+                    )}
                     <select
                       className="select-field"
                       name="credits"
@@ -322,6 +340,7 @@ function Academic() {
           profile={gradProfile}
           basis={gradBasis}
           progressTotals={progressTotals}
+          progressDouble={progressDouble}
         />
       )}
     </>
@@ -462,10 +481,11 @@ function formatBasisDate(value) {
 function GradBasis({ basis }) {
   if (!basis) return null
 
+  const sourceLabel = basis.admissionYearSource === 'input' ? '직접 입력' : basis.admissionYearSource === 'studentId' ? '학번에서 판정' : ''
   let yearLabel
-  if (!basis.admissionYear) yearLabel = '입학년도 미입력 (학교 기본 요건)'
-  else if (basis.cohortFromYear) yearLabel = `${basis.admissionYear}학번 (${basis.cohortFromYear}학번부터 적용되는 요건)`
-  else yearLabel = `${basis.admissionYear}학번 (학교 기본 요건)`
+  if (!basis.admissionYear) yearLabel = '입학연도 모름 (학교 기본 요건)'
+  else if (basis.appliedFromYear) yearLabel = `${basis.admissionYear}학번 (${basis.appliedFromYear}학번부터 적용되는 요건${sourceLabel ? `, ${sourceLabel}` : ''})`
+  else yearLabel = `${basis.admissionYear}학번 (학교 기본 요건${sourceLabel ? `, ${sourceLabel}` : ''})`
 
   const updated = formatBasisDate(basis.updatedAt)
   const lines = [
@@ -473,11 +493,13 @@ function GradBasis({ basis }) {
     ['출처', `대학관계자 등록${updated ? ` · 최종 수정 ${updated}` : ''} · ${basis.hasMajorSpecific ? '학과 추가 요건 포함' : '학과 추가 요건 없음(학교 기본값)'}`],
   ]
   if (!basis.admissionYear) {
-    lines.push(['안내', basis.schoolHasCohorts
+    lines.push(['안내', basis.schoolHasYearEntries
       ? '이 학교는 입학년도에 따라 학점 요건이 다릅니다. 마이페이지 > 학사정보에서 입학년도를 입력하면 해당 요건이 적용됩니다.'
       : '마이페이지 > 학사정보에서 입학년도를 입력해 두면, 입학년도별 요건이 등록될 때 자동으로 적용됩니다.'])
   }
-  lines.push(['범위', '복수전공은 현재 지원하지 않으며, 주전공 기준으로 계산합니다.'])
+  lines.push(['범위', basis.doubleMajorCreditsRegistered
+    ? '복수전공 학점 요건이 등록되어 있어, 복수전공을 입력하면 복수전공 기준으로 계산합니다.'
+    : '복수전공 학점 요건이 등록되지 않아, 복수전공 입력과 관계없이 주전공(단일전공) 기준으로 계산합니다.'])
 
   return (
     <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 14, fontSize: 12, lineHeight: 1.7 }}>
@@ -488,7 +510,7 @@ function GradBasis({ basis }) {
   )
 }
 
-function GradTab({ available, message, profile, basis, progressTotals }) {
+function GradTab({ available, message, profile, basis, progressTotals, progressDouble }) {
   if (available === null) {
     return <div className="card"><div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>불러오는 중...</div></div>
   }
@@ -522,6 +544,10 @@ function GradTab({ available, message, profile, basis, progressTotals }) {
   const ncProgram = req.requiredNCProgram == null ? '' : String(req.requiredNCProgram)
   const volunteer = req.requiredVolunteer ?? ''
 
+  const doubleMode = Boolean(progressDouble?.doubleMajorMode)
+  const doubleNotice = progressDouble?.doubleMajorNotice
+  const doubleRemaining = progressDouble?.remaining
+
   const totalEarned = Number(progressTotals?.totalEarned || 0)
   const achievedPct = total ? Math.min(100, Math.round((totalEarned / total) * 100)) : 0
   const remaining = Math.max(0, total - totalEarned)
@@ -530,7 +556,16 @@ function GradTab({ available, message, profile, basis, progressTotals }) {
     <div className="card">
       <div className="card-header">
         <span className="card-title">졸업요건</span>
-        <span className="badge badge-blue">{profile?.major || profile?.university || '-'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span className="badge badge-blue">{profile?.major || profile?.university || '-'}</span>
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+            {profile?.appliedFromYear
+              ? `${profile.appliedFromYear}학번부터 적용 요건 (내 학번: ${profile.admissionYear})`
+              : profile?.admissionYear
+                ? `기본 요건 (내 학번: ${profile.admissionYear})`
+                : '기본 요건 · 학번을 입력하면 입학연도별 요건이 적용됩니다'}
+          </span>
+        </div>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.6 }}>
         대학관계자가 등록한 졸업요건입니다. 학생은 조회만 가능합니다.
@@ -546,6 +581,22 @@ function GradTab({ available, message, profile, basis, progressTotals }) {
           <ReadonlyField label="교양필수" value={genReq} />
           <ReadonlyField label="교양선택" value={genEl} />
         </div>
+
+        {doubleMode && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ padding: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', fontSize: 12, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700 }}>주전공 {req.doubleMajorPrimaryCredits}학점</div>
+              <div style={{ color: 'var(--text2)' }}>취득 {Number(progressTotals?.primary_major || 0)}학점 · 전필 {doubleRemaining?.majorRequired ?? '-'}·전선 {doubleRemaining?.majorElective ?? '-'}학점 남음</div>
+            </div>
+            <div style={{ padding: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', fontSize: 12, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700 }}>복수전공({profile?.doubleMajor}) {req.doubleMajorCredits}학점</div>
+              <div style={{ color: 'var(--text2)' }}>취득 {Number(progressTotals?.double_major || 0)}학점 · {doubleRemaining?.doubleMajor ?? '-'}학점 남음</div>
+            </div>
+          </div>
+        )}
+        {doubleNotice && (
+          <div style={{ fontSize: 12, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>{doubleNotice}</div>
+        )}
 
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.5px', paddingBottom: 6, borderBottom: '1px solid var(--border)', marginTop: 4 }}>추가 이수 요건</div>
 

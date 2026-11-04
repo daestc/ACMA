@@ -194,6 +194,7 @@ async function fetchProgress() {
     const totals = json.totals || {};
     const profile = json.profile || {};
     window._ac_progress = { totals, profile };
+    renderDoubleMajorInfo(json);
 
     const req = json.graduationRequirements || window._ac_graduationRequirements || {};
     const map = [
@@ -283,6 +284,10 @@ function buildSubjectRow(subject = {}) {
       <option value="general_elective">교선</option>
       <option value="free">일선</option>
     </select>
+    <select class="select-field" name="majorTrack" style="min-width:90px; display:none;" title="이 전공 과목이 어느 전공 학점으로 잡히는지">
+      <option value="primary">주전공</option>
+      <option value="double">복수전공</option>
+    </select>
     <select class="select-field" name="credits" style="pointer-events: none; background-color: #f3f4f6;" tabindex="-1">
       <option value="3">3학점</option>
       <option value="2">2학점</option>
@@ -296,6 +301,8 @@ function buildSubjectRow(subject = {}) {
   setTimeout(() => {
     row.querySelector('input[name="subjectName"]').value = sName;
     row.querySelector('select[name="subjectType"]').value = sType;
+    row.querySelector('select[name="majorTrack"]').value = subject.majorTrack === 'double' ? 'double' : 'primary';
+    refreshTrackSelects();
     row.querySelector('select[name="credits"]').value = sCredits;
     row.querySelector('select[name="grade"]').value = sGrade;
   }, 0);
@@ -312,8 +319,10 @@ async function saveAcademicData() {
     const subjectType = row.querySelector('select[name="subjectType"]')?.value || 'free';
     const credits = row.querySelector('select[name="credits"]')?.value || '3';
     const grade = row.querySelector('select[name="grade"]')?.value || null;
+    const trackSelect = row.querySelector('select[name="majorTrack"]');
+    const majorTrack = trackSelect && trackSelect.style.display !== 'none' ? trackSelect.value : undefined;
 
-    return { subjectName, subjectType, credits, grade };
+    return { subjectName, subjectType, credits, grade, majorTrack };
   }).filter(subject => subject.subjectName);
 
   if (!subjects.length) {
@@ -327,7 +336,8 @@ async function saveAcademicData() {
       subjectName: subject.subjectName,
       subjectType: subject.subjectType,
       credits: subject.credits,
-      grade: subject.grade
+      grade: subject.grade,
+      majorTrack: subject.majorTrack
     }))
   };
 
@@ -556,13 +566,15 @@ function renderGradBasis(basis) {
     return;
   }
 
+  const sourceLabel = basis.admissionYearSource === 'input' ? '직접 입력' : basis.admissionYearSource === 'studentId' ? '학번에서 판정' : '';
+  const sourceText = sourceLabel ? `, ${sourceLabel}` : '';
   let yearLabel;
   if (!basis.admissionYear) {
-    yearLabel = '입학년도 미입력 (학교 기본 요건)';
-  } else if (basis.cohortFromYear) {
-    yearLabel = `${basis.admissionYear}학번 (${basis.cohortFromYear}학번부터 적용되는 요건)`;
+    yearLabel = '입학연도 모름 (학교 기본 요건)';
+  } else if (basis.appliedFromYear) {
+    yearLabel = `${basis.admissionYear}학번 (${basis.appliedFromYear}학번부터 적용되는 요건${sourceText})`;
   } else {
-    yearLabel = `${basis.admissionYear}학번 (학교 기본 요건)`;
+    yearLabel = `${basis.admissionYear}학번 (학교 기본 요건${sourceText})`;
   }
 
   const updated = formatBasisDate(basis.updatedAt);
@@ -576,12 +588,17 @@ function renderGradBasis(basis) {
   if (!basis.admissionYear) {
     lines.push({
       strong: '안내',
-      text: basis.schoolHasCohorts
+      text: basis.schoolHasYearEntries
         ? '이 학교는 입학년도에 따라 학점 요건이 다릅니다. 마이페이지 > 학사정보에서 입학년도를 입력하면 해당 요건이 적용됩니다.'
         : '마이페이지 > 학사정보에서 입학년도를 입력해 두면, 입학년도별 요건이 등록될 때 자동으로 적용됩니다.',
     });
   }
-  lines.push({ strong: '범위', text: '복수전공은 현재 지원하지 않으며, 주전공 기준으로 계산합니다.' });
+  lines.push({
+    strong: '범위',
+    text: basis.doubleMajorCreditsRegistered
+      ? '복수전공 학점 요건이 등록되어 있어, 복수전공을 입력하면 복수전공 기준으로 계산합니다.'
+      : '복수전공 학점 요건이 등록되지 않아, 복수전공 입력과 관계없이 주전공(단일전공) 기준으로 계산합니다.',
+  });
 
   box.replaceChildren(...lines.map(({ strong, text }) => {
     const row = document.createElement('div');
@@ -591,6 +608,43 @@ function renderGradBasis(basis) {
     return row;
   }));
   box.style.display = 'block';
+}
+
+// 복수전공: 계산 방식과 남은 학점을 졸업요건 탭에 보여 준다(진도 API 응답 사용)
+function renderDoubleMajorInfo(progress) {
+  const box = document.getElementById('gr-double-info');
+  if (!box) return;
+  let text = '';
+  if (progress?.doubleMajorMode) {
+    const remaining = progress.remaining || {};
+    text = `복수전공 기준으로 계산 중입니다. 복수전공 남은 학점 ${remaining.doubleMajor ?? '-'}학점 · 주전공 전공필수 남은 학점 ${remaining.majorRequired ?? '-'}학점`;
+  } else if (progress?.doubleMajorNotice) {
+    text = progress.doubleMajorNotice;
+  }
+  box.textContent = text;
+  box.style.display = text ? 'block' : 'none';
+}
+
+// 과목별 전공 트랙(주전공/복수전공): 복수전공을 입력한 학생에게만 전공 과목 행에 보여 준다
+window._ac_hasDoubleMajor = false;
+
+function refreshTrackSelects() {
+  document.querySelectorAll('#subject-list .subject-row').forEach((row) => {
+    const track = row.querySelector('select[name="majorTrack"]');
+    const type = row.querySelector('select[name="subjectType"]')?.value || '';
+    if (track) track.style.display = window._ac_hasDoubleMajor && type.startsWith('major_') ? '' : 'none';
+  });
+}
+
+async function loadDoubleMajorFlag() {
+  try {
+    const res = await fetch('/user/profile', { credentials: 'same-origin' });
+    const json = await res.json();
+    window._ac_hasDoubleMajor = Boolean(json?.user?.doubleMajor);
+    refreshTrackSelects();
+  } catch (error) {
+    console.error('profile load failed', error);
+  }
 }
 
 function renderGradCertChips(certifications = []) {
@@ -759,4 +813,5 @@ async function fetchGraduationRequirements() {
 document.addEventListener('DOMContentLoaded', fetchAcademicTrend);
 document.addEventListener('DOMContentLoaded', fetchGraduationRequirements);
 document.addEventListener('DOMContentLoaded', fetchProgress);
+document.addEventListener('DOMContentLoaded', loadDoubleMajorFlag);
 document.addEventListener('DOMContentLoaded', calcSim);

@@ -118,9 +118,7 @@ const dailyChecklistSchema = new Schema(
         source: { type: String, enum: ['manual', 'ai'], default: 'manual' },
         weeklyPlanId: { type: Schema.Types.ObjectId, ref: 'WeeklyPlan', default: null },
         planItemIndex: { type: Number, default: null }, // WeeklyPlan.items의 인덱스 (역추적용)
-        // 이 조각에 배정된 계획 시간. 완료한 시간 ÷ 계획한 시간으로 "시간 기준 달성률"을 계산한다.
-        // 이 필드가 생기기 전 항목에는 없어서(null) 그런 주는 개수 기준으로 계산한다.
-        plannedHours: { type: Number, default: null },
+        hours: { type: Number, default: null }, // AI 조각의 시간 (재분배·진행률 계산용, 옛 조각은 null)
       },
     ],
   },

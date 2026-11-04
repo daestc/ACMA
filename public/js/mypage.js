@@ -221,6 +221,7 @@ async function saveProfile() {
   const studentId = document.getElementById('studentId').value;
   const university = document.getElementById('university').value;
   const major = document.getElementById('major').value;
+  const doubleMajor = document.getElementById('doubleMajor')?.value ?? '';
   const grade = document.getElementById('grade')?.value || '';
   const admissionYear = document.getElementById('admissionYear')?.value ?? '';
   const enrollmentStatus = document.getElementById('enrollmentStatus').value;
@@ -228,7 +229,7 @@ async function saveProfile() {
     const response = await fetch('/user/updateProfile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, university, major, grade, admissionYear, enrollmentStatus })
+      body: JSON.stringify({ studentId, university, major, doubleMajor, grade, admissionYear, enrollmentStatus })
     });
     const result = await response.json();
     if (result.success) {
@@ -283,6 +284,8 @@ async function fetchUserProfile() {
     if (admissionYearEl) admissionYearEl.value = user.admissionYear || '';
     document.getElementById('university').value = user.university || '';
     document.getElementById('major').value = user.major || '';
+    const doubleMajorEl = document.getElementById('doubleMajor');
+    if (doubleMajorEl) doubleMajorEl.value = user.doubleMajor || '';
     const gradeEl = document.getElementById('grade');
     if (gradeEl) gradeEl.value = String(user.grade || 1);
     document.getElementById('enrollmentStatus').value = user.enrollmentStatus || '';

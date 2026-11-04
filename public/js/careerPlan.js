@@ -19,6 +19,8 @@ const ACADEMIC_PHASE_LABEL = {
 let currentPlanId = null;
 let pollTimer = null;
 let currentTargetJob = null; // loadCurrentTargetJob()이 채움 — 계획 jobCode와 대조용
+let userGoalValue = ''; // 이번 주 목표 입력(빈 화면·계획 화면의 두 입력칸이 같은 값을 쓴다)
+const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.';
 
 // KST 자정 기준 오늘 날짜(YYYY-MM-DD) — <input type="date"> value로 그대로 쓸 수 있다.
 // escapeHtml/formatKstDate는 careerAi.js(공용, 이 스크립트보다 먼저 로드됨) 참고.
@@ -29,18 +31,41 @@ function showSection(id) {
   });
 }
 
-function renderItem(item) {
+// 항목별 진행률(서버 계산, progress.items[i]) — 화면은 표시만 한다.
+function renderItemProgress(item, progress) {
+  if (!progress) return '';
+  if (!(item.estimatedHours > 0)) {
+    return `<div style="margin-top:8px;"><span class="badge ${progress.status === 'done' ? 'badge-green' : 'badge-blue'}">${progress.status === 'done' ? '완료' : '미완료'}</span></div>`;
+  }
+  const pct = Math.min(100, Math.round((progress.doneHours / progress.plannedHours) * 100));
+  const statusBadge = progress.status === 'done' ? '<span class="badge badge-green">완료</span>'
+    : progress.status === 'overdue' ? `<span class="badge badge-red">밀림 ${progress.overdueHours}h</span>`
+      : progress.status === 'unplaced' ? `<span class="badge badge-amber">미배치 ${progress.unplacedHours}h</span>` : '';
+  return `
+      <div class="progress-wrap" style="margin-top:10px;">
+        <div class="progress-header">
+          <span class="progress-label" style="display:flex;gap:6px;align-items:center;">진행 ${statusBadge}</span>
+          <span class="progress-value">${progress.doneHours}h / ${progress.plannedHours}h</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill ${progress.status === 'done' ? 'fill-green' : 'fill-blue'}" style="width:${pct}%"></div></div>
+        ${progress.status === 'overdue' ? '<div style="font-size:11px;color:var(--text2);margin-top:4px;">재분배하면 남은 시간이 다시 배치됩니다</div>' : ''}
+      </div>`;
+}
+
+function renderItem(item, progress) {
   const categoryLabel = CATEGORY_LABEL[item.category] || item.category;
   const categoryBadge = CATEGORY_BADGE[item.category] || 'badge-blue';
   const deadlineBadge = item.isDeadline
     ? `<span class="badge badge-red" style="margin-left:6px;">마감 ${escapeHtml(formatKstDate(item.dueDate))}</span>`
     : '';
+  const goalBadge = item.forGoal ? '<span class="badge badge-green">목표</span>' : '';
 
   return `
     <div class="card" style="padding:16px 18px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span class="badge ${categoryBadge}">${escapeHtml(categoryLabel)}</span>
+          ${goalBadge}
           <strong style="font-size:14px;">${escapeHtml(item.title)}</strong>
           ${deadlineBadge}
         </div>
@@ -49,11 +74,40 @@ function renderItem(item) {
         </div>
       </div>
       ${item.reason ? `<p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6;">${escapeHtml(item.reason)}</p>` : ''}
+      ${renderItemProgress(item, progress)}
     </div>`;
 }
 
-function renderPlan(plan) {
+// 이번 주 목표 입력(두 입력칸 동기화)
+function syncUserGoal(value) {
+  userGoalValue = value;
+  ['cp-usergoal', 'cp-usergoal-plan'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value !== value) el.value = value;
+  });
+}
+
+// "내 목표: ..." 와 목표로 표시된 항목의 진행 막대
+function renderUserGoal(plan, progress) {
+  const el = document.getElementById('cp-usergoal-view');
+  if (!el) return;
+  if (!plan.userGoal) {
+    el.innerHTML = '';
+    return;
+  }
+  const g = progress?.goal;
+  const bar = g && g.plannedHours > 0
+    ? `<div class="progress-wrap" style="margin-top:8px;">
+        <div class="progress-header"><span class="progress-label">목표 진행</span><span class="progress-value">${g.doneHours}h / ${g.plannedHours}h</span></div>
+        <div class="progress-track"><div class="progress-fill fill-green" style="width:${Math.min(100, Math.round((g.doneHours / g.plannedHours) * 100))}%"></div></div>
+      </div>`
+    : '';
+  el.innerHTML = `<div style="margin-top:14px;"><div style="font-size:13px;font-weight:700;">내 목표: ${escapeHtml(plan.userGoal)}</div>${bar}</div>`;
+}
+
+function renderPlan(plan, progress, { syncGoal = true } = {}) {
   currentPlanId = plan._id;
+  if (syncGoal) syncUserGoal(plan.userGoal || '');
 
   document.getElementById('cp-range').textContent =
     `${formatKstDate(plan.weekStart)} ~ ${formatKstDate(plan.weekEnd)}`;
@@ -87,6 +141,7 @@ function renderPlan(plan) {
   document.getElementById('cp-hours-fill').style.width = pct + '%';
 
   document.getElementById('cp-goal').textContent = plan.goal || '';
+  renderUserGoal(plan, progress);
   renderAdjustment(plan);
 
   // 계획 생성 시점 목표 직무(plan.jobCode)와 지금 목표 직무가 다르면 배너를 띄운다 —
@@ -101,7 +156,7 @@ function renderPlan(plan) {
   }
 
   const itemsEl = document.getElementById('cp-items');
-  itemsEl.innerHTML = (plan.items || []).map(renderItem).join('')
+  itemsEl.innerHTML = (plan.items || []).map((item, index) => renderItem(item, progress?.items?.[index])).join('')
     || '<div class="card" style="text-align:center;padding:24px;color:var(--text2);font-size:13px;">배치된 항목이 없습니다.</div>';
 
   showSection('cp-plan');
@@ -145,7 +200,17 @@ async function loadDailyChecklist(planId) {
 async function toggleChecklistItem(itemId) {
   const data = await callApi(`/ai/weekly-plan/checklist/${itemId}/toggle`, { method: 'POST' });
   if (data.httpStatus === 200 && currentPlanId) {
-    loadDailyChecklist(currentPlanId);
+    reloadPlan(currentPlanId);
+  }
+}
+
+// 보고 있는 계획을 진행률과 함께 다시 불러온다(체크 토글 후 진행 막대 갱신용). 입력 중인 목표는 건드리지 않는다.
+async function reloadPlan(planId) {
+  const data = await callApi(`/ai/weekly-plan/${planId}`);
+  if (data.httpStatus === 200 && data.status === 'done' && data.data) {
+    renderPlan(data.data, data.progress, { syncGoal: false });
+  } else {
+    loadDailyChecklist(planId);
   }
 }
 
@@ -171,7 +236,7 @@ async function loadCurrentPlan() {
   }
 
   if (data.status === 'done' && data.data) {
-    renderPlan(data.data);
+    renderPlan(data.data, data.progress);
     return;
   }
 
@@ -187,7 +252,7 @@ function startPolling() {
     null,
     (data) => {
       if (data.status === 'done' && data.data) {
-        renderPlan(data.data);
+        renderPlan(data.data, data.progress);
       } else {
         document.getElementById('cp-failed-msg').textContent = data.errorMessage || '생성에 실패했습니다.';
         showSection('cp-failed');
@@ -203,6 +268,10 @@ const MISS_OPTIONS = [['time', '시간 부족'], ['hard', '난도 높음'], ['ot
 const REVIEW_STATE_LABEL = { done: '완료', partial: '일부만 완료', missed: '못 함' };
 let reviewContext = null; // { weekStart(생성할 주), data(서버 응답) }
 const reviewAnswers = new Map(); // planItemIndex → 선택한 값
+
+function regeneratePlan() {
+  if (window.confirm(REGENERATE_CONFIRM)) generatePlan();
+}
 
 async function generatePlan() {
   // weekStart를 안 보내면 서버가 "오늘이 일/월이 아니면 다음 주"를 기본값으로 잡는다
@@ -320,7 +389,7 @@ function renderAdjustment(plan) {
 async function requestGeneration(weekStart) {
   const data = await callApi('/ai/weekly-plan', {
     method: 'POST',
-    body: JSON.stringify({ weekStart }),
+    body: JSON.stringify({ weekStart, userGoal: userGoalValue }),
   });
 
   if (data.httpStatus === 202 && data.id) {

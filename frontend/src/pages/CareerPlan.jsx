@@ -17,6 +17,42 @@ function reviewSummaryText(review) {
   return `지난 계획(${formatKstDate(review.weekStart)} ~ ${formatKstDate(review.weekEnd)})의 달성률은 ${Math.round(s.timeRate * 100)}%입니다${basis}. 항목별로 한 번씩 골라 주세요.`
 }
 
+const USER_GOAL_MAX_LENGTH = 100
+const USER_GOAL_PLACEHOLDER = '예: 정보처리기사 필기 대비 위주로'
+const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.'
+
+// 항목별 진행률(서버 계산, progress.items[i]) — 화면은 표시만 한다.
+function ItemProgress({ item, progress }) {
+  if (!progress) return null
+  if (!(item.estimatedHours > 0)) {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <span className={`badge ${progress.status === 'done' ? 'badge-green' : 'badge-blue'}`}>{progress.status === 'done' ? '완료' : '미완료'}</span>
+      </div>
+    )
+  }
+  const pct = Math.min(100, Math.round((progress.doneHours / progress.plannedHours) * 100))
+  return (
+    <div className="progress-wrap" style={{ marginTop: 10 }}>
+      <div className="progress-header">
+        <span className="progress-label" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          진행
+          {progress.status === 'done' && <span className="badge badge-green">완료</span>}
+          {progress.status === 'overdue' && <span className="badge badge-red">밀림 {progress.overdueHours}h</span>}
+          {progress.status === 'unplaced' && <span className="badge badge-amber">미배치 {progress.unplacedHours}h</span>}
+        </span>
+        <span className="progress-value">{progress.doneHours}h / {progress.plannedHours}h</span>
+      </div>
+      <div className="progress-track">
+        <div className={`progress-fill ${progress.status === 'done' ? 'fill-green' : 'fill-blue'}`} style={{ width: `${pct}%` }} />
+      </div>
+      {progress.status === 'overdue' && (
+        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>재분배하면 남은 시간이 다시 배치됩니다</div>
+      )}
+    </div>
+  )
+}
+
 function pctBadgeClass(pct) {
   if (pct >= 70) return 'badge-green'
   if (pct >= 40) return 'badge-blue'
@@ -24,11 +60,31 @@ function pctBadgeClass(pct) {
   return 'badge-red'
 }
 
+function UserGoalInput({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
+      <input
+        type="text"
+        className="input-field"
+        style={{ flex: 1, minWidth: 0 }}
+        value={value}
+        maxLength={USER_GOAL_MAX_LENGTH}
+        placeholder={USER_GOAL_PLACEHOLDER}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="이번 주 목표"
+      />
+      <span style={{ fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{value.length}/{USER_GOAL_MAX_LENGTH}</span>
+    </div>
+  )
+}
+
 function CareerPlan() {
   const [section, setSection] = useState('empty')
   const [plan, setPlan] = useState(null)
+  const [progress, setProgress] = useState(null)
   const [failedMsg, setFailedMsg] = useState('생성에 실패했습니다.')
   const [weekStartInput, setWeekStartInput] = useState(todayKstDateString())
+  const [userGoalInput, setUserGoalInput] = useState('')
   const [currentTargetJob, setCurrentTargetJob] = useState(null) // {jobCode, title} | null
   const [days, setDays] = useState(null)
 
@@ -60,9 +116,10 @@ function CareerPlan() {
     setDays(data.days || [])
   }
 
-  function renderPlanDoc(doc) {
+  function renderPlanDoc(doc, planProgress) {
     currentPlanIdRef.current = doc._id
     setPlan(doc)
+    setProgress(planProgress || null)
     setSection('plan')
     loadDailyChecklist(doc._id)
   }
@@ -73,7 +130,8 @@ function CareerPlan() {
     stopPolling()
     pollTimerRef.current = pollUntilDone(`/ai/weekly-plan/${currentPlanIdRef.current}`, null, (data) => {
       if (data.status === 'done' && data.data) {
-        renderPlanDoc(data.data)
+        renderPlanDoc(data.data, data.progress)
+        setUserGoalInput(data.data.userGoal || '')
       } else {
         setFailedMsg(data.errorMessage || '생성에 실패했습니다.')
         setSection('failed')
@@ -98,10 +156,19 @@ function CareerPlan() {
       return
     }
     if (data.status === 'done' && data.data) {
-      renderPlanDoc(data.data)
+      renderPlanDoc(data.data, data.progress)
+      setUserGoalInput(data.data.userGoal || '')
       return
     }
     setSection('empty')
+  }
+
+  // 보고 있는 계획을 진행률과 함께 다시 불러온다(체크 토글 후 진행 막대 갱신용).
+  async function reloadPlan(planId) {
+    const data = await callApi(`/ai/weekly-plan/${planId}`)
+    if (data.httpStatus === 200 && data.status === 'done' && data.data) {
+      renderPlanDoc(data.data, data.progress)
+    }
   }
 
   async function loadCurrentTargetJob() {
@@ -215,7 +282,7 @@ function CareerPlan() {
   }
 
   async function requestGeneration(weekStart) {
-    const data = await callApi('/ai/weekly-plan', { method: 'POST', body: JSON.stringify({ weekStart }) })
+    const data = await callApi('/ai/weekly-plan', { method: 'POST', body: JSON.stringify({ weekStart, userGoal: userGoalInput }) })
     if (data.httpStatus === 202 && data.id) {
       currentPlanIdRef.current = data.id
       startPolling()
@@ -241,7 +308,7 @@ function CareerPlan() {
   async function toggleChecklistItem(itemId) {
     const data = await callApi(`/ai/weekly-plan/checklist/${itemId}/toggle`, { method: 'POST' })
     if (data.httpStatus === 200 && currentPlanIdRef.current) {
-      loadDailyChecklist(currentPlanIdRef.current)
+      reloadPlan(currentPlanIdRef.current)
     }
   }
 
@@ -306,7 +373,8 @@ function CareerPlan() {
           <div style={{ fontSize: 36, marginBottom: 12 }}>📅</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>이번 주 계획이 아직 없습니다</div>
           <p style={{ fontSize: 13, color: 'var(--text2)' }}>현재 학업·스펙 데이터를 바탕으로 이번 주 학습 계획을 자동으로 만들어드립니다.</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14, maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
+            <UserGoalInput value={userGoalInput} onChange={setUserGoalInput} />
             <input type="date" className="input-field" value={weekStartInput} onChange={(e) => setWeekStartInput(e.target.value)} title="계획을 만들 주에 속하는 아무 날짜나 선택 (기본값: 오늘 = 이번 주)" />
             <button type="button" className="btn btn-accent" disabled={generateDisabled} title={generateTitle} onClick={generatePlan}>계획 생성하기</button>
           </div>
@@ -334,9 +402,10 @@ function CareerPlan() {
                 <span className="card-title">{formatKstDate(plan.weekStart)} ~ {formatKstDate(plan.weekEnd)}</span>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>학사 상태: {ACADEMIC_PHASE_LABEL[plan.computed?.academicPhase] || plan.computed?.academicPhase || '-'}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <UserGoalInput value={userGoalInput} onChange={setUserGoalInput} />
                 <button type="button" className="btn btn-ghost btn-sm" onClick={redistribute}>재분배</button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={generateDisabled} title={generateTitle} onClick={generatePlan}>다시 생성</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={generateDisabled} title={generateTitle} onClick={() => { if (window.confirm(REGENERATE_CONFIRM)) generatePlan() }}>다시 생성</button>
               </div>
             </div>
 
@@ -368,6 +437,23 @@ function CareerPlan() {
               )
             })()}
 
+            {plan.userGoal && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>내 목표: {plan.userGoal}</div>
+                {progress?.goal && progress.goal.plannedHours > 0 && (
+                  <div className="progress-wrap" style={{ marginTop: 8 }}>
+                    <div className="progress-header">
+                      <span className="progress-label">목표 진행</span>
+                      <span className="progress-value">{progress.goal.doneHours}h / {progress.goal.plannedHours}h</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill fill-green" style={{ width: `${Math.min(100, Math.round((progress.goal.doneHours / progress.goal.plannedHours) * 100))}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginTop: 14 }}>{plan.goal || ''}</p>
 
             {plan.adjustment && (
@@ -390,17 +476,19 @@ function CareerPlan() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(plan.items || []).length === 0 ? (
               <div className="card" style={{ textAlign: 'center', padding: 20, color: 'var(--text2)', fontSize: 13 }}>배치된 항목이 없습니다.</div>
-            ) : plan.items.map((item) => (
+            ) : plan.items.map((item, index) => (
               <div className="card" key={item._id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className={`badge ${CATEGORY_BADGE[item.category] || 'badge-blue'}`}>{CATEGORY_LABEL[item.category] || item.category}</span>
                     {item.isDeadline && <span className="badge badge-red">마감 {formatKstDate(item.dueDate)}</span>}
+                    {item.forGoal && <span className="badge badge-green">목표</span>}
                     <strong>{item.title}</strong>
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
                 </div>
                 {item.reason && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, lineHeight: 1.6 }}>{item.reason}</p>}
+                <ItemProgress item={item} progress={progress?.items?.[index]} />
               </div>
             ))}
           </div>

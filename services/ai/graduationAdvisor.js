@@ -9,7 +9,7 @@ function emptySummary(context) {
     hasData: false,
     remaining: {
       total: null, majorRequired: null, majorElective: null,
-      generalRequired: null, generalElective: null,
+      generalRequired: null, generalElective: null, doubleMajor: null,
     },
     pendingRequirements: context?.academic?.pendingRequirements || [],
     estimatedSemesters: null,
@@ -26,7 +26,7 @@ function clamp(v) {
  * @param {object} context buildPortfolioContext(userId) 결과
  * @returns {{
  *   hasData: boolean,
- *   remaining: { total, majorRequired, majorElective, generalRequired, generalElective },
+ *   remaining: { total, majorRequired, majorElective, generalRequired, generalElective, doubleMajor },
  *   pendingRequirements: string[],
  *   estimatedSemesters: number|null,
  *   horizon: 'semester' | 'total',
@@ -46,6 +46,7 @@ function summarizeGraduation(context) {
     majorElective: clamp(raw.majorElective),
     generalRequired: clamp(raw.generalRequired),
     generalElective: clamp(raw.generalElective),
+    doubleMajor: clamp(raw.doubleMajor), // 복수전공 모드에서만 숫자
   };
 
   const estimatedSemesters = Number.isFinite(remaining.total)
@@ -65,7 +66,9 @@ function summarizeGraduation(context) {
   // 기준으로 잡았다가 LLM이 "정보보호"를 majorRequired로 태깅하는(선택 불가능한
   // 영역에 분야를 배정하는) 무의미한 결과가 나온 적이 있다. 전공선택·교양선택
   // 어느 한쪽이라도 남아 있으면 분야 제안이 의미 있다.
-  const hasElectiveRoom = (remaining.majorElective || 0) + (remaining.generalElective || 0) > 0;
+  // 복수전공 학점도 학생이 과목을 골라 채우는 영역이라 함께 본다(단일전공이면 null → 0).
+  const hasElectiveRoom = (remaining.majorElective || 0) + (remaining.generalElective || 0)
+    + (remaining.doubleMajor || 0) > 0;
 
   return {
     hasData: true,

@@ -42,6 +42,15 @@ function resolveWeekStart(requestedWeekStart) {
   return nextWeekStart;
 }
 
+const USER_GOAL_MAX_LENGTH = 100;
+
+// 학생이 쓴 주간 목표 — 줄바꿈·연속 공백을 하나로 접고 100자로 자른다. 비면 null.
+function normalizeUserGoal(value) {
+  if (typeof value !== 'string') return null;
+  const goal = value.replace(/\s+/g, ' ').trim().slice(0, USER_GOAL_MAX_LENGTH);
+  return goal || null;
+}
+
 // weekStart(일요일 00:00 KST)로부터 토요일 23:59:59.999 KST를 구한다.
 function computeWeekEnd(weekStart) {
   const weekDates = kstDate.getWeekDateStrings(weekStart);
@@ -72,17 +81,19 @@ async function requestWeeklyPlan(req, res) {
 
     const weekStart = resolveWeekStart(req.body?.weekStart);
     const weekEnd = computeWeekEnd(weekStart);
+    // 다시 생성할 때 목표를 비우면 옛 목표를 남기지 않고 null로 덮어쓴다.
+    const userGoal = normalizeUserGoal(req.body?.userGoal);
 
     const doc = await WeeklyPlan.findOneAndUpdate(
       { userId, weekStart },
-      { userId, weekStart, weekEnd, status: 'pending', errorMessage: null },
+      { userId, weekStart, weekEnd, userGoal, status: 'pending', errorMessage: null },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
     res.status(202).json({ id: doc._id, status: 'pending' });
 
     setImmediate(() => {
-      planService.generateWeeklyPlan(doc._id, userId, weekStart).catch(error => {
+      planService.generateWeeklyPlan(doc._id, userId, weekStart, userGoal).catch(error => {
         logger.error(`[ai] weekly-plan background crash (docId=${doc._id}): ${error.message}`);
       });
     });
@@ -102,7 +113,8 @@ async function getWeeklyPlan(req, res) {
     if (doc.status !== 'done') {
       return res.json({ status: doc.status, errorMessage: doc.errorMessage || null });
     }
-    return res.json({ status: doc.status, data: doc });
+    const progress = await completionService.getPlanProgress(req.user.id, doc);
+    return res.json({ status: doc.status, data: doc, progress });
   } catch (error) {
     logger.error(`[ai] getWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -122,7 +134,8 @@ async function getCurrentWeeklyPlan(req, res) {
       // React 쪽(CareerPlan.jsx)이 이 id로 폴링을 재개할 수 있도록 추가했다.
       return res.json({ id: doc._id, status: doc.status, errorMessage: doc.errorMessage || null });
     }
-    return res.json({ status: doc.status, data: doc });
+    const progress = await completionService.getPlanProgress(req.user.id, doc);
+    return res.json({ status: doc.status, data: doc, progress });
   } catch (error) {
     logger.error(`[ai] getCurrentWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -250,7 +263,8 @@ async function redistributeWeeklyPlan(req, res) {
       return res.status(409).json({ success: false, message: '완료된 주간계획만 재분배할 수 있습니다.' });
     }
 
-    const result = await planService.runDistribution(doc);
+    // 생성 때 붙은 안내(시간표 없음·목표 비율 등)는 재분배로 바뀌지 않으니 그대로 넘긴다.
+    const result = await planService.runDistribution(doc, doc.distribution?.notices || []);
     return res.json({ dayCount: result.dayCount, itemCount: result.itemCount, errors: result.errors });
   } catch (error) {
     logger.error(`[ai] redistributeWeeklyPlan error: ${error.message}`);
@@ -617,6 +631,12 @@ async function addGapToWeeklyPlan(req, res) {
       relatedId: diagnosis._id,
     });
     await plan.save();
+
+    // 추가한 항목을 바로 일별 보기에 배치한다. 재분배가 완료한 조각을 보존하므로 이미 한 일은
+    // 그대로 남는다. 생성 중(pending)인 계획은 생성이 끝날 때 어차피 다시 배치된다.
+    if (plan.status === 'done') {
+      await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+    }
 
     return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1 });
   } catch (error) {

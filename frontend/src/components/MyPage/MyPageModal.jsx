@@ -9,7 +9,7 @@ function MyPageModal({ onClose }) {
   const [profile, setProfile] = useState(null)
   const [loadError, setLoadError] = useState(false)
 
-  const [form, setForm] = useState({ studentId: '', admissionYear: '', university: '', major: '', grade: '1', enrollmentStatus: '재학' })
+  const [form, setForm] = useState({ studentId: '', admissionYear: '', university: '', major: '', doubleMajor: '', grade: '1', enrollmentStatus: '재학' })
   const [saving, setSaving] = useState(false)
 
   const [showChangePw, setShowChangePw] = useState(false)
@@ -28,6 +28,7 @@ function MyPageModal({ onClose }) {
           admissionYear: data.user.admissionYear ? String(data.user.admissionYear) : '',
           university: data.user.university || '',
           major: data.user.major || '',
+          doubleMajor: data.user.doubleMajor || '',
           grade: String(data.user.grade || 1),
           enrollmentStatus: data.user.enrollmentStatus || '재학',
         })
@@ -79,7 +80,7 @@ function MyPageModal({ onClose }) {
         window.alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.')
       }
     } catch (err) {
-      window.alert(err?.message || '프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.')
+      window.alert(err.status === 400 && err.message ? err.message : '프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.')
     } finally {
       setSaving(false)
     }
@@ -167,9 +168,13 @@ function MyPageModal({ onClose }) {
                       <input className="input-field" style={{ width: '100%' }} value={form.university} onChange={e => setForm(f => ({ ...f, university: e.target.value }))} />
                     </div>
                     <div className="form-group">
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>전공</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>주전공</label>
                       <input className="input-field" style={{ width: '100%' }} value={form.major} onChange={e => setForm(f => ({ ...f, major: e.target.value }))} />
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>주전공 기준으로 졸업요건을 계산합니다. 복수전공은 현재 지원하지 않습니다.</div>
+                    </div>
+                    <div className="form-group">
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>복수전공(선택)</label>
+                      <input className="input-field" style={{ width: '100%' }} placeholder="없으면 비워 두세요" value={form.doubleMajor} onChange={e => setForm(f => ({ ...f, doubleMajor: e.target.value }))} />
                     </div>
                     <div className="form-group">
                       <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>학년</label>

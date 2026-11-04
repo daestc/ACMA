@@ -5,6 +5,15 @@ const kstDate = require('../../utils/kstDate');
 const MAX_INCOMPLETE_ITEMS = 5;
 const DEFAULT_HISTORY_LIMIT = 12;
 
+// 조각의 시간. hours 필드가 생기기 전에 만든 조각은 content 끝의 "(1/2, 3h)"·"(3h)"에서 읽는다.
+// 0h 항목(시간 표기 없음)이나 80자에서 "…"로 잘린 문자열은 읽을 수 없어 0으로 본다.
+const SLICE_HOURS_PATTERN = /(\d+(?:\.\d+)?)h\)$/;
+function sliceHours(item) {
+  if (typeof item.hours === 'number') return item.hours;
+  const match = SLICE_HOURS_PATTERN.exec(item.content || '');
+  return match ? Number(match[1]) : 0;
+}
+
 function collectAiItems(checklists, weeklyPlanId) {
   const items = [];
   checklists.forEach(doc => {
@@ -29,6 +38,83 @@ async function calcCompletionRate(userId, weeklyPlanId) {
 
   const completed = aiItems.filter(item => item.isCompleted).length;
   return +(completed / aiItems.length).toFixed(2);
+}
+
+// 이 계획에서 이미 완료한 AI 조각 — 재분배가 완료한 시간을 다시 배치하지 않게 distribute()에 넘긴다.
+async function collectCompletedSlices(userId, weeklyPlanId, weekDates) {
+  const checklists = await DailyChecklist.find({ userId, date: { $in: weekDates } })
+    .select('date items')
+    .lean();
+
+  const slices = [];
+  checklists.forEach(doc => {
+    (doc.items || []).forEach(item => {
+      if (item.source !== 'ai' || !item.isCompleted || String(item.weeklyPlanId) !== String(weeklyPlanId)) return;
+      slices.push({ date: doc.date, planItemIndex: item.planItemIndex ?? null, hours: sliceHours(item) });
+    });
+  });
+  return slices;
+}
+
+// 항목별 진행률(시간 기준). 화면은 표시만 하고 계산은 여기서 한다 — 일별 보기만으로는 지난 날의
+// 미완료 조각이 재분배로 지워진 뒤를 알 수 없다. 주간 달성률(rateOf, 조각 개수 기준)과는 별개다.
+async function getPlanProgress(userId, plan) {
+  const today = kstDate.toKstDateString(new Date());
+  const checklists = await DailyChecklist.find({ userId, date: { $in: kstDate.getWeekDateStrings(plan.weekStart) } })
+    .select('date items')
+    .lean();
+
+  const byIndex = new Map();
+  checklists.forEach(doc => {
+    (doc.items || []).forEach(item => {
+      if (item.source !== 'ai' || item.planItemIndex == null || String(item.weeklyPlanId) !== String(plan._id)) return;
+      const bucket = byIndex.get(item.planItemIndex) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
+      const hours = sliceHours(item);
+      if (item.isCompleted) {
+        bucket.done += hours;
+        bucket.doneSlices += 1;
+      } else if (doc.date >= today) {
+        bucket.scheduled += hours;
+      } else {
+        bucket.overdue += hours;
+      }
+      byIndex.set(item.planItemIndex, bucket);
+    });
+  });
+
+  const round = n => +n.toFixed(1);
+  const items = (plan.items || []).map((item, index) => {
+    const b = byIndex.get(index) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
+    const plannedHours = item.estimatedHours || 0;
+    const unplacedHours = Math.max(0, plannedHours - b.done - b.scheduled - b.overdue);
+    let status;
+    if (!(plannedHours > 0)) status = b.doneSlices > 0 ? 'done' : 'on_track';
+    else if (b.done >= plannedHours) status = 'done';
+    else if (b.overdue > 0) status = 'overdue';
+    else if (unplacedHours > 0) status = 'unplaced';
+    else status = 'on_track';
+    return {
+      index,
+      plannedHours,
+      doneHours: round(b.done),
+      scheduledHours: round(b.scheduled),
+      overdueHours: round(b.overdue),
+      unplacedHours: round(unplacedHours),
+      status,
+    };
+  });
+
+  // 학생 목표가 있으면 forGoal 항목들의 합. 완료가 계획을 넘은 항목은 계획 시간까지만 센다.
+  let goal = null;
+  if (plan.userGoal) {
+    const goalItems = items.filter(p => plan.items[p.index].forGoal);
+    goal = {
+      plannedHours: round(goalItems.reduce((sum, p) => sum + p.plannedHours, 0)),
+      doneHours: round(goalItems.reduce((sum, p) => sum + Math.min(p.doneHours, p.plannedHours), 0)),
+    };
+  }
+
+  return { items, goal };
 }
 
 // 직전 주 달성률 — 새 주간계획 생성 프롬프트에 넣는다
@@ -186,6 +272,7 @@ async function getWeeklyPlanStats(userId) {
 }
 
 // ── 시간 기준 달성률과 "지난주 돌아보기" ─────────────────────────────────────
+// 조각의 시간은 위의 sliceHours(item)로 읽는다(hours 필드가 없는 옛 조각은 content 끝의 "(3h)"에서 복원).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PACE_WINDOW_DAYS = 28; // 이보다 오래된 기록은 지금의 수행 속도로 보지 않는다
@@ -194,7 +281,7 @@ const DIFFICULTIES = ['easy', 'normal', 'hard'];
 const MISS_REASONS = ['time', 'hard', 'other'];
 const round2 = n => Math.round(n * 100) / 100;
 
-// 계획들의 AI 체크리스트 조각(날짜·완료·계획 시간)을 한 번의 조회로 모은다.
+// 계획들의 AI 체크리스트 조각(날짜·완료·시간)을 한 번의 조회로 모은다.
 async function fetchPlanSlots(userId, plans) {
   const slotsByPlan = new Map();
   if (plans.length === 0) return slotsByPlan;
@@ -214,7 +301,7 @@ async function fetchPlanSlots(userId, plans) {
       slotsByPlan.get(key).push({
         date: doc.date,
         isCompleted: Boolean(item.isCompleted),
-        plannedHours: Number.isFinite(item.plannedHours) ? item.plannedHours : null,
+        hours: sliceHours(item),
         planItemIndex: item.planItemIndex,
       });
     });
@@ -223,26 +310,25 @@ async function fetchPlanSlots(userId, plans) {
 }
 
 // 이미 지난(오늘 포함) 날짜의 조각만으로 실행 결과를 요약한다 — 아직 오지 않은 날의 미완료는 "못 한 것"이 아니다.
-// 계획 시간이 모든 조각에 기록돼 있으면 시간 기준(완료한 시간 ÷ 계획한 시간), 아니면(옛 데이터) 개수 기준이다.
+// 시간이 읽히는 조각이 있으면 시간 기준(완료한 시간 ÷ 계획한 시간), 하나도 없으면 개수 기준이다.
 function summarizeExecution(slots, todayStr) {
   const due = (slots || []).filter(s => s.date <= todayStr);
   if (due.length === 0) return null;
 
   const completed = due.filter(s => s.isCompleted);
-  const hoursKnown = due.every(s => s.plannedHours !== null);
-  const plannedHours = hoursKnown ? due.reduce((sum, s) => sum + s.plannedHours, 0) : null;
-  const useHours = hoursKnown && plannedHours > 0;
-  const completedHours = useHours ? completed.reduce((sum, s) => sum + s.plannedHours, 0) : null;
+  const plannedHours = due.reduce((sum, s) => sum + s.hours, 0);
+  const useHours = plannedHours > 0;
+  const completedHours = useHours ? completed.reduce((sum, s) => sum + s.hours, 0) : null;
 
   const perItem = new Map();
   due.forEach(s => {
     if (s.planItemIndex == null) return;
     const entry = perItem.get(s.planItemIndex) || { dueSlots: 0, completedSlots: 0, plannedHours: 0, completedHours: 0 };
     entry.dueSlots += 1;
-    entry.plannedHours += s.plannedHours || 0;
+    entry.plannedHours += s.hours;
     if (s.isCompleted) {
       entry.completedSlots += 1;
-      entry.completedHours += s.plannedHours || 0;
+      entry.completedHours += s.hours;
     }
     perItem.set(s.planItemIndex, entry);
   });
@@ -346,12 +432,6 @@ async function saveReview(userId, planId, rawAnswers) {
 }
 
 module.exports = {
-  calcCompletionRate,
-  getPreviousWeekFeedback,
-  getWeeklyPlanHistory,
-  getWeeklyPlanStats,
-  summarizeExecution,
-  getRecentPaceRates,
-  getReviewTarget,
-  saveReview,
+  sliceHours, collectCompletedSlices, getPlanProgress, calcCompletionRate, getPreviousWeekFeedback, getWeeklyPlanHistory, getWeeklyPlanStats,
+  summarizeExecution, getRecentPaceRates, getReviewTarget, saveReview,
 };

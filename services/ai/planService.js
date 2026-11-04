@@ -1,4 +1,5 @@
 const { WeeklyPlan } = require('../../models/Ai');
+const { DailyChecklist } = require('../../models/Calendar');
 const { Job } = require('../../models/Certifications_jobs');
 const contextBuilder = require('./contextBuilder');
 const weeklyPlanPrompt = require('./prompts/weeklyPlan');
@@ -6,6 +7,8 @@ const aiClient = require('./aiClient');
 const validator = require('./validator');
 const dailyDistributor = require('./dailyDistributor');
 const planAdjustment = require('./planAdjustment');
+const completionService = require('./completionService');
+const kstDate = require('../../utils/kstDate');
 const logger = require('../../config/logger');
 
 const GENERIC_FAILURE_MESSAGE = '생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
@@ -24,8 +27,10 @@ function injectDueDates(items, certSchedule, notices) {
     if (!item.isDeadline) return;
 
     const normalizedTitle = normalizeForMatch(item.title);
+    // 지난 일정(dDay < 0)은 후보에서 뺀다 — 조회에서 이미 거르지만, 데이터가 어긋나도 과거 날짜가
+    // 마감으로 들어가 배치할 날이 없는 항목이 되지 않게 한 번 더 막는다.
     const candidates = (certSchedule || []).filter(
-      cert => cert.certName && normalizedTitle.includes(normalizeForMatch(cert.certName)),
+      cert => cert.certName && cert.dDay >= 0 && normalizedTitle.includes(normalizeForMatch(cert.certName)),
     );
 
     if (candidates.length === 0) {
@@ -72,11 +77,18 @@ function buildGenerationMeta(meta, promptVersion) {
 // 유효하므로 사용자에게 보여줄 수 있고, 분배만 재시도 가능해야 한다(POST .../distribute).
 // errors(실제 배치 실패)와 notices(정보성 안내)를 분리해서 저장한다 — 성격이 다른
 // 메시지를 한 배열에 섞어두면 화면에서 사용자가 뭘 조치해야 하는지 구분이 안 된다.
+// 이미 완료한 조각을 함께 넘겨야 재분배 때 한 시간을 다시 깔지 않는다(재분배 API·생성 직후·갭 추가 모두 여기를 거친다).
 async function runDistribution(weeklyPlanDoc, extraNotices = []) {
   try {
+    const completedSlices = await completionService.collectCompletedSlices(
+      weeklyPlanDoc.userId,
+      weeklyPlanDoc._id,
+      kstDate.getWeekDateStrings(weeklyPlanDoc.weekStart),
+    );
     const { byDate, errors, weekDates } = dailyDistributor.distribute(
       weeklyPlanDoc,
       weeklyPlanDoc.computed?.availableHoursByDay || [],
+      completedSlices,
     );
     await dailyDistributor.applyDistributionToChecklists(weeklyPlanDoc.userId, weeklyPlanDoc._id, byDate, weekDates);
 
@@ -106,9 +118,9 @@ async function runDistribution(weeklyPlanDoc, extraNotices = []) {
 }
 
 // 주간 계획 생성 전체 흐름. 컨트롤러의 백그라운드(setImmediate)에서 호출된다.
-async function generateWeeklyPlan(docId, userId, weekStart) {
+async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
   try {
-    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart);
+    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart, userGoal);
 
     const { data, meta } = await aiClient.generateJSON({
       system: weeklyPlanPrompt.buildSystem(),
@@ -136,6 +148,25 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
     const extraNotices = [];
     injectDueDates(sanitized.items, context.certSchedule, extraNotices);
 
+    // 규칙 14는 목표 항목을 50% 이상으로 잡게 하지만 마감·시험 규칙이 우선이라 정당하게 모자랄
+    // 수 있다. 항목을 고치거나 다시 생성하지 않고 안내만 한다. "마감·시험 때문"이라는 원인은
+    // 실제로 마감 항목이 있거나 시험 기간·시험 2주 전일 때만 붙인다.
+    if (context.userGoal && sanitized.allocatedHours > 0) {
+      const goalHours = sanitized.items.filter(item => item.forGoal).reduce((sum, item) => sum + item.estimatedHours, 0);
+      const goalPct = Math.round((goalHours / sanitized.allocatedHours) * 100);
+      const { academicPhase, daysUntilNextExam } = context.computed;
+      const deadlineOrExam = sanitized.items.some(item => item.isDeadline)
+        || academicPhase === 'midterm' || academicPhase === 'final'
+        || (daysUntilNextExam != null && daysUntilNextExam <= 14);
+      if (goalHours === 0) {
+        extraNotices.push('입력한 목표와 직접 관련된 항목을 만들지 못했습니다. 공부할 과목이나 자격증처럼 구체적으로 적어 보세요.');
+      } else if (goalPct < 50 && deadlineOrExam) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다. 마감·시험 일정이 먼저 배치되었습니다.`);
+      } else if (goalPct < 50) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다.`);
+      }
+    }
+
     // hasTimetable:false면 availableHoursByDay가 실제 시간표가 아니라 기본값(하루
     // 6시간 균일)으로 채워졌다는 뜻이다 — 방학이라 정말 시간표가 없는 것과 학생이
     // 아직 등록을 안 한 것을 구분할 수 없으므로, 조용히 기본값을 쓰는 대신 알린다.
@@ -145,8 +176,9 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
 
     const targetJob = await Job.findOne({ userId, status: 'target' }).select('jobCode title').lean();
 
+    // status는 아직 pending으로 둔다. 화면 폴링은 done을 보는 즉시 진행률을 한 번 그리고 멈추므로,
+    // 옛 완료 조각 분리·재배치가 끝난 뒤에 done으로 바꿔야 옛 기록이 새 항목에 붙은 진행률이 안 그려진다.
     const savedDoc = await WeeklyPlan.findByIdAndUpdate(docId, {
-      status: 'done',
       errorMessage: null,
       jobCode: targetJob?.jobCode || null,
       jobTitle: targetJob?.title || null,
@@ -166,7 +198,18 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
       generation: buildGenerationMeta(meta, weeklyPlanPrompt.VERSION),
     }, { new: true }).lean();
 
+    // 같은 주를 다시 생성하면 _id가 그대로라, 옛 완료 조각의 planItemIndex가 새 항목 배열을
+    // 가리키게 된다. 번호만 떼어 내 새 항목 진행률에 섞이지 않게 한다 — 완료 기록 자체는 남아
+    // 주간 달성률과 오늘 용량 계산에는 계속 반영된다.
+    await DailyChecklist.updateMany(
+      { userId, 'items.weeklyPlanId': docId },
+      { $set: { 'items.$[e].planItemIndex': null } },
+      { arrayFilters: [{ 'e.weeklyPlanId': docId, 'e.source': 'ai', 'e.isCompleted': true }] },
+    );
+
+    // runDistribution은 실패해도 던지지 않고 distribution.status만 failed로 남기므로 done 전환은 항상 실행된다.
     await runDistribution(savedDoc, extraNotices);
+    await WeeklyPlan.findByIdAndUpdate(docId, { status: 'done' });
   } catch (error) {
     logger.error(`[ai] weekly-plan generation failed (docId=${docId}): ${error.message}`);
     await WeeklyPlan.findByIdAndUpdate(docId, {

@@ -270,13 +270,16 @@ async function saveGraduation() {
     requiredCapstonDesign: document.getElementById('gr-capstone').value,
     requiredNCProgram: document.getElementById('gr-nc').value,
     requiredVolunteer: document.getElementById('gr-volunteer').value,
+    doubleMajorPrimaryCredits: document.getElementById('gr-dm-primary').value,
+    doubleMajorCredits: document.getElementById('gr-dm-credits').value,
+    fromYear: graduationYear === '' ? null : Number(graduationYear),
   };
 
   btn.disabled = true;
   btn.textContent = '저장 중...';
 
   try {
-    const res = await fetch('/staff/graduation', {
+    const res = await fetch('/staff/graduation/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -284,7 +287,14 @@ async function saveGraduation() {
     const data = await res.json();
 
     if (data.ok) {
-      showMsg('학교 기본 졸업요건이 저장되었습니다.', false);
+      if (data.fromYear == null) {
+        showMsg('학교 기본 졸업요건이 저장되었습니다.', false);
+      } else {
+        if (!graduationYears.includes(data.fromYear)) graduationYears = [...graduationYears, data.fromYear].sort((a, b) => a - b);
+        graduationYearIsNew = false;
+        showMsg(`${data.fromYear}학번부터 적용되는 졸업요건이 저장되었습니다.`, false);
+      }
+      updateYearUi();
     } else {
       showMsg(data.message || '저장에 실패했습니다.', true);
     }
@@ -292,7 +302,7 @@ async function saveGraduation() {
     showMsg('서버와 통신할 수 없습니다.', true);
   } finally {
     btn.disabled = false;
-    btn.textContent = '💾 학교 기본값 저장';
+    updateYearUi();
   }
 }
 
@@ -342,86 +352,113 @@ async function saveMajorGraduation() {
   }
 }
 
-// ── 입학년도별 학점 요건 ──────────────────────────────────────
-const COHORT_FIELDS = [
-  { key: 'requiredTotalCredits', label: '총', inputId: 'coh-total' },
-  { key: 'requiredMajorCredits', label: '전공필수', inputId: 'coh-major-req' },
-  { key: 'requiredMajorElective', label: '전공선택', inputId: 'coh-major-el' },
-  { key: 'requiredGeneralCredits', label: '교양필수', inputId: 'coh-gen-req' },
-  { key: 'requiredGeneralElective', label: '교양선택', inputId: 'coh-gen-el' },
-];
+// ── 적용 학번(입학년도)별 졸업요건 ─────────────────────────────────
+// ''(빈 문자열)은 학교 기본값(학번 구분 없음). 학번을 고르면 그 학번부터 적용되는 요건 전체를 따로 저장한다.
+let graduationYear = '';
+let graduationYearIsNew = false;
+let graduationYears = [];
 
-function renderCohorts(cohorts = []) {
-  const list = document.getElementById('coh-list');
-  if (!list) return;
+function renderYearOptions() {
+  const select = document.getElementById('gr-year');
+  if (!select) return;
+  const years = [...new Set([...graduationYears, ...(graduationYear !== '' ? [Number(graduationYear)] : [])])].sort((a, b) => a - b);
+  select.innerHTML = '<option value="">학교 기본값 (학번 구분 없음)</option>' + years.map((y) => {
+    const unsaved = !graduationYears.includes(y);
+    return `<option value="${y}">${y}학번부터${unsaved ? ' (새 학번, 저장 전)' : ''}</option>`;
+  }).join('');
+  select.value = graduationYear;
+}
 
-  if (!cohorts.length) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--text2);">등록된 입학년도별 요건이 없습니다. 모든 학생에게 학교 기본값이 적용됩니다.</div>';
+function updateYearUi() {
+  const badge = document.getElementById('gr-year-badge');
+  if (badge) badge.textContent = graduationYear === '' ? '학교 기본값' : `${graduationYear}학번부터`;
+  const del = document.getElementById('gr-year-del');
+  if (del) del.style.display = graduationYear !== '' && !graduationYearIsNew ? 'inline-flex' : 'none';
+  const btn = document.getElementById('gr-save-btn');
+  if (btn) btn.textContent = graduationYear === '' ? '💾 학교 기본값 저장' : '💾 이 학번 요건 저장';
+  renderYearOptions();
+}
+
+function applyRequirementsToForm(r = {}) {
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value ?? ''; };
+  set('gr-total', r.requiredTotalCredits ?? 130);
+  set('gr-major-req', r.requiredMajorCredits ?? 42);
+  set('gr-major-el', r.requiredMajorElective ?? 40);
+  set('gr-gen-req', r.requiredGeneralCredits ?? 20);
+  set('gr-gen-el', r.requiredGeneralElective ?? 28);
+  set('gr-volunteer', r.requiredVolunteer);
+  set('gr-dm-primary', r.doubleMajorPrimaryCredits);
+  set('gr-dm-credits', r.doubleMajorCredits);
+  set('gr-lang', r.requiredLanguageScore);
+  setSelectValue('gr-internship', r.requiredInternship);
+  setSelectValue('gr-capstone', r.requiredCapstonDesign);
+  setSelectValue('gr-nc', r.requiredNCProgram);
+  document.getElementById('gr-grad-work')?.classList.toggle('on', r.requiresGraduationWork !== false);
+  renderCertChips('school', Array.isArray(r.requiredCertifications) ? r.requiredCertifications : []);
+  hideCertResults('school');
+}
+
+async function loadGraduationYear(year) {
+  const query = year === '' ? '' : `?fromYear=${encodeURIComponent(year)}`;
+  try {
+    const res = await fetch(`/staff/graduation/data${query}`);
+    const data = await res.json();
+    if (!data.ok) {
+      showMsg(data.message || '요건을 불러오지 못했습니다.', true);
+      renderYearOptions();
+      return;
+    }
+    graduationYears = data.years || [];
+    graduationYear = data.fromYear == null ? '' : String(data.fromYear);
+    graduationYearIsNew = Boolean(data.isNew);
+    applyRequirementsToForm(data.requirements || {});
+    updateYearUi();
+    document.getElementById('gr-msg').style.display = 'none';
+  } catch {
+    showMsg('서버와 통신할 수 없습니다.', true);
+  }
+}
+
+function changeGraduationYear(value) {
+  loadGraduationYear(value);
+}
+
+function addGraduationYear() {
+  const input = document.getElementById('gr-year-new');
+  const year = Number(input.value);
+  if (!Number.isInteger(year) || year < 1990 || year > 2100) {
+    showMsg('적용 학번은 1990~2100 사이 연도로 입력해주세요.', true);
     return;
   }
-
-  list.innerHTML = cohorts.map((cohort) => {
-    const summary = COHORT_FIELDS
-      .filter(({ key }) => cohort.requirements?.[key] != null)
-      .map(({ key, label }) => `${label} ${escapeHtml(cohort.requirements[key])}학점`)
-      .join(' · ');
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg3);">
-        <div style="font-size:13px;"><b>${escapeHtml(cohort.fromYear)}학번부터</b> <span style="color:var(--text2);">${summary || '변경 항목 없음'}</span></div>
-        <button type="button" class="btn btn-ghost btn-sm" data-cohort-delete="${escapeHtml(cohort.fromYear)}">삭제</button>
-      </div>`;
-  }).join('');
+  input.value = '';
+  loadGraduationYear(String(year));
 }
 
-async function saveCohortGraduation() {
-  const btn = document.getElementById('coh-save-btn');
-  const body = { fromYear: document.getElementById('coh-year').value };
-  COHORT_FIELDS.forEach(({ key, inputId }) => { body[key] = document.getElementById(inputId).value; });
-
-  btn.disabled = true;
+async function deleteGraduationYear() {
+  if (graduationYear === '' || graduationYearIsNew) return;
+  if (!window.confirm(`${graduationYear}학번부터 적용되는 요건을 삭제할까요? 해당 학번 학생에게는 바로 앞 학번 요건이나 기본 요건이 적용됩니다.`)) return;
   try {
-    const res = await fetch('/staff/graduation/cohorts', {
+    const res = await fetch('/staff/graduation/years/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ fromYear: Number(graduationYear) }),
     });
     const data = await res.json();
-    if (data.ok) {
-      renderCohorts(data.cohorts);
-      showMsg(`${body.fromYear}학번부터 적용되는 학점 요건이 저장되었습니다.`, false, 'coh-msg');
-    } else {
-      showMsg(data.message || '저장에 실패했습니다.', true, 'coh-msg');
+    if (!data.ok) {
+      showMsg(data.message || '삭제에 실패했습니다.', true);
+      return;
     }
+    await loadGraduationYear('');
+    showMsg(`${data.fromYear}학번 요건을 삭제했습니다.`, false);
   } catch {
-    showMsg('서버와 통신할 수 없습니다.', true, 'coh-msg');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function deleteCohortGraduation(fromYear) {
-  try {
-    const res = await fetch(`/staff/graduation/cohorts/${encodeURIComponent(fromYear)}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.ok) {
-      renderCohorts(data.cohorts);
-      showMsg(`${fromYear}학번부터 적용되는 요건을 삭제했습니다.`, false, 'coh-msg');
-    } else {
-      showMsg(data.message || '삭제에 실패했습니다.', true, 'coh-msg');
-    }
-  } catch {
-    showMsg('서버와 통신할 수 없습니다.', true, 'coh-msg');
+    showMsg('서버와 통신할 수 없습니다.', true);
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   renderCertChips('school', window.initialSchoolCerts || []);
-  renderCohorts(window.initialCohorts || []);
-
-  document.addEventListener('click', (event) => {
-    const deleteBtn = event.target.closest('[data-cohort-delete]');
-    if (deleteBtn) deleteCohortGraduation(deleteBtn.dataset.cohortDelete);
-  });
+  graduationYears = window.initialYears || [];
+  updateYearUi();
 
   document.addEventListener('click', (event) => {
     const removeBtn = event.target.closest('.gr-cert-remove');

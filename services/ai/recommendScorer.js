@@ -13,17 +13,26 @@ const CERT_GRADE_POINTS = [
   [/기능사$/, 6],
 ];
 const DEFAULT_CERT_POINT = 12;
-// 지식 점수의 "근거 강도": 직무 핵심 지식과 맞는 과목이 많고 성적이 괜찮을수록 높다.
-// 과목 하나만 맞아도 만점이 나오던 문제(교수 상담 반영)를 막는다. 성적은 보조 지표라 최대 20%만 깎는다.
-// 수강 중인 과목(성적 없음)은 이수 과목의 절반으로 센다.
-const KNOWLEDGE_STRENGTH = { base: 0.4, perCourse: 0.2, currentCourseWeight: 0.5 };
-const GRADE_POINTS = { 'A+': 4.5, A: 4.0, 'B+': 3.5, B: 3.0, 'C+': 2.5, C: 2.0, 'D+': 1.5, D: 1.0 };
-const GRADE_FACTORS = [[3.5, 1.0], [2.5, 0.9], [0, 0.8]]; // [평균 평점 이상, 계수] — B+ 이상 / C+~B / 그 미만
 const PREF_POINTS = { work: 12, style: 4, salary: 4 };
 // 직무마다 지식·능력·성격이 정확히 5개. importance 값은 필드마다 척도가 다르고 상위 5개끼리
 // 몰려 있어(능력 중앙값 92) 차이가 안 나서, 직무 안에서의 순위로 가중한다(계획서 v3.2 §4-2-1).
 const RANK_WEIGHT = [1.0, 0.8, 0.6, 0.4, 0.2];
 const MIN_SIGNAL_KINDS = 3; // 학생 쪽 입력 신호가 이만큼 있어야 신뢰도 normal
+
+// 수강 과목의 가중 학점 = 학점 × 성적 계수. 평점(4.5 척도)을 쓰지 않는 건 P/NP가 평점에서 빠지기 때문.
+// 성적 미입력(수강 중 포함)은 근거로 인정하되 끝까지 들은 과목보다 약하게 본다.
+const GRADE_FACTOR = {
+  'A+': 1.0, A: 1.0, 'B+': 0.85, B: 0.85, 'C+': 0.7, C: 0.7, 'D+': 0.55, D: 0.55, P: 0.85,
+};
+const PENDING_GRADE_FACTOR = 0.5;
+const FAILED_GRADES = new Set(['F', 'NP']);
+// 이름만 넘어오는 옛 경로(context.academic)의 과목 학점
+const DEFAULT_COURSE_CREDITS = 3;
+// 지식 25점 = 영역(직무 지식을 얼마나 깊게 들었나) + 주제(직무 업무 문장과 맞는 과목을 들었나).
+// 가중 학점 9(3학점 A 과목 3개)에서 깊이가 포화된다 — CS 학생은 '컴퓨터와 전자공학'이 어차피 포화되므로
+// 차이는 주제에서 나고, 깊이는 타 전공 학생이 관련 과목을 한두 개 들은 경우를 가른다.
+const COURSE_FULL_CREDITS = 9;
+const KNOWLEDGE_SPLIT = { area: 17, topic: 8 };
 
 // ── 정규화 ─────────────────────────────────────────────
 
@@ -141,6 +150,31 @@ const SUBJECT_KNOWLEDGE_MAP = [
   [/사무|문서|오피스|엑셀/, ['사무']],
 ];
 
+// 과목명 → 직무 업무 문장(JobCatalog.searchText)에서 찾을 용어. 고용24 지식 분류는 33개뿐이라 CS 과목이
+// 전부 '컴퓨터와 전자공학' 하나로 모여 웹 쪽을 들었든 네트워크 쪽을 들었든 같은 점수가 나온다 — 직무를
+// 가르는 건 업무 문장뿐이다. 용어마다 searchText에 든 직무 수가 1~40(492개 중 약 8%)이어야 남긴다
+// (흔한 용어는 모든 직무에 점수를 줘서 아무것도 가르지 못한다). scripts/checkRecommendScorer.js가 잰다.
+// 직무 knowledge 이름과는 비교하지 않는다(정확 일치 원칙, 계획서 §6).
+// 초안에서 바뀐 것(2026-10 실측): 0건 용어(보안시스템·머신러닝·딥러닝·웹애플리케이션·애플리케이션·
+// 임베디드·펌웨어) 제거. 대상 직무 글이 다른 말을 써서 초안 용어로는 0점이던 줄에 실측 용어 추가
+// (웹개발자 "웹프로그래밍", 웹 운영자 "웹서버", 모바일앱개발자 "앱", 시스템 소프트웨어 개발자 "운영체계",
+// 정보보안 "정보보호"·"보안정책"). "인사"는 인사말(홀서빙원·숙박시설 등 24건)에 걸려 "인사관리"·"인적자원"으로 좁힘.
+const SUBJECT_TOPIC_MAP = [
+  [/데이터베이스/, ['데이터베이스']],
+  [/네트워크|통신/, ['네트워크']],
+  [/보안|해킹|정보보호|암호/, ['정보보안', '해킹', '정보보호', '보안정책']],
+  [/인공지능|머신러닝|딥러닝/, ['인공지능']],
+  [/웹(?!툰)/, ['웹사이트', '웹서비스', '웹프로그래밍', '웹서버']],
+  [/모바일|앱|안드로이드/, ['모바일', '앱']],
+  [/운영체제|임베디드|리눅스|시스템프로그래밍/, ['운영체제', '운영체계']],
+  [/빅데이터|데이터분석|데이터사이언스|통계/, ['데이터분석', '빅데이터', '통계']],
+  [/그래픽스|게임/, ['게임']],
+  [/회계|재무/, ['회계', '재무']],
+  [/세무/, ['세무']],
+  [/마케팅|광고/, ['마케팅', '광고']],
+  [/인사관리|인적자원|노사/, ['인사관리', '인적자원', '노무']],
+];
+
 // 스킬명·경험 제목 → 그 도구가 증명하는 능력(abilities) 이름. 고용24 직무 설명에는 도구 이름이
 // 거의 없어서(Python·Excel 0건) 텍스트 매칭 대신 능력으로 옮겨 비교한다. 지식은 과목이 맡으므로
 // 대상에서 뺀다(같은 신호를 두 번 세지 않기 위해).
@@ -247,18 +281,50 @@ function mapSubjectsToKnowledge(subjects) {
   return knowledgeSubjects;
 }
 
+function courseWeight(course) {
+  const factor = course?.grade ? (GRADE_FACTOR[course.grade] ?? 0) : PENDING_GRADE_FACTOR;
+  return (Number(course?.credits) || 0) * factor;
+}
+
+// 재수강 등 같은 이름 과목은 가중 학점이 가장 큰 한 건만 남긴다. 처음 나온 순서는 유지한다.
+function dedupeCourses(courses) {
+  const byName = new Map();
+  (courses || []).forEach(course => {
+    if (!course?.name || FAILED_GRADES.has(course.grade)) return;
+    const key = norm(course.name);
+    const prev = byName.get(key);
+    if (!prev || courseWeight(course) > courseWeight(prev)) byName.set(key, course);
+  });
+  return [...byName.values()];
+}
+
+// courses가 없으면 context.academic(전공 이수 과목 + 이번 학기 과목, 이름만)으로 만든다 —
+// attachCertGaps(certIndex만 씀)와 점검 스크립트의 옛 호출이 그대로 돈다.
+function coursesFromContext(context) {
+  return [
+    ...(context?.academic?.majorCourses || []).map(s => ({ name: s?.name, credits: DEFAULT_COURSE_CREDITS, grade: s?.grade ?? null })),
+    ...(context?.academic?.currentSubjects || []).map(s => ({ name: s?.name, credits: DEFAULT_COURSE_CREDITS, grade: null })),
+  ];
+}
+
+// 지식 이름 → 그 지식으로 매핑된 과목들의 가중 학점 합
+function sumKnowledgeWeight(courses) {
+  const weights = new Map();
+  courses.forEach(course => {
+    mapSubjectsToKnowledge([course.name]).forEach((_, name) => {
+      weights.set(name, (weights.get(name) || 0) + courseWeight(course));
+    });
+  });
+  return weights;
+}
+
 // buildUserContext 결과는 compact()로 null·빈 배열 키가 통째로 사라진다 → 전부 ?.와 || []로 읽는다.
-function extractUserSignals(context) {
+// courses: [{ name, credits, grade }] — 추천 서비스가 학기 기록에서 직접 읽은 수강 과목(교양 포함).
+function extractUserSignals(context, courses) {
   const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
   const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
-  // 이수 과목(성적 있음)이 먼저고, 같은 이름이 수강 중에도 있으면 이수로 본다.
-  const completedCourses = (context?.academic?.majorCourses || []).filter(c => c?.name);
-  const completedNames = new Set(completedCourses.map(c => c.name));
-  const currentCourses = (context?.academic?.currentSubjects || []).filter(s => s?.name && !completedNames.has(s.name));
-  const subjectInfo = new Map(); // 과목명 → { completed, grade }
-  completedCourses.forEach(c => subjectInfo.set(c.name, { completed: true, grade: c.grade ?? null }));
-  currentCourses.forEach(s => { if (!subjectInfo.has(s.name)) subjectInfo.set(s.name, { completed: false, grade: null }); });
-  const subjects = [...subjectInfo.keys()];
+  const scoringCourses = dedupeCourses(courses === undefined ? coursesFromContext(context) : courses);
+  const subjects = scoringCourses.map(c => c.name);
   const skills = (context?.specs?.skills || []).map(s => s?.name).filter(Boolean);
   const experiences = (context?.specs?.experiences || []).map(e => e?.title).filter(Boolean);
 
@@ -267,8 +333,10 @@ function extractUserSignals(context) {
 
   return {
     majors, certs, subjects, skills, experiences,
-    certIndex, subjectInfo,
+    courses: scoringCourses,
+    certIndex,
     knowledgeSubjects: mapSubjectsToKnowledge(subjects),
+    knowledgeWeight: sumKnowledgeWeight(scoringCourses),
     skillAbilities: mapSkillsToAbilities(skills, experiences),
   };
 }
@@ -313,6 +381,29 @@ function bestRankWeight(items, names) {
   return bestRankMatch(items, names)?.weight || 0;
 }
 
+// 직무 지식마다 (순위 가중치 × 이수 깊이)를 구해 가장 큰 것. 최고 순위 하나만 보면 1순위 지식을 한 과목
+// 들은 경우(1.0 × 0.17)가 2순위 지식을 깊게 들은 경우(0.8 × 1.0)보다 높게 나온다. 없으면 null.
+function bestKnowledgeDepth(items, knowledgeWeight) {
+  let best = null;
+  rankedItems(items).forEach((item, idx) => {
+    const depth = Math.min(1, (knowledgeWeight?.get(item.name) || 0) / COURSE_FULL_CREDITS);
+    const score = (RANK_WEIGHT[idx] || 0) * depth;
+    if (score > 0 && (!best || score > best.score)) best = { name: item.name, rank: idx + 1, score };
+  });
+  return best;
+}
+
+// 주제 매핑표 줄의 과목 정규식에 걸리고, 그 줄의 용어 하나라도 직무 업무 문장에 있는 과목.
+// searchText가 없거나 비면 빈 배열(주제 점수 0).
+function topicMatchedCourses(courses, searchText) {
+  if (!searchText) return [];
+  return courses.filter(course => {
+    const compactName = String(course.name).replace(/\s+/g, '');
+    return SUBJECT_TOPIC_MAP.some(([pattern, terms]) => pattern.test(compactName)
+      && terms.some(term => searchText.includes(norm(term))));
+  });
+}
+
 function targetStrength(job, target) {
   return Math.max(...TARGET_FIELDS.map(field => bestRankWeight(job[field], target[field])));
 }
@@ -329,43 +420,10 @@ function buildSalaryPool(jobs) {
   return (jobs || []).map(j => j?.averageSalary?.median50 || 0).filter(v => v > 0).sort((a, b) => a - b);
 }
 
+// 직무 쪽 데이터가 없으면 그 항목은 0점이며 환산하지 않는다(계획서 §3-5).
 function certPoint(certKey) {
   const rule = CERT_GRADE_POINTS.find(([pattern]) => pattern.test(certKey));
   return rule ? rule[1] : DEFAULT_CERT_POINT;
-}
-
-// 그 지식을 뒷받침하는 과목들로 근거 강도를 계산한다.
-function knowledgeBasis(subjectNames, subjectInfo) {
-  let completed = 0;
-  let current = 0;
-  const gradePoints = [];
-  (subjectNames || []).forEach(name => {
-    const info = subjectInfo?.get(name);
-    if (info && !info.completed) { current += 1; return; }
-    completed += 1;
-    const point = GRADE_POINTS[info?.grade];
-    if (point !== undefined) gradePoints.push(point);
-  });
-
-  const effectiveCourses = completed + KNOWLEDGE_STRENGTH.currentCourseWeight * current;
-  const strength = Math.min(1, KNOWLEDGE_STRENGTH.base + KNOWLEDGE_STRENGTH.perCourse * effectiveCourses);
-  const average = gradePoints.length ? gradePoints.reduce((a, b) => a + b, 0) / gradePoints.length : null;
-  const gradeFactor = average === null ? 1 : GRADE_FACTORS.find(([min]) => average >= min)[1];
-  return { completed, current, strength: Math.round(strength * 100) / 100, gradeFactor };
-}
-
-// 직무 지식 상위 항목 중 "순위 가중 × 근거 강도 × 성적 계수"가 가장 큰 것을 고른다.
-// 1순위 지식에 수강 중 과목 하나만 있고 2순위 지식에 이수 과목이 여럿이면 후자가 더 높게 나온다.
-function bestKnowledgeMatch(items, signals) {
-  let best = null;
-  rankedItems(items).forEach((item, idx) => {
-    const subjects = signals.knowledgeSubjects.get(item.name);
-    if (!subjects) return;
-    const basis = knowledgeBasis(subjects, signals.subjectInfo);
-    const value = (RANK_WEIGHT[idx] || 0) * basis.strength * basis.gradeFactor;
-    if (!best || value > best.value) best = { name: item.name, rank: idx + 1, value, basis };
-  });
-  return best;
 }
 
 // 이 직무가 요구하는 핵심 지식·능력 상위 항목과, 학생 입력에서 근거를 찾았는지(화면의 "평가 기준").
@@ -375,15 +433,14 @@ function buildCriteria(job, knowledgeNames, abilityNames) {
   return { knowledge: top(job.knowledge, knowledgeNames), abilities: top(job.abilities, abilityNames) };
 }
 
-// 직무 쪽 데이터가 없으면 그 항목은 0점이며 환산하지 않는다(계획서 §3-5).
 function scoreJob(signals, prefs, job, salaryPool = []) {
   const breakdown = { major: 0, cert: 0, knowledge: 0, skill: 0, pref: 0 };
   // topKnowledge/topAbility: 점수를 준 직무 쪽 항목(화면의 "이 직무의 핵심 지식 ○○(n순위)").
   // subjects·skills·experiences는 직무 안 순위가 높은 항목을 뒷받침하는 것부터 나온다.
   const matched = {
-    major: null, certs: [], subjects: [], skills: [], experiences: [], prefs: [],
-    topKnowledge: null, topAbility: null,
-    knowledgeBasis: null, criteria: null,
+    major: null, certs: [], subjects: [], topicSubjects: [], skills: [], experiences: [], prefs: [],
+    topKnowledge: null, topAbility: null, courseCount: 0, courseCredits: 0,
+    criteria: null,
   };
 
   const majorHit = signals.majors.find(m => majorMatch(m, job.relatedDepartments));
@@ -399,14 +456,25 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   matched.certs = heldCerts;
 
   const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
-  const topKnowledge = bestKnowledgeMatch(job.knowledge, signals);
-  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.value || 0));
-  if (topKnowledge) {
-    matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
-    matched.knowledgeBasis = topKnowledge.basis;
-  }
+  const topKnowledge = bestKnowledgeDepth(job.knowledge, signals.knowledgeWeight);
+  const area = KNOWLEDGE_SPLIT.area * (topKnowledge?.score || 0);
+  const topicCourses = topicMatchedCourses(signals.courses || [], job.searchText);
+  const topicWeight = topicCourses.reduce((sum, course) => sum + courseWeight(course), 0);
+  const topic = KNOWLEDGE_SPLIT.topic * Math.min(1, topicWeight / COURSE_FULL_CREDITS);
+  // 합을 반올림 전에 25로 자른다
+  breakdown.knowledge = Math.round(Math.min(WEIGHTS.knowledge, area + topic));
+  if (topKnowledge) matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
   const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
-  matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
+  matched.topicSubjects = topicCourses.map(course => course.name);
+  // 직무 지식을 뒷받침하는 과목(순위 높은 지식부터) 다음에 주제 일치 과목
+  matched.subjects = [...new Set([
+    ...heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)),
+    ...matched.topicSubjects,
+  ])];
+  // 화면의 "관련 과목 N개 · M학점" — 성적 가중치를 적용하지 않은 원래 학점
+  const creditsByName = new Map((signals.courses || []).map(course => [course.name, Number(course.credits) || 0]));
+  matched.courseCount = matched.subjects.length;
+  matched.courseCredits = matched.subjects.reduce((sum, name) => sum + (creditsByName.get(name) || 0), 0);
 
   const abilityNames = new Set(signals.skillAbilities.keys());
   matched.criteria = buildCriteria(job, knowledgeNames, abilityNames);
@@ -528,10 +596,13 @@ module.exports = {
   splitDept,
   majorMatch,
   SUBJECT_KNOWLEDGE_MAP,
+  SUBJECT_TOPIC_MAP,
   MAJOR_ALIASES,
   SKILL_ABILITY_MAP,
   SKILL_ONLY_ABILITY_MAP,
   RANK_WEIGHT,
+  GRADE_FACTOR,
+  courseWeight,
   PREF_OPTIONS,
   WORK_PREF_TARGETS,
   STYLE_TARGETS,
@@ -545,8 +616,5 @@ module.exports = {
   buildInputState,
   CERT_GRADE_POINTS,
   DEFAULT_CERT_POINT,
-  KNOWLEDGE_STRENGTH,
-  GRADE_FACTORS,
   certPoint,
-  knowledgeBasis,
 };

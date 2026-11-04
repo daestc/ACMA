@@ -30,18 +30,6 @@ function evidenceForScore(key, matched) {
 
 const EVIDENCE_PREVIEW = 3
 
-// 지식 점수의 근거: "핵심 지식 ○○ 기준 이수 n과목 · 수강 중 m과목 · 근거 강도 x%"
-function knowledgeBasisText(matched) {
-  const basis = matched?.knowledgeBasis
-  if (!basis) return null
-  const parts = [`이수 ${basis.completed}과목`]
-  if (basis.current > 0) parts.push(`수강 중 ${basis.current}과목`)
-  parts.push(`근거 강도 ${Math.round(basis.strength * 100)}%`)
-  if (basis.gradeFactor < 1) parts.push(`성적 반영 ×${basis.gradeFactor}`)
-  const target = matched.topKnowledge?.name ? `핵심 지식 ${matched.topKnowledge.name} 기준 ` : ''
-  return `${target}${parts.join(' · ')}`
-}
-
 function ScoreBars({ breakdown, matched, inputState }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
@@ -52,7 +40,6 @@ function ScoreBars({ breakdown, matched, inputState }) {
         const shown = items.slice(0, EVIDENCE_PREVIEW).join(', ')
         const rest = items.length - EVIDENCE_PREVIEW
         const notEntered = inputState?.[key] === false
-        const basisText = key === 'knowledge' && items.length > 0 ? knowledgeBasisText(matched) : null
         return (
           <div className="progress-wrap" key={key} style={{ margin: 0 }}>
             <div className="progress-header">
@@ -67,7 +54,6 @@ function ScoreBars({ breakdown, matched, inputState }) {
                 ? `${INPUT_LABELS[key]} 입력 없음 · 입력하면 반영됩니다`
                 : items.length > 0 ? `${shown}${rest > 0 ? ` 외 ${rest}개` : ''}` : '입력은 있지만 이 직무와 일치하는 항목 없음'}
             </div>
-            {basisText && <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>{basisText}</div>}
           </div>
         )
       })}
@@ -98,7 +84,13 @@ function KeyMatchLines({ matched }) {
   const lines = []
   if (matched?.topKnowledge) {
     const { name, rank } = matched.topKnowledge
-    lines.push(`이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
+    // courseCount는 수강 과목 반영 이후 문서에만 있다(그 전은 null → 예전 문구). 0개도 표시해야 해서 != null로 본다.
+    lines.push(matched.courseCount != null
+      ? `이 직무의 핵심 지식 ${name}(${rank}순위) ← 관련 과목 ${matched.courseCount}개 · ${matched.courseCredits}학점`
+      : `이 직무의 핵심 지식 ${name}(${rank}순위)${evidenceSummary(matched.subjects, '과목')}`)
+  }
+  if (matched?.topicSubjects?.length) {
+    lines.push(`직무 업무와 맞는 과목${evidenceSummary(matched.topicSubjects, '과목')}`)
   }
   if (matched?.topAbility) {
     const { name, rank } = matched.topAbility

@@ -136,6 +136,7 @@ const updateBulkGrades = async (req, res) => {
       subjectName: String(s.subjectName || '').trim(),
       subjectType: String(s.subjectType || '').trim(),
       grade: String(s.grade || '').trim(),
+      majorTrack: String(s.majorTrack || '').trim(),
     })).filter(s => s.subjectName);
 
     // 2. 서비스 함수에 "객체 형태"로 인자 전달 (이름 매핑 주의)
@@ -274,6 +275,8 @@ const getGraduationRequirements = async (req, res) => {
         university: graduation.university,
         GraduationRequirements: graduation.requirements,
         hasMajorSpecific: graduation.hasMajorSpecific,
+        admissionYear: graduation.admissionYear,
+        appliedFromYear: graduation.appliedFromYear,
       },
       basis: graduation.basis,
     });
@@ -302,42 +305,39 @@ const getProgress = async (req, res) => {
     const user = req.session.user.id;
     if (!user) return res.status(404).json({ success: false });
 
-    const records = await academicService.getAllSemesterRecords(user);
+    // 취득 학점은 남은 학점 계산(calcRemainingCredits)과 같은 기준으로 센다 — 예전엔 여기서 따로
+    // 세면서 NP를 취득으로 쳐서, 화면 달성률과 AI가 받는 남은 학점이 어긋났다.
+    // 응답 키(totals.major_required 등)는 EJS(public/js)와 React MyStatus가 같이 읽어서 그대로 둔다.
+    const [credits, profile] = await Promise.all([
+      academicService.calcRemainingCredits(user),
+      academicService.getUniversityProfile(user),
+    ]);
+    const { earned } = credits;
     const totals = {
-      major_required: 0,
-      major_elective: 0,
-      general_required: 0,
-      general_elective: 0,
-      free: 0,
-      totalEarned: 0,
+      major_required: earned.majorRequired,
+      major_elective: earned.majorElective,
+      general_required: earned.generalRequired,
+      general_elective: earned.generalElective,
+      free: earned.free,
+      totalEarned: earned.total,
+      // 전공 과목의 트랙별 합(전필+전선). 복수전공 표시용으로 추가
+      primary_major: earned.primaryMajor,
+      double_major: earned.doubleMajor,
     };
 
-    records.forEach(r => {
-      (Array.isArray(r.subjects) ? r.subjects : []).forEach(s => {
-        const credits = Number(s.credits) || 0;
-        if (!academicService.isPassingGrade(s.grade)) return;
-
-        const type = String(s.subjectType || 'free');
-        if (type in totals) {
-          totals[type] += credits;
-        } else {
-          totals.free += credits;
-        }
-        totals.totalEarned += credits;
-      });
-    });
-
-    const profile = await academicService.getUniversityProfile(user);
-    const graduation = await resolveRequirements(user);
-
-    // 예전 응답을 읽는 화면(내 현황 등)이 profile.GraduationRequirements를 쓰므로
-    // 학교·학과·입학년도를 반영해 계산한 값을 같은 자리에 넣는다.
+    // MyStatus(React·EJS)는 profile.GraduationRequirements를 요건으로 읽는다. 프로필 문서의 그 필드는
+    // 학생 기본값(130/42/…)이라 대학 요건으로 바꿔 내려 준다(getGraduationRequirements와 같은 방식).
     return res.json({
       success: true,
       totals,
-      profile: { ...(profile || {}), GraduationRequirements: graduation.available ? graduation.requirements : null },
-      graduationAvailable: graduation.available,
-      graduationRequirements: graduation.available ? graduation.requirements : null,
+      profile: profile ? { ...profile, GraduationRequirements: credits.available ? credits.requirements : null } : profile,
+      graduationAvailable: credits.available,
+      graduationRequirements: credits.available ? credits.requirements : null,
+      remaining: credits.remaining,
+      admissionYear: credits.admissionYear ?? null,
+      appliedFromYear: credits.appliedFromYear ?? null,
+      doubleMajorMode: Boolean(credits.doubleMajorMode),
+      doubleMajorNotice: credits.doubleMajorNotice ?? null,
     });
   } catch (error) {
     logger.error(error);

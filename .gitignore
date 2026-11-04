@@ -197,3 +197,6 @@ public/upload/
 
 # Claude Code 로컬 권한 설정 (사용자별, 커밋 대상 아님)
 .claude/settings.local.json
+
+# 로컬 메모(테스트 계정 정보 등) — 저장소에 올리지 않는다
+text.txt

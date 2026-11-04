@@ -156,6 +156,7 @@ const weeklyPlanSchema = new Schema({
   weekEnd: { type: Date, required: true },
 
   goal: { type: String, default: null },
+  userGoal: { type: String, default: null, maxlength: 100 }, // 학생이 직접 쓴 이번 주 목표 (goal은 AI가 쓴 문장)
   items: [{
     title: { type: String, required: true },
     category: {
@@ -170,6 +171,7 @@ const weeklyPlanSchema = new Schema({
     isDeadline: { type: Boolean, default: false },
     reason: { type: String, default: null },
     dueDate: { type: Date, default: null }, // 마감 항목의 실제 마감일 (서버가 채움, LLM 아님)
+    forGoal: { type: Boolean, default: false }, // userGoal에 직접 기여하는 항목
   }],
 
   computed: {
@@ -271,16 +273,11 @@ const recommendationCandidateSchema = new Schema({
     // 점수를 준 직무 쪽 항목 — 이 필드가 생기기 전 문서에는 없다(화면에서 없으면 줄을 숨김)
     topKnowledge: { type: rankedItemSchema, default: null },
     topAbility: { type: rankedItemSchema, default: null },
-    // 지식 점수의 근거 강도(이수·수강 중 과목 수, 강도, 성적 계수) — 이 필드가 생기기 전 문서에는 없다
-    knowledgeBasis: {
-      type: new Schema({
-        completed: { type: Number, default: 0 },
-        current: { type: Number, default: 0 },
-        strength: { type: Number, default: 1 },
-        gradeFactor: { type: Number, default: 1 },
-      }, { _id: false }),
-      default: null,
-    },
+    // 수강 과목 반영 이후 필드 — 그 전 문서에는 null(화면은 예전 문구를 쓴다).
+    // 스키마에 없으면 strict 모드가 저장할 때 조용히 버린다.
+    topicSubjects: { type: [String], default: [] },
+    courseCount: { type: Number, default: null },
+    courseCredits: { type: Number, default: null },
     // 이 직무가 요구하는 핵심 지식·능력 상위 항목과, 학생 입력에서 근거를 찾았는지
     criteria: {
       type: new Schema({
