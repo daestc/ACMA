@@ -94,9 +94,126 @@ function CertPicker({ certs, setCerts, msgSetter }) {
   )
 }
 
+// 입학년도별 학점 요건 — auth3 EJS(public/js/staffGraduation.js)와 같은 API·동작.
+// 비운 항목은 빈 문자열로 보내 "지정 안 함"(= 기본 요건 사용)이 된다(cohortOverrideSchema에 default 없음).
+const COHORT_FIELDS = [
+  { key: 'requiredTotalCredits', label: '총 이수학점', short: '총' },
+  { key: 'requiredMajorCredits', label: '전공필수', short: '전공필수' },
+  { key: 'requiredMajorElective', label: '전공선택', short: '전공선택' },
+  { key: 'requiredGeneralCredits', label: '교양필수', short: '교양필수' },
+  { key: 'requiredGeneralElective', label: '교양선택', short: '교양선택' },
+  { key: 'doubleMajorPrimaryCredits', label: '복수전공자 주전공', short: '복수전공자 주전공' },
+  { key: 'doubleMajorCredits', label: '복수전공', short: '복수전공' },
+]
+const emptyCohortForm = () => Object.fromEntries([['fromYear', ''], ...COHORT_FIELDS.map(({ key }) => [key, ''])])
+
+function CohortCard({ cohorts, setCohorts }) {
+  const [form, setForm] = useState(emptyCohortForm())
+  const [msg, setMsg] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const editCohort = (cohort) => {
+    setForm(Object.fromEntries([
+      ['fromYear', String(cohort.fromYear)],
+      ...COHORT_FIELDS.map(({ key }) => [key, cohort.requirements?.[key] == null ? '' : String(cohort.requirements[key])]),
+    ]))
+    setMsg(null)
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch('/staff/graduation/cohorts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setCohorts(data.cohorts || [])
+        setMsg({ text: `${form.fromYear}학번부터 적용되는 학점 요건이 저장되었습니다.`, isError: false })
+        setForm(emptyCohortForm())
+      } else {
+        setMsg({ text: data.message || '저장에 실패했습니다.', isError: true })
+      }
+    } catch {
+      setMsg({ text: '서버와 통신할 수 없습니다.', isError: true })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (fromYear) => {
+    if (!window.confirm(`${fromYear}학번부터 적용되는 요건을 삭제할까요? 해당 학번 학생은 학교 기본 요건으로 돌아갑니다.`)) return
+    try {
+      const res = await fetch(`/staff/graduation/cohorts/${encodeURIComponent(fromYear)}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.ok) {
+        setCohorts(data.cohorts || [])
+        setMsg({ text: `${fromYear}학번부터 적용되는 요건을 삭제했습니다.`, isError: false })
+        if (form.fromYear === String(fromYear)) setForm(emptyCohortForm())
+      } else {
+        setMsg({ text: data.message || '삭제에 실패했습니다.', isError: true })
+      }
+    } catch {
+      setMsg({ text: '서버와 통신할 수 없습니다.', isError: true })
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-header">
+        <span className="card-title">📅 입학년도별 학점 요건</span>
+        <span className="badge badge-purple">선택</span>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16, lineHeight: 1.6 }}>
+        입학년도에 따라 이수 학점이 달라지는 경우에만 등록하세요. 등록한 입학년도 이후 입학생에게 적용되며(더 최근에 등록한 값이 우선), 비워 둔 항목은 학교 기본값을 사용합니다.
+        입학년도를 입력하지 않은 학생에게는 학교 기본값이 적용됩니다.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {cohorts.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--text2)' }}>등록된 입학년도별 요건이 없습니다. 모든 학생에게 학교 기본값이 적용됩니다.</div>
+        ) : cohorts.map((cohort) => {
+          const summary = COHORT_FIELDS
+            .filter(({ key }) => cohort.requirements?.[key] != null)
+            .map(({ key, short }) => `${short} ${cohort.requirements[key]}학점`)
+            .join(' · ')
+          return (
+            <div key={cohort.fromYear} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg3)' }}>
+              <div style={{ fontSize: 13 }}><b>{cohort.fromYear}학번부터</b> <span style={{ color: 'var(--text2)' }}>{summary || '변경 항목 없음'}</span></div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => editCohort(cohort)}>수정</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => remove(cohort.fromYear)}>삭제</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, alignItems: 'end' }}>
+        <div>
+          <label>입학년도부터</label>
+          <input className="input-field" type="number" min="1990" max="2100" placeholder="예: 2023" value={form.fromYear} onChange={(e) => setForm((f) => ({ ...f, fromYear: e.target.value }))} style={{ width: '100%' }} />
+        </div>
+        {COHORT_FIELDS.map(({ key, label }) => (
+          <div key={key}>
+            <label>{label}</label>
+            <input className="input-field" type="number" min="0" placeholder="기본값 사용" value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} style={{ width: '100%' }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 8 }}>이미 등록한 입학년도를 다시 저장하면 그 연도의 요건을 이 값으로 바꿉니다.</div>
+      <button type="button" className="btn btn-accent" style={{ marginTop: 12 }} disabled={saving} onClick={save}>
+        {saving ? '저장 중...' : '💾 입학년도별 요건 저장'}
+      </button>
+      {msg && <div style={{ ...msgBoxStyle(msg.isError), marginTop: 10 }}>{msg.text}</div>}
+    </div>
+  )
+}
+
 function StaffGraduation() {
   const [loading, setLoading] = useState(true)
   const [majors, setMajors] = useState([])
+  const [cohorts, setCohorts] = useState([])
 
   // 학교 기본값
   const [total, setTotal] = useState(130)
@@ -136,6 +253,7 @@ function StaffGraduation() {
       .then((data) => {
         if (!data.ok) return
         setMajors(data.majors || [])
+        setCohorts(data.cohorts || [])
         const r = data.requirements
         if (r) {
           setTotal(r.requiredTotalCredits ?? 130)
@@ -273,6 +391,7 @@ function StaffGraduation() {
   }
 
   return (
+    <>
     <div className="grid-2" style={{ alignItems: 'start' }}>
       <div className="card">
         <div className="card-header">
@@ -414,6 +533,8 @@ function StaffGraduation() {
         </div>
       </div>
     </div>
+    <CohortCard cohorts={cohorts} setCohorts={setCohorts} />
+    </>
   )
 }
 
