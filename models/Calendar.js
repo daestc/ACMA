@@ -151,8 +151,10 @@ const LectureSchema = new mongoose.Schema({
 }, { timestamps: true }); // 생성/수정일 자동 기록
 
 // 복합 인덱스 설정 (성능 최적화)
-// 같은 대학 안에서만 과목+분반 중복 방지 (대학이 다르면 같은 과목명/분반 허용)
-LectureSchema.index({ university: 1, courseName: 1, section: 1 }, { unique: true });
+// 강의 하나 = 대학·연도·학기·교과명·분반. 학기가 다르면 같은 과목·분반을 따로 저장한다
+// (예전 인덱스 {university, courseName, section}는 2학기 업로드가 1학기 문서를 덮어쓰게 만들었다).
+// 옛 인덱스는 Mongoose가 자동으로 지우지 않는다 → scripts/migrateLectureIndex.js --apply
+LectureSchema.index({ university: 1, year: 1, semester: 1, courseName: 1, section: 1 }, { unique: true });
 LectureSchema.index({ "schedules.day": 1, "schedules.startMinute": 1 }); // 시간대별 조회 성능 향상
 
 

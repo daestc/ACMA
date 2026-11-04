@@ -407,6 +407,7 @@ function LectureAdmin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--bg3)' }}>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, color: 'var(--text2)' }}>학기</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, color: 'var(--text2)' }}>이수구분</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, color: 'var(--text2)' }}>교과명</th>
                   <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, color: 'var(--text2)' }}>분반</th>
@@ -419,6 +420,7 @@ function LectureAdmin() {
               <tbody>
                 {items.map((lec) => (
                   <tr key={lec._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{lec.year}년 {lec.semester}</td>
                     <td style={{ padding: '10px 12px' }}><span className="badge badge-blue">{lec.classification}</span></td>
                     <td style={{ padding: '10px 12px', fontWeight: 700 }}>{lec.courseName}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>{lec.section ? lec.section : '없음'}</td>
@@ -430,7 +432,7 @@ function LectureAdmin() {
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       <button
                         type="button" className="btn btn-ghost btn-sm"
-                        onClick={() => deleteLecture(lec._id, `${lec.courseName} ${lec.section ? lec.section + '분반' : '분반 없음'}`)}
+                        onClick={() => deleteLecture(lec._id, `${lec.year}년 ${lec.semester} ${lec.courseName} ${lec.section ? lec.section + '분반' : '분반 없음'}`)}
                       >🗑</button>
                     </td>
                   </tr>

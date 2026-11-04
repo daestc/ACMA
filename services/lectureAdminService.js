@@ -13,6 +13,26 @@ const { Lecture } = require('../models/Calendar');
 // 시드 등으로 university가 null인 기존 데이터는 대진대학교 소속으로 취급
 const DEFAULT_UNIVERSITY = '대진대학교';// 기본 대학 이름
 
+const LECTURE_SEMESTERS = ['1학기', '2학기', '여름학기', '겨울학기'];
+
+function validationError(message) {
+  const err = new Error(message);
+  err.code = 'VALIDATION';
+  return err;
+}
+
+// 강의의 연도·학기는 필수다. 스키마 기본값(2026, 1학기)으로 조용히 들어가면 다른 학기 강의를 덮어쓴다.
+function requireTerm(year, semester) {
+  const y = Number(year);
+  if (!Number.isInteger(y) || y < 2000 || y > 2100) throw validationError('개설 연도를 입력해주세요.');
+  if (!LECTURE_SEMESTERS.includes(semester)) throw validationError('개설 학기를 선택해주세요.');
+  return { year: y, semester };
+}
+
+function formatTerm({ year, semester }) {
+  return `${year}년 ${semester}`;
+}
+
 function normalizeUniversity(university) {
   const value = university?.trim();
   return value || null;
@@ -199,10 +219,11 @@ function parseLectureFile(buffer, filename = '') {
   return parseCsvBuffer(buffer);
 }
 
-// CSV 일괄 등록 (upsert) 
-// 같은 교과명+분반은 갱신, 없으면 삽입 (기존 데이터는 지우지 않음)
+// CSV 일괄 등록 (upsert)
+// 같은 연도·학기·교과명·분반은 갱신, 없으면 삽입 (기존 데이터·다른 학기 강의는 지우지 않음)
 async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university, filename } = {}) {
   const univ = requireUniversity(university);
+  const term = requireTerm(year, semester);
   const { lectures, failedRows } = await parseLectureFile(buffer, filename);
 
   if (lectures.length === 0) {
@@ -214,6 +235,8 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
   const ops = lectures.map(lec => ({
     updateOne: {
       filter: buildLectureOwnershipFilter(univ, {
+        year: term.year,
+        semester: term.semester,
         courseName: lec.courseName,
         section: lec.section,
       }),
@@ -221,8 +244,8 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
         $set: {
           ...lec,
           university: univ,
-          ...(year ? { year } : {}),
-          ...(semester ? { semester } : {}),
+          year: term.year,
+          semester: term.semester,
           ...(createdBy ? { createdBy } : {}),
         },
       },
@@ -235,7 +258,7 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
     result = await Lecture.bulkWrite(ops, { ordered: false });
   } catch (err) {
     if (err.code === 11000 || err.name === 'MongoBulkWriteError') {
-      const dup = new Error('동일한 교과명·분반 강의가 이미 등록되어 있습니다. 목록에서 확인하거나 파일을 수정해주세요.');
+      const dup = new Error(`${formatTerm(term)}에 동일한 교과명·분반 강의가 이미 등록되어 있습니다. 목록에서 확인하거나 파일을 수정해주세요.`);
       dup.code = 'DUPLICATE_LECTURE';
       throw dup;
     }
@@ -253,13 +276,14 @@ async function bulkUpsertFromCsv(buffer, { year, semester, createdBy, university
 // 개별 강의 등록 
 async function createLecture({ classification, courseName, section, credits, professor, schedules, year, semester, createdBy, university }) {
   const univ = requireUniversity(university);
+  const term = requireTerm(year, semester);
 
-  // 같은 대학(레거시 null 포함) 안에서만 과목+분반 중복 검사
+  // 같은 대학(레거시 null 포함)·같은 연도·학기 안에서만 과목+분반 중복 검사
   const exists = await Lecture.findOne(
-    buildLectureOwnershipFilter(univ, { courseName, section }),
+    buildLectureOwnershipFilter(univ, { year: term.year, semester: term.semester, courseName, section }),
   ).lean();
   if (exists) {
-    const err = new Error(`이미 등록된 강의입니다. (${courseName} ${section ? section + '분반' : '분반 없음'})`);
+    const err = new Error(`이미 등록된 강의입니다. (${formatTerm(term)} ${courseName} ${section ? section + '분반' : '분반 없음'})`);
     err.code = 'DUPLICATE_LECTURE';
     throw err;
   }
@@ -272,8 +296,8 @@ async function createLecture({ classification, courseName, section, credits, pro
     credits,
     professor: professor || '미정',
     schedules,
-    ...(year ? { year } : {}),
-    ...(semester ? { semester } : {}),
+    year: term.year,
+    semester: term.semester,
     ...(createdBy ? { createdBy } : {}),
   });
 }
@@ -290,8 +314,9 @@ async function getLectures({ search = '', page = 1, limit = 20, university } = {
 
   page = Math.min(Math.max(1, page), totalPages);
 
+  // 최근 학기부터 — 학기별 데이터가 섞여 보이지 않게 학기로 먼저 묶는다
   const items = await Lecture.find(filter)
-    .sort({ courseName: 1, section: 1 })
+    .sort({ year: -1, semester: 1, courseName: 1, section: 1 })
     .skip((page - 1) * limit)
     .limit(limit)
     .lean();
@@ -329,4 +354,5 @@ module.exports = {
   buildStaffUniversityFilter,
   normalizeUniversity,
   DEFAULT_UNIVERSITY,
+  LECTURE_SEMESTERS,
 };
