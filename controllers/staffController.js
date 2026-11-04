@@ -137,6 +137,10 @@ function parseNullableNum(value) {
   return parseNum(value, null);
 }
 
+// 복수전공 학점 두 항목은 이 값을 모르는 화면(EJS 대학관계자 화면)도 같은 API로 저장한다.
+// 요청 본문에 키가 없으면(undefined) 기존 값을 유지하고, 빈 문자열이면 지운다.
+const DOUBLE_MAJOR_CREDIT_FIELDS = ['doubleMajorPrimaryCredits', 'doubleMajorCredits'];
+
 function parseBool(value) {
   if (value === '' || value == null) return null;
   return value === true || value === 'true';
@@ -162,10 +166,15 @@ const saveGraduation = async (req, res) => {
       requiredVolunteer: body.requiredVolunteer === '' || body.requiredVolunteer == null
         ? null
         : parseNum(body.requiredVolunteer, null),
-      // 비우면 null — 복수전공 학생도 단일전공 기준으로 계산된다
-      doubleMajorPrimaryCredits: parseNullableNum(body.doubleMajorPrimaryCredits),
-      doubleMajorCredits: parseNullableNum(body.doubleMajorCredits),
     };
+    // 비우면 null — 복수전공 학생도 단일전공 기준으로 계산된다. 보내지 않았으면 기존 값 유지.
+    const missing = DOUBLE_MAJOR_CREDIT_FIELDS.filter((key) => body[key] === undefined);
+    const existing = missing.length
+      ? (await staffService.getGraduationRequirements(req.user.university))?.requirements
+      : null;
+    DOUBLE_MAJOR_CREDIT_FIELDS.forEach((key) => {
+      requirements[key] = body[key] === undefined ? (existing?.[key] ?? null) : parseNullableNum(body[key]);
+    });
 
     const graduation = await staffService.saveGraduationRequirements(
       req.user.university,
@@ -186,7 +195,16 @@ const saveGraduation = async (req, res) => {
 // 입학년도별 학점 요건 저장/삭제 — 학교 기본값 위에 "이 입학년도부터" 달라지는 학점만 얹는다
 const saveCohortGraduation = async (req, res) => {
   try {
-    const body = req.body || {};
+    const body = { ...(req.body || {}) };
+    // 같은 입학년도를 다시 저장할 때 복수전공 두 항목을 보내지 않았으면 기존 값을 유지한다.
+    // 빈 문자열은 서비스가 "지정 안 함"으로 처리한다(= 기본 요건 사용).
+    if (DOUBLE_MAJOR_CREDIT_FIELDS.some((key) => body[key] === undefined)) {
+      const graduation = await staffService.getGraduationRequirements(req.user.university);
+      const entry = (graduation?.cohortRequirements || []).find((item) => item.fromYear === Number(body.fromYear));
+      DOUBLE_MAJOR_CREDIT_FIELDS.forEach((key) => {
+        if (body[key] === undefined && entry?.requirements?.[key] != null) body[key] = entry.requirements[key];
+      });
+    }
     const cohorts = await staffService.saveCohortRequirements(
       req.user.university,
       body.fromYear,
