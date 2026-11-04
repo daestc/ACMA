@@ -164,6 +164,14 @@ function Checklist({ questions, prefs, setPrefs, busy, onSubmit, onSkip }) {
   )
 }
 
+// 입력이 적은 학생에게 안내하는 외부 진로검사. 커리어넷은 결과를 점수가 아니라 보고서 링크로만 주므로
+// 점수에는 연동하지 않고 안내만 한다.
+const CAREERNET_TEST = { url: 'https://www.career.go.kr/cloud/w/inspect/value/intro', label: '커리어넷 직업가치관검사' }
+
+function CareerNetLink() {
+  return <a href={CAREERNET_TEST.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600 }}>{CAREERNET_TEST.label}</a>
+}
+
 function InterestPicker({ categories, selected, setSelected, busy, onSubmit }) {
   const toggle = (name) => setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]))
   return (
@@ -192,6 +200,9 @@ function InterestPicker({ categories, selected, setSelected, busy, onSubmit }) {
           )
         })}
       </div>
+      <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12, lineHeight: 1.6 }}>
+        아직 입력한 정보가 적다면, 진로검사로 내가 중요하게 여기는 가치를 먼저 확인해 보세요. → <CareerNetLink />
+      </p>
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <button type="button" className="btn btn-accent" disabled={busy || selected.length === 0} onClick={onSubmit}>{busy ? '추천 중...' : '이 분야로 추천 받기'}</button>
       </div>
@@ -434,6 +445,7 @@ function CareerRecommend() {
           {doc.confidence === 'low' && (
             <div style={{ background: 'var(--amber-bg, var(--bg3))', color: 'var(--amber, var(--text))', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
               ℹ️ 입력한 정보가 적어 참고용 추천입니다. 과목·자격증·스킬을 등록하면 더 정확해집니다.
+              <div style={{ marginTop: 4 }}><CareerNetLink />를 받아 보면 어떤 직무를 탐색할지 정하는 데 도움이 됩니다.</div>
             </div>
           )}
           <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>
