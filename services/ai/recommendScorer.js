@@ -39,6 +39,9 @@ const KNOWLEDGE_SPLIT = { area: 17, topic: 8 };
 const norm = v => String(v || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 
 // "정보처리기사·산업기사" → ["정보처리기사", "정보처리산업기사"]
+// 아직 전공을 정하지 않았다는 뜻의 학과명. 진로 정보가 아니므로 전공 입력으로 세지 않는다
+// (전공 점수·신뢰도·inputState.major 모두 "입력 안 함"). 학과 매칭에서도 "자유전공" 계열 직무 학과가 없다.
+const UNDECLARED_MAJOR = /자유전공|자율전공|무전공|전공\s*미정|^미정$/;
 const CERT_SERIES = /(기술사|기능장|산업기사|기사|기능사|\d급)$/;
 function expandCert(raw) {
   const parts = String(raw).split('·').map(s => s.trim()).filter(Boolean);
@@ -321,7 +324,8 @@ function sumKnowledgeWeight(courses) {
 // buildUserContext 결과는 compact()로 null·빈 배열 키가 통째로 사라진다 → 전부 ?.와 || []로 읽는다.
 // courses: [{ name, credits, grade }] — 추천 서비스가 학기 기록에서 직접 읽은 수강 과목(교양 포함).
 function extractUserSignals(context, courses) {
-  const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
+  const majors = [context?.profile?.major, context?.profile?.doubleMajor]
+    .filter(m => m && !UNDECLARED_MAJOR.test(String(m).trim()));
   const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
   const scoringCourses = dedupeCourses(courses === undefined ? coursesFromContext(context) : courses);
   const subjects = scoringCourses.map(c => c.name);
@@ -612,6 +616,7 @@ module.exports = {
   rankCandidates,
   pickDiverse,
   countSignalKinds,
+  UNDECLARED_MAJOR,
   calcConfidence,
   buildInputState,
   CERT_GRADE_POINTS,

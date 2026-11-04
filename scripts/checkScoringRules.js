@@ -75,6 +75,16 @@ function checkScoringRules() {
   check('기사+산업기사 → 21이지만 상한 20', certScore(['정보처리기사', '정보처리산업기사']), 20);
   check('직무와 무관한 자격증 → 0', certScore(['한식조리기능사']), 0);
 
+  // 자유전공·전공 미정은 전공 입력이 아니다(전공 점수·신뢰도·inputState 모두 입력 안 함)
+  ['자유전공학부', '자율전공학부', '무전공', '전공 미정', '미정'].forEach((major) => {
+    const sig = scorer.extractUserSignals({ profile: { major } }, toCourses([db]));
+    const prefs = scorer.sanitizePrefs({ work: ['build'] });
+    check(`"${major}" + 수강 1과목 + 체크리스트 → 전공 입력 아님, 신뢰도 low`,
+      [sig.majors.length, scorer.buildInputState(sig, prefs).major, scorer.calcConfidence(sig, prefs)], [0, false, 'low']);
+  });
+  const declared = scorer.extractUserSignals({ profile: { major: '컴퓨터공학과' } }, toCourses([db]));
+  check('"컴퓨터공학과"는 그대로 전공 입력', [declared.majors, scorer.calcConfidence(declared, scorer.sanitizePrefs({ work: ['build'] }))], [['컴퓨터공학과'], 'normal']);
+
   // 입력 여부
   const none = scorer.extractUserSignals({});
   check('아무것도 입력하지 않음', scorer.buildInputState(none, scorer.sanitizePrefs(null)), { major: false, cert: false, knowledge: false, skill: false, pref: false });

@@ -161,6 +161,10 @@ function parseBool(value) {
   return value === true || value === 'true';
 }
 
+// 복수전공 학점 두 항목을 모르는 화면·클라이언트도 같은 API로 저장할 수 있다.
+// 요청 본문에 키가 없으면(undefined) 기존 값을 유지하고, 빈 문자열이면 지운다.
+const DOUBLE_MAJOR_CREDIT_FIELDS = ['doubleMajorPrimaryCredits', 'doubleMajorCredits'];
+
 const saveGraduation = async (req, res) => {
   try {
     const body = req.body || {};
@@ -181,15 +185,21 @@ const saveGraduation = async (req, res) => {
       requiredVolunteer: body.requiredVolunteer === '' || body.requiredVolunteer == null
         ? null
         : parseNum(body.requiredVolunteer, null),
-      // 비우면 null — 복수전공 학생도 단일전공 기준으로 계산된다
-      doubleMajorPrimaryCredits: parseNullableNum(body.doubleMajorPrimaryCredits),
-      doubleMajorCredits: parseNullableNum(body.doubleMajorCredits),
     };
 
     const fromYear = parseFromYear(body.fromYear);
     if (fromYear === INVALID_YEAR) {
       return res.status(400).json({ ok: false, message: INVALID_YEAR_MESSAGE });
     }
+
+    // 비우면 null — 복수전공 학생도 단일전공 기준으로 계산된다. 보내지 않았으면 같은 학번(없으면 기본) 요건의 기존 값을 유지한다.
+    const missing = DOUBLE_MAJOR_CREDIT_FIELDS.filter((key) => body[key] === undefined);
+    const existing = missing.length
+      ? (await staffService.getGraduationRequirements(req.user.university, fromYear))?.requirements
+      : null;
+    DOUBLE_MAJOR_CREDIT_FIELDS.forEach((key) => {
+      requirements[key] = body[key] === undefined ? (existing?.[key] ?? null) : parseNullableNum(body[key]);
+    });
 
     const graduation = await staffService.saveGraduationRequirements(
       req.user.university,
