@@ -85,9 +85,7 @@ async function fetchProgress() {
     const semesterGpaCount = document.getElementById('semester-gpa-count');
     if (semesterGpaCount) semesterGpaCount.textContent = String(totalEarned);
 
-    // 그레이드 프리뷰와 시뮬레이터에서 사용
     window._ac_currentEarnedCredits = totalEarned;
-    updateGradPreview();
   } catch (err) {
     console.error('fetchProgress failed', err);
   }

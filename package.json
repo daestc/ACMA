@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test && python -m unittest python.test_pdf_quiz",
+    "test": "node scripts/checkPlanAdjustment.js && node scripts/checkScoringRules.js",
+    "check:scorer": "node scripts/checkRecommendScorer.js",
     "start": "node app.js",
     "dev": "nodemon --ext js,mjs,cjs,json,ejs app.js"
   },

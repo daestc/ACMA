@@ -80,7 +80,7 @@ exports.postLecture = async (req, res) => {
       professor: professor?.trim(),
       schedules,
       year: parseInt(year, 10) || undefined,
-      semester: semester?.trim() || undefined,
+      semester: String(semester ?? '').trim() || undefined,
       createdBy: req.user.id,
       university: req.user.university,
     });
@@ -109,7 +109,7 @@ exports.postLectureCsv = async (req, res) => {
     const { year, semester } = req.body;
     const result = await lectureAdminService.bulkUpsertFromCsv(req.file.buffer, {
       year: parseInt(year, 10) || undefined,
-      semester: semester?.trim() || undefined,
+      semester: String(semester ?? '').trim() || undefined,
       createdBy: req.user.id,
       university: req.user.university,
       filename: req.file.originalname,

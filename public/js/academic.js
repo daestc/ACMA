@@ -505,8 +505,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── 목표 GPA 시뮬레이터 ───────────────────────────
 function calcSim() {
-  const target     = parseFloat(document.getElementById('target-gpa').value)  || 3.9;
-  const next       = parseInt(document.getElementById('next-credits').value)   || 18;
+  const targetInput = document.getElementById('target-gpa');
+  const nextInput = document.getElementById('next-credits');
+  // 시뮬레이터 UI가 없는 화면에서는 계산하지 않는다
+  if (!targetInput || !nextInput || !document.getElementById('sim-result') || !document.getElementById('sim-desc')) return;
+
+  const target     = parseFloat(targetInput.value)  || 3.9;
+  const next       = parseInt(nextInput.value)   || 18;
   const curCredits = Number(window._ac_currentEarnedCredits || document.getElementById('semester-gpa-count')?.textContent || 0) || 0;
   const curGPA     = Number(document.getElementById('semester-gpa-average')?.textContent || 0) || 0;
 

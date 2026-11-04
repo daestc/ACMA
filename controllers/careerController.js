@@ -154,7 +154,8 @@ const getMyCareer=async(req,res)=>{
     if (!req.session.user || (!req.session.user._id && !req.session.user.email)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    const data = await careerService.getMyCareer(req.session.user);
+    const sessionUser = req.session.user;
+    const data = await careerService.getMyCareer(sessionUser.id || sessionUser._id || sessionUser.email);
     if (!data) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, data });
   } catch (error) {
