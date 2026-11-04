@@ -301,6 +301,15 @@ function checkScoringRules() {
   check('아무것도 입력하지 않음', scorer.buildInputState(none, scorer.sanitizePrefs(null)), { major: false, cert: false, knowledge: false, skill: false, pref: false });
   const some = scorer.extractUserSignals({ profile: { major: '컴퓨터공학과' }, specs: { skills: [{ name: 'Java' }] }, academic: { currentSubjects: [{ name: dbOnly }] } });
   check('전공·기술·수강 과목만 입력', scorer.buildInputState(some, scorer.sanitizePrefs({ work: ['build'] })), { major: true, cert: false, knowledge: true, skill: true, pref: true });
+  // 자유전공·전공 미정은 전공 입력이 아니다(전공 점수·신뢰도·inputState 모두 입력 안 함)
+  ['자유전공학부', '자율전공학부', '무전공', '전공 미정', '미정'].forEach(major => {
+    const sig = scorer.extractUserSignals({ profile: { major }, academic: { currentSubjects: [{ name: dbOnly }] } });
+    const prefs = scorer.sanitizePrefs({ work: ['build'] });
+    check(`"${major}" + 수강 중 1과목 + 체크리스트 → 전공 입력 아님, 신뢰도 low`,
+      [sig.majors.length, scorer.buildInputState(sig, prefs).major, scorer.calcConfidence(sig, prefs)], [0, false, 'low']);
+  });
+  const declared = scorer.extractUserSignals({ profile: { major: '컴퓨터공학과' }, academic: { currentSubjects: [{ name: dbOnly }] } });
+  check('"컴퓨터공학과"는 그대로 전공 입력', [declared.majors, scorer.calcConfidence(declared, scorer.sanitizePrefs({ work: ['build'] }))], [['컴퓨터공학과'], 'normal']);
   const expOnly = scorer.extractUserSignals({ specs: { experiences: [{ title: '교내 해커톤' }] } });
   check('경험만 입력해도 기술·경험은 입력으로 본다', scorer.buildInputState(expOnly, scorer.sanitizePrefs(null)).skill, true);
 

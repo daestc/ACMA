@@ -28,6 +28,9 @@ const PREF_POINTS = { work: 12, style: 4, salary: 4 };
 // 몰려 있어(능력 중앙값 92) 차이가 안 나서, 직무 안에서의 순위로 가중한다(계획서 v3.2 §4-2-1).
 const RANK_WEIGHT = [1.0, 0.8, 0.6, 0.4, 0.2];
 const MIN_SIGNAL_KINDS = 3; // 학생 쪽 입력 신호가 이만큼 있어야 신뢰도 normal
+// 아직 전공을 정하지 않았다는 뜻의 학과명. 진로 정보가 아니므로 전공 입력으로 세지 않는다
+// (전공 점수·신뢰도·inputState.major 모두 "입력 안 함"). 학과 매칭에서도 "자유전공" 계열 직무 학과가 없다.
+const UNDECLARED_MAJOR = /자유전공|자율전공|무전공|전공\s*미정|^미정$/;
 
 // ── 정규화 ─────────────────────────────────────────────
 
@@ -312,7 +315,8 @@ function subjectInfoFromCourses(courses) {
 // courses(추천 점수용 과목 목록)가 없으면(undefined) context의 majorCourses·currentSubjects를 쓴다 —
 // attachCertGaps(certIndex만 씀)와 점검 스크립트의 옛 호출이 그대로 돈다.
 function extractUserSignals(context, courses) {
-  const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
+  const majors = [context?.profile?.major, context?.profile?.doubleMajor]
+    .filter(m => m && !UNDECLARED_MAJOR.test(String(m).trim()));
   const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
   const subjectInfo = courses === undefined ? subjectInfoFromContext(context) : subjectInfoFromCourses(courses);
   const subjects = [...subjectInfo.keys()];
@@ -618,6 +622,7 @@ module.exports = {
   SKILL_ABILITY_MAP,
   SKILL_ONLY_ABILITY_MAP,
   RANK_WEIGHT,
+  UNDECLARED_MAJOR,
   PREF_OPTIONS,
   WORK_PREF_TARGETS,
   STYLE_TARGETS,
