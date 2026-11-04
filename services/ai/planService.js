@@ -127,9 +127,11 @@ async function detachOldCompletedSlices(userId, docId) {
 }
 
 // 주간 계획 생성 전체 흐름. 컨트롤러의 백그라운드(setImmediate)에서 호출된다.
-async function generateWeeklyPlan(docId, userId, weekStart) {
+// 순서: AI 호출 → 범주별 배수 → 검증(forGoal 정리) → 마감일 주입 → 목표 비율 안내
+// → pending 그대로 저장 → 옛 완료 조각 분리 → 재배치 → done 전환.
+async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
   try {
-    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart);
+    const context = await contextBuilder.buildWeeklyPlanContext(userId, weekStart, userGoal);
 
     const { data, meta } = await aiClient.generateJSON({
       system: weeklyPlanPrompt.buildSystem(),
@@ -157,6 +159,26 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
     const extraNotices = [];
     injectDueDates(sanitized.items, context.certSchedule, extraNotices);
 
+    // 규칙 14는 목표 항목을 50% 이상으로 잡게 하지만 마감·시험 규칙이 우선이라 정당하게 모자랄
+    // 수 있다. 항목을 고치거나 다시 생성하지 않고 안내만 한다. "마감·시험 때문"이라는 원인은
+    // 실제로 마감 항목이 있거나 시험 기간·시험 2주 전일 때만 붙인다.
+    // 분모는 hoursLimit가 아니라 실제 배정 시간(allocatedHours, 범주별 배수 적용 뒤)이다.
+    if (context.userGoal && sanitized.allocatedHours > 0) {
+      const goalHours = sanitized.items.filter(item => item.forGoal).reduce((sum, item) => sum + item.estimatedHours, 0);
+      const goalPct = Math.round((goalHours / sanitized.allocatedHours) * 100);
+      const { academicPhase, daysUntilNextExam } = context.computed;
+      const deadlineOrExam = sanitized.items.some(item => item.isDeadline)
+        || academicPhase === 'midterm' || academicPhase === 'final'
+        || (daysUntilNextExam != null && daysUntilNextExam <= 14);
+      if (goalHours === 0) {
+        extraNotices.push('입력한 목표와 직접 관련된 항목을 만들지 못했습니다. 공부할 과목이나 자격증처럼 구체적으로 적어 보세요.');
+      } else if (goalPct < 50 && deadlineOrExam) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다. 마감·시험 일정이 먼저 배치되었습니다.`);
+      } else if (goalPct < 50) {
+        extraNotices.push(`입력한 목표에 배정된 시간은 ${goalPct}%입니다.`);
+      }
+    }
+
     // hasTimetable:false면 availableHoursByDay가 실제 시간표가 아니라 기본값(하루
     // 6시간 균일)으로 채워졌다는 뜻이다 — 방학이라 정말 시간표가 없는 것과 학생이
     // 아직 등록을 안 한 것을 구분할 수 없으므로, 조용히 기본값을 쓰는 대신 알린다.
@@ -166,9 +188,11 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
 
     const targetJob = await Job.findOne({ userId, status: 'target' }).select('jobCode title').lean();
 
+    // status는 아직 pending으로 둔다. 화면 폴링은 done을 보는 즉시 진행률을 한 번 그리고 멈추므로,
+    // 옛 완료 조각 분리·재배치가 끝난 뒤에 done으로 바꿔야 옛 기록이 새 항목에 붙은 진행률이 안 그려진다.
     const savedDoc = await WeeklyPlan.findByIdAndUpdate(docId, {
-      status: 'done',
       errorMessage: null,
+      userGoal: context.userGoal,
       jobCode: targetJob?.jobCode || null,
       jobTitle: targetJob?.title || null,
       goal: sanitized.goal,
@@ -188,7 +212,9 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
     }, { new: true }).lean();
 
     await detachOldCompletedSlices(userId, docId);
+    // runDistribution은 실패해도 던지지 않고 distribution.status만 failed로 남기므로 done 전환은 항상 실행된다.
     await runDistribution(savedDoc, extraNotices);
+    await WeeklyPlan.findByIdAndUpdate(docId, { status: 'done' });
   } catch (error) {
     logger.error(`[ai] weekly-plan generation failed (docId=${docId}): ${error.message}`);
     await WeeklyPlan.findByIdAndUpdate(docId, {

@@ -9,6 +9,8 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const DIFFICULTY_OPTIONS = [['easy', '쉬움'], ['normal', '적당'], ['hard', '어려움']]
 const MISS_OPTIONS = [['time', '시간 부족'], ['hard', '난도 높음'], ['other', '다른 일정']]
 const REVIEW_STATE_LABEL = { done: '완료', partial: '일부만 완료', missed: '못 함' }
+const USER_GOAL_MAX_LENGTH = 100
+const USER_GOAL_PLACEHOLDER = '예: 정보처리기사 필기 대비 위주로'
 const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.'
 
 // 항목별 진행률(서버 계산, progress.items[i]) — 화면은 표시만 한다.
@@ -50,6 +52,24 @@ function reviewSummaryText(review) {
   return `지난 계획(${formatKstDate(review.weekStart)} ~ ${formatKstDate(review.weekEnd)})의 달성률은 ${Math.round(s.timeRate * 100)}%입니다${basis}. 항목별로 한 번씩 골라 주세요.`
 }
 
+function UserGoalInput({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
+      <input
+        type="text"
+        className="input-field"
+        style={{ flex: 1, minWidth: 0 }}
+        value={value}
+        maxLength={USER_GOAL_MAX_LENGTH}
+        placeholder={USER_GOAL_PLACEHOLDER}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="이번 주 목표"
+      />
+      <span style={{ fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{value.length}/{USER_GOAL_MAX_LENGTH}</span>
+    </div>
+  )
+}
+
 function pctBadgeClass(pct) {
   if (pct >= 70) return 'badge-green'
   if (pct >= 40) return 'badge-blue'
@@ -63,6 +83,7 @@ function CareerPlan() {
   const [progress, setProgress] = useState(null)
   const [failedMsg, setFailedMsg] = useState('생성에 실패했습니다.')
   const [weekStartInput, setWeekStartInput] = useState(todayKstDateString())
+  const [userGoalInput, setUserGoalInput] = useState('')
   const [currentTargetJob, setCurrentTargetJob] = useState(null) // {jobCode, title} | null
   const [days, setDays] = useState(null)
 
@@ -109,6 +130,7 @@ function CareerPlan() {
     pollTimerRef.current = pollUntilDone(`/ai/weekly-plan/${currentPlanIdRef.current}`, null, (data) => {
       if (data.status === 'done' && data.data) {
         renderPlanDoc(data.data, data.progress)
+        setUserGoalInput(data.data.userGoal || '')
       } else {
         setFailedMsg(data.errorMessage || '생성에 실패했습니다.')
         setSection('failed')
@@ -134,6 +156,7 @@ function CareerPlan() {
     }
     if (data.status === 'done' && data.data) {
       renderPlanDoc(data.data, data.progress)
+      setUserGoalInput(data.data.userGoal || '')
       return
     }
     setSection('empty')
@@ -258,7 +281,7 @@ function CareerPlan() {
   }
 
   async function requestGeneration(weekStart) {
-    const data = await callApi('/ai/weekly-plan', { method: 'POST', body: JSON.stringify({ weekStart }) })
+    const data = await callApi('/ai/weekly-plan', { method: 'POST', body: JSON.stringify({ weekStart, userGoal: userGoalInput }) })
     if (data.httpStatus === 202 && data.id) {
       currentPlanIdRef.current = data.id
       startPolling()
@@ -349,7 +372,8 @@ function CareerPlan() {
           <div style={{ fontSize: 36, marginBottom: 12 }}>📅</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>이번 주 계획이 아직 없습니다</div>
           <p style={{ fontSize: 13, color: 'var(--text2)' }}>현재 학업·스펙 데이터를 바탕으로 이번 주 학습 계획을 자동으로 만들어드립니다.</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14, maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
+            <UserGoalInput value={userGoalInput} onChange={setUserGoalInput} />
             <input type="date" className="input-field" value={weekStartInput} onChange={(e) => setWeekStartInput(e.target.value)} title="계획을 만들 주에 속하는 아무 날짜나 선택 (기본값: 오늘 = 이번 주)" />
             <button type="button" className="btn btn-accent" disabled={generateDisabled} title={generateTitle} onClick={generatePlan}>계획 생성하기</button>
           </div>
@@ -377,7 +401,8 @@ function CareerPlan() {
                 <span className="card-title">{formatKstDate(plan.weekStart)} ~ {formatKstDate(plan.weekEnd)}</span>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>학사 상태: {ACADEMIC_PHASE_LABEL[plan.computed?.academicPhase] || plan.computed?.academicPhase || '-'}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <UserGoalInput value={userGoalInput} onChange={setUserGoalInput} />
                 <button type="button" className="btn btn-ghost btn-sm" onClick={redistribute}>재분배</button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={generateDisabled} title={generateTitle} onClick={() => { if (window.confirm(REGENERATE_CONFIRM)) generatePlan() }}>다시 생성</button>
               </div>
@@ -411,6 +436,23 @@ function CareerPlan() {
               )
             })()}
 
+            {plan.userGoal && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>내 목표: {plan.userGoal}</div>
+                {progress?.goal && progress.goal.plannedHours > 0 && (
+                  <div className="progress-wrap" style={{ marginTop: 8 }}>
+                    <div className="progress-header">
+                      <span className="progress-label">목표 진행</span>
+                      <span className="progress-value">{progress.goal.doneHours}h / {progress.goal.plannedHours}h</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill fill-green" style={{ width: `${Math.min(100, Math.round((progress.goal.doneHours / progress.goal.plannedHours) * 100))}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginTop: 14 }}>{plan.goal || ''}</p>
 
             {plan.adjustment && (
@@ -439,6 +481,7 @@ function CareerPlan() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className={`badge ${CATEGORY_BADGE[item.category] || 'badge-blue'}`}>{CATEGORY_LABEL[item.category] || item.category}</span>
                     {item.isDeadline && <span className="badge badge-red">마감 {formatKstDate(item.dueDate)}</span>}
+                    {item.forGoal && <span className="badge badge-green">목표</span>}
                     <strong>{item.title}</strong>
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
