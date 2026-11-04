@@ -2,15 +2,17 @@ const express = require('express');
 const router = express.Router();
 const academicController = require('../controllers/academicController');
 const { requireLogin } = require('../middleware/auth');
+const { buildSemesterOptions } = require('../utils/semesterOptions');
 
 
-// 학사관리 페이지 
+// 학사관리 페이지
 router.get('/', requireLogin, (req, res) => {
   res.render('pages/academic', {
     title:       '학사관리',
     currentPage: 'academic',
     pageTitle:   '🎓 학사관리',
     user:        req.user,
+    semesterOptions: buildSemesterOptions(), // 첫 항목이 현재 학기 = 기본 선택
   });
 });
 // GPA 계산 과목들 저장

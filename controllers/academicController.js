@@ -275,6 +275,7 @@ const getGraduationRequirements = async (req, res) => {
         GraduationRequirements: graduation.requirements,
         hasMajorSpecific: graduation.hasMajorSpecific,
       },
+      basis: graduation.basis,
     });
   } catch (error) {
     logger.error(error);
@@ -314,9 +315,7 @@ const getProgress = async (req, res) => {
     records.forEach(r => {
       (Array.isArray(r.subjects) ? r.subjects : []).forEach(s => {
         const credits = Number(s.credits) || 0;
-        const grade = s.grade;
-        const passed = grade != null && grade !== 'F';
-        if (!passed) return;
+        if (!academicService.isPassingGrade(s.grade)) return;
 
         const type = String(s.subjectType || 'free');
         if (type in totals) {
@@ -331,10 +330,12 @@ const getProgress = async (req, res) => {
     const profile = await academicService.getUniversityProfile(user);
     const graduation = await resolveRequirements(user);
 
+    // 예전 응답을 읽는 화면(내 현황 등)이 profile.GraduationRequirements를 쓰므로
+    // 학교·학과·입학년도를 반영해 계산한 값을 같은 자리에 넣는다.
     return res.json({
       success: true,
       totals,
-      profile,
+      profile: { ...(profile || {}), GraduationRequirements: graduation.available ? graduation.requirements : null },
       graduationAvailable: graduation.available,
       graduationRequirements: graduation.available ? graduation.requirements : null,
     });

@@ -68,6 +68,9 @@ const UserSchema = new mongoose.Schema({
   },
   // 학생 정보
   studentId: { type: String, default: null, trim: true }, // 학번
+  admissionYear: { type: Number, default: null, min: 1990, max: 2100 }, // 입학년도 (졸업요건 적용 기준)
+  // 주간 계획에서 하루에 쓸 수 있는 최대 학습 시간. null이면 기본 6시간.
+  dailyStudyHours: { type: Number, default: null, min: 1, max: 12 },
   // 소속 대학교
   university: { type: String, default: null, trim: true },
   // 전공

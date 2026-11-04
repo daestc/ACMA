@@ -11,6 +11,7 @@ const creditsAdapter = require('../phase1/credits');
 const academicPhaseAdapter = require('../phase1/academicPhase');
 const certScheduleAdapter = require('../phase1/certSchedule');
 const completionService = require('./completionService');
+const planAdjustment = require('./planAdjustment');
 
 const MAJOR_COURSES_LIMIT = 40;
 const SPEC_LIST_LIMIT = 15;
@@ -118,7 +119,8 @@ function extractMajorCourses(records) {
   for (const record of records) {
     for (const subject of (record.subjects || [])) {
       if (!subject.subjectType?.startsWith('major')) continue;
-      if (!subject.grade || subject.grade === 'F') continue;
+      // F뿐 아니라 NP(P/NP 과목 불합격)도 이수가 아니다 — 추천 점수가 이수 과목을 근거로 쓴다.
+      if (!subject.grade || subject.grade === 'F' || subject.grade === 'NP') continue;
       courses.push({ name: cleanSubjectName(subject.subjectName), grade: subject.grade });
       if (courses.length >= MAJOR_COURSES_LIMIT) return courses;
     }
@@ -256,11 +258,17 @@ async function buildUserContext(userId) {
 }
 
 async function buildWeeklyPlanContext(userId, weekStart) {
-  const [userContext, rawAvailability, academicPhase, prevWeekFeedback] = await Promise.all([
+  // 하루 최대 학습 시간은 사용자가 설정한다(없으면 availability 어댑터의 기본 6시간).
+  const settings = await User.findById(userId).select('dailyStudyHours').lean();
+  const dailyStudyHours = settings?.dailyStudyHours || undefined;
+
+  const [userContext, rawAvailability, academicPhase, prevWeekFeedback, recentRates, reviewTarget] = await Promise.all([
     buildUserContext(userId),
-    availabilityAdapter.calcAvailableHours(userId, academicPhaseAdapter.deriveSemesterFromDate(weekStart)),
+    availabilityAdapter.calcAvailableHours(userId, academicPhaseAdapter.deriveSemesterFromDate(weekStart), dailyStudyHours),
     academicPhaseAdapter.getAcademicContext(userId, weekStart),
     completionService.getPreviousWeekFeedback(userId, weekStart),
+    completionService.getRecentPaceRates(userId, weekStart),
+    completionService.getReviewTarget(userId, weekStart),
   ]);
 
   const rawAvailableHoursByDay = rawAvailability?.hoursByDay;
@@ -290,6 +298,14 @@ async function buildWeeklyPlanContext(userId, weekStart) {
 
   const availableHoursTotal = +availableHoursByDay.reduce((sum, h) => sum + h, 0).toFixed(1);
 
+  // 지난 실행 기록(시간 기준 달성률)과 "지난주 돌아보기" 응답으로 이번 주 시간 한도를 정한다.
+  // 계산은 서버가 하고(planAdjustment), AI는 그 한도 안에서 계획을 짠다 — 입력이 없으면 조정 없음.
+  const adjustment = planAdjustment.computeAdjustment({
+    recentRates,
+    reviewItems: reviewTarget?.items || [],
+  });
+  const hoursLimit = +(availableHoursTotal * adjustment.hoursFactor).toFixed(1);
+
   // academicPhase.semester가 null이면(방학 등 학기 공백기) 이번 주엔 "현재 수강 중"이라
   // 부를 과목이 없다. AcademicRecord.status는 학기가 끝나고 성적이 다 들어가도 자동으로
   // 'completed'로 바뀌지 않아 'in_progress'로 남는 경우가 있어(실제 확인됨: 2026-1학기
@@ -307,6 +323,8 @@ async function buildWeeklyPlanContext(userId, weekStart) {
     computed: {
       availableHoursByDay,
       availableHoursTotal,
+      hoursLimit,
+      dailyHoursCap: dailyStudyHours || null,
       academicPhase: academicPhase?.phase ?? null,
       semester: academicPhase?.semester ?? null,
       // 시험 2주 전부터 과목 비중을 올리는 규칙(weeklyPlan 4-4)용. 시험 일정이 없으면 null → buildUser가 키를 뺀다.
@@ -315,6 +333,15 @@ async function buildWeeklyPlanContext(userId, weekStart) {
     },
     prevCompletionRate: prevWeekFeedback?.rate ?? null,
     incompleteItems: prevWeekFeedback?.incompleteItems ?? [],
+    adjustment: {
+      applied: adjustment.applied,
+      hoursFactor: adjustment.hoursFactor,
+      hoursLimit,
+      categoryFactors: adjustment.categoryFactors,
+      reasons: adjustment.reasons,
+      basisWeeks: adjustment.basis.weeks,
+      basisTimeRate: adjustment.basis.timeRate,
+    },
   };
 }
 

@@ -93,8 +93,9 @@ async function buildCandidates(userId, prefs, interests) {
 
   const candidates = scorer.rankCandidates(signals, prefs, jobs, { limit: 10, perMidClass: 3 });
   const confidence = scorer.calcConfidence(signals, prefs);
+  const inputState = scorer.buildInputState(signals, prefs);
   const jobsByCode = new Map(jobs.map(job => [job.jobCode, job]));
-  return { context, candidates, confidence, jobsByCode };
+  return { context, candidates, confidence, inputState, jobsByCode };
 }
 
 const MIN_CERT_NAME_LENGTH = 3; // gapLinker와 같은 기준 — "기사"처럼 짧은 조각은 자격증명이 아니다
@@ -168,7 +169,7 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
   const categories = await getInterestCategories();
   const interests = sanitizeInterests(rawInterests, categories);
 
-  const { context, candidates, confidence, jobsByCode } = await buildCandidates(userId, prefs, interests);
+  const { context, candidates, confidence, inputState, jobsByCode } = await buildCandidates(userId, prefs, interests);
 
   // 입력이 적은 학생에게는 관심분야를 한 번만 묻는다. 이미 골랐는데도 low면 결과에 "참고용"만 붙인다.
   if (confidence === 'low' && interests.length === 0) {
@@ -180,7 +181,7 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
   // 후보가 3개 미만이면 AI가 고를 게 없다 — 있는 만큼 점수 기준으로 바로 끝낸다.
   if (candidates.length < PICK_COUNT) {
     const doc = await CareerRecommendation.create({
-      userId, status: 'done', prefs, interests, confidence, candidates, picks: scorePicks,
+      userId, status: 'done', prefs, interests, confidence, inputState, candidates, picks: scorePicks,
     });
     await retentionService.enforceRetention(CareerRecommendation, userId, RETENTION_LIMIT);
     return { httpStatus: 200, body: { id: doc._id, status: 'done', data: doc.toObject() } };
@@ -189,10 +190,10 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
   // pending 문서에도 후보와 점수 picks를 먼저 저장한다 — AI가 실패하거나 서버가 중간에 죽어도
   // 화면에 보여줄 계산값이 남는다.
   const doc = await CareerRecommendation.create({
-    userId, status: 'pending', prefs, interests, confidence, candidates, picks: scorePicks,
+    userId, status: 'pending', prefs, interests, confidence, inputState, candidates, picks: scorePicks,
   });
   setImmediate(() => {
-    generateRecommendation(doc._id, userId, context, candidates, prefs, jobsByCode).catch(error => {
+    generateRecommendation(doc._id, userId, context, candidates, prefs, jobsByCode, inputState).catch(error => {
       logger.error(`[ai] recommendation background crash (docId=${doc._id}): ${error.message}`);
     });
   });
@@ -225,7 +226,7 @@ function buildGenerationMeta(meta) {
  * 후보 안에서 AI가 3개를 골라 angle·사유·근거를 붙인다. requestRecommendation의 setImmediate에서 호출.
  * 실패하면 status만 failed로 바꾼다 — candidates와 점수 picks는 pending 저장 때 이미 들어 있다.
  */
-async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode) {
+async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode, inputState) {
   try {
     const prefLabels = buildPrefLabels(prefs);
     // 공용 collectEvidenceFacts는 진단·포트폴리오와 공유하므로 고치지 않고, 체크리스트 문구는 여기서만 합친다.
@@ -234,7 +235,7 @@ async function generateRecommendation(docId, userId, context, candidates, prefs,
 
     const { data, meta } = await aiClient.generateJSON({
       system: recommendationPrompt.buildSystem(),
-      user: recommendationPrompt.buildUser(context, candidates, jobsByCode, prefLabels, facts),
+      user: recommendationPrompt.buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState),
       schema: recommendationPrompt.buildOutputSchema(candidateCodes, facts),
     });
 

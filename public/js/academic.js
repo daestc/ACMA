@@ -33,6 +33,8 @@ function calcGPA() {
   let pts = 0, creds = 0;
 
   rows.forEach(r => {
+    // 과목명이 비어 있는 행은 제외 — 안 그러면 과목을 하나도 넣지 않았는데도 "예상 평점 4.50"이 보인다.
+    if (!r.querySelector('input[name="subjectName"]')?.value.trim()) return;
     const creditSelect = r.querySelector('select[name="credits"]');
     const gradeSelect = r.querySelector('select[name="grade"]');
     const c = parseInt(creditSelect?.value) || 3;
@@ -320,7 +322,7 @@ async function saveAcademicData() {
   }
 
   const payload = {
-    semester: semesterSelect?.value || '2026-1',
+    semester: semesterSelect?.value || window._ac_currentSemester,
     subjects: subjects.map(subject => ({
       subjectName: subject.subjectName,
       subjectType: subject.subjectType,
@@ -538,6 +540,59 @@ function updateGradMajorBadge(profile) {
   badge.textContent = profile?.major || profile?.university || '-';
 }
 
+// 어떤 기준으로 졸업요건을 계산했는지(학교·학과·입학년도·출처)를 화면에 보여 준다.
+// 학교·학과명은 사용자 입력이 섞여 있으므로 textContent로만 넣는다.
+function formatBasisDate(value) {
+  const d = value ? new Date(value) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function renderGradBasis(basis) {
+  const box = document.getElementById('gr-basis');
+  if (!box) return;
+  if (!basis) {
+    box.style.display = 'none';
+    return;
+  }
+
+  let yearLabel;
+  if (!basis.admissionYear) {
+    yearLabel = '입학년도 미입력 (학교 기본 요건)';
+  } else if (basis.cohortFromYear) {
+    yearLabel = `${basis.admissionYear}학번 (${basis.cohortFromYear}학번부터 적용되는 요건)`;
+  } else {
+    yearLabel = `${basis.admissionYear}학번 (학교 기본 요건)`;
+  }
+
+  const updated = formatBasisDate(basis.updatedAt);
+  const lines = [
+    { strong: '적용 기준', text: [basis.university, basis.major, yearLabel].filter(Boolean).join(' · ') },
+    {
+      strong: '출처',
+      text: `대학관계자 등록${updated ? ` · 최종 수정 ${updated}` : ''} · ${basis.hasMajorSpecific ? '학과 추가 요건 포함' : '학과 추가 요건 없음(학교 기본값)'}`,
+    },
+  ];
+  if (!basis.admissionYear) {
+    lines.push({
+      strong: '안내',
+      text: basis.schoolHasCohorts
+        ? '이 학교는 입학년도에 따라 학점 요건이 다릅니다. 마이페이지 > 학사정보에서 입학년도를 입력하면 해당 요건이 적용됩니다.'
+        : '마이페이지 > 학사정보에서 입학년도를 입력해 두면, 입학년도별 요건이 등록될 때 자동으로 적용됩니다.',
+    });
+  }
+  lines.push({ strong: '범위', text: '복수전공은 현재 지원하지 않으며, 주전공 기준으로 계산합니다.' });
+
+  box.replaceChildren(...lines.map(({ strong, text }) => {
+    const row = document.createElement('div');
+    const label = document.createElement('b');
+    label.textContent = `${strong}  `;
+    row.append(label, document.createTextNode(text));
+    return row;
+  }));
+  box.style.display = 'block';
+}
+
 function renderGradCertChips(certifications = []) {
   const list = document.getElementById('gr-cert-list');
   const empty = document.getElementById('gr-cert-empty');
@@ -686,6 +741,7 @@ async function fetchGraduationRequirements() {
 
     showGradReadonlyContent();
     updateGradMajorBadge(result.profile);
+    renderGradBasis(result.basis);
     applyGraduationRequirements(result.profile);
     window._ac_graduationRequirements = result.profile?.GraduationRequirements || null;
     updateGradPreview();

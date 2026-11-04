@@ -3,6 +3,9 @@ const UniversityProfile = require('../models/University_profile');
 const { resolveRequirements } = require('./graduationService');
 
 const PASSING_GRADES = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'P'];
+// 이수(학점 인정) 판정은 한 곳에서만 한다. 진도 화면과 잔여 학점 계산이 서로 다른 기준을 쓰면
+// NP·W 같은 성적이 한쪽에서만 학점으로 잡힌다.
+const isPassingGrade = (grade) => PASSING_GRADES.includes(grade);
 const GRADE_POINTS = {
   'A+': 4.5, 'A': 4.0,
   'B+': 3.5, 'B': 3.0,
@@ -266,47 +269,6 @@ async function getUniversityProfile(userId) {
     throw error;
   }
 }
-// 대학 프로필 저장(졸업 요건)
-async function saveUniversityProfile(userId, profileData) {
-  try {
-    const existingProfile = await UniversityProfile.findOne({ userId }).lean();
-    const mergedProfile = {
-      ...(existingProfile || {}),
-      ...profileData,
-    };
-
-    return await UniversityProfile.findOneAndUpdate(
-      { userId },
-      {
-        userId,
-        studentId: mergedProfile.studentId ?? null,
-        grade: mergedProfile.grade ?? 1,
-        enrollmentStatus: mergedProfile.enrollmentStatus || '재학',
-        major: mergedProfile.major,
-        doubleMajor: mergedProfile.doubleMajor ?? null,
-        GraduationRequirements: {
-          requiredTotalCredits: mergedProfile.GraduationRequirements?.requiredTotalCredits ?? 130,
-          requiredMajorCredits: mergedProfile.GraduationRequirements?.requiredMajorCredits ?? 42,
-          requiredMajorElective: mergedProfile.GraduationRequirements?.requiredMajorElective ?? 40,
-          requiredGeneralCredits: mergedProfile.GraduationRequirements?.requiredGeneralCredits ?? 20,
-          requiredGeneralElective: mergedProfile.GraduationRequirements?.requiredGeneralElective ?? 28,
-          requiresGraduationWork: mergedProfile.GraduationRequirements?.requiresGraduationWork ?? true,
-          requiredCertifications: mergedProfile.GraduationRequirements?.requiredCertifications ?? [],
-          requiredLanguageScore: mergedProfile.GraduationRequirements?.requiredLanguageScore ?? null,
-          requiredInternship: mergedProfile.GraduationRequirements?.requiredInternship ?? null,
-          requiredCapstonDesign: mergedProfile.GraduationRequirements?.requiredCapstonDesign ?? null,
-          requiredNCProgram: mergedProfile.GraduationRequirements?.requiredNCProgram ?? null,
-          requiredVolunteer: mergedProfile.GraduationRequirements?.requiredVolunteer ?? null,
-        },
-      },
-      { upsert: true, new: true, runValidators: true }
-    ).lean();
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-}
-
 // 영역별 취득 학점 vs 졸업요건 잔여 학점 계산 (CreditSummary 캐시 갱신 포함)
 async function calcRemainingCredits(userId) {
   const records = await model.AcademicRecord.find({ userId }).select('status subjects').lean();
@@ -331,7 +293,7 @@ async function calcRemainingCredits(userId) {
         }
       }
 
-      if (!PASSING_GRADES.includes(grade)) return;
+      if (!isPassingGrade(grade)) return;
 
       const key = CREDIT_CATEGORY_MAP[subject.subjectType] || 'free';
       earned[key] += credits;
@@ -382,7 +344,7 @@ module.exports = {
   getAllSemesterGPA,
   getAllSemesterRecords,
   getUniversityProfile,
-  saveUniversityProfile,
+  isPassingGrade,
   updateBulkGrades,
   removeSubjectFromRecord,
   closeSemester,

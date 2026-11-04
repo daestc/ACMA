@@ -94,6 +94,8 @@ const deleteSchedule = async (req, res) => {
   }
 };
 
+const sortedCohorts = (graduation) => [...(graduation?.cohortRequirements || [])].sort((a, b) => a.fromYear - b.fromYear);
+
 const getGraduationPage = async (req, res, next) => {
   try {
     const [graduation, majors] = await Promise.all([
@@ -104,6 +106,7 @@ const getGraduationPage = async (req, res, next) => {
       user: req.user,
       pageTitle: '졸업요건 설정',
       requirements: graduation?.requirements || null,
+      cohorts: sortedCohorts(graduation),
       majors,
     });
   } catch (err) {
@@ -118,7 +121,7 @@ const getGraduationData = async (req, res, next) => {
       staffService.getGraduationRequirements(req.user.university),
       staffService.getMajorList(req.user.university),
     ]);
-    res.json({ ok: true, requirements: graduation?.requirements || null, majors });
+    res.json({ ok: true, requirements: graduation?.requirements || null, cohorts: sortedCohorts(graduation), majors });
   } catch (err) {
     next(err);
   }
@@ -168,6 +171,41 @@ const saveGraduation = async (req, res) => {
     if (err.code === 'NO_UNIVERSITY') {
       return res.status(400).json({ ok: false, message: err.message });
     }
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+// 입학년도별 학점 요건 저장/삭제 — 학교 기본값 위에 "이 입학년도부터" 달라지는 학점만 얹는다
+const saveCohortGraduation = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const cohorts = await staffService.saveCohortRequirements(
+      req.user.university,
+      body.fromYear,
+      body,
+      req.user.id,
+    );
+    logger.info(`입학년도별 졸업요건 저장 | univ=${req.user.university} | from=${body.fromYear} | by=${req.user.email}`);
+    res.json({ ok: true, cohorts });
+  } catch (err) {
+    if (err.code === 'NO_UNIVERSITY' || err.code === 'VALIDATION') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    logger.error(err);
+    res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
+const deleteCohortGraduation = async (req, res) => {
+  try {
+    const cohorts = await staffService.deleteCohortRequirements(req.user.university, req.params.fromYear);
+    logger.info(`입학년도별 졸업요건 삭제 | univ=${req.user.university} | from=${req.params.fromYear} | by=${req.user.email}`);
+    res.json({ ok: true, cohorts });
+  } catch (err) {
+    if (err.code === 'VALIDATION') {
+      return res.status(400).json({ ok: false, message: err.message });
+    }
+    logger.error(err);
     res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
   }
 };
@@ -408,6 +446,8 @@ module.exports = {
   getMajorList,
   getMajorGraduation,
   saveMajorGraduation,
+  saveCohortGraduation,
+  deleteCohortGraduation,
   getStudentsPage,
   getStudentsData,
   getStudentDetail,

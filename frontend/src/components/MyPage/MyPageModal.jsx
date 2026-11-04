@@ -9,7 +9,7 @@ function MyPageModal({ onClose }) {
   const [profile, setProfile] = useState(null)
   const [loadError, setLoadError] = useState(false)
 
-  const [form, setForm] = useState({ studentId: '', university: '', major: '', grade: '1', enrollmentStatus: '재학' })
+  const [form, setForm] = useState({ studentId: '', admissionYear: '', university: '', major: '', grade: '1', enrollmentStatus: '재학' })
   const [saving, setSaving] = useState(false)
 
   const [showChangePw, setShowChangePw] = useState(false)
@@ -25,6 +25,7 @@ function MyPageModal({ onClose }) {
         setProfile(data.user)
         setForm({
           studentId: data.user.studentId || '',
+          admissionYear: data.user.admissionYear ? String(data.user.admissionYear) : '',
           university: data.user.university || '',
           major: data.user.major || '',
           grade: String(data.user.grade || 1),
@@ -77,8 +78,8 @@ function MyPageModal({ onClose }) {
       } else {
         window.alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.')
       }
-    } catch {
-      window.alert('프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.')
+    } catch (err) {
+      window.alert(err?.message || '프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.')
     } finally {
       setSaving(false)
     }
@@ -157,12 +158,18 @@ function MyPageModal({ onClose }) {
                       <input className="input-field" style={{ width: '100%' }} value={form.studentId} onChange={e => setForm(f => ({ ...f, studentId: e.target.value }))} />
                     </div>
                     <div className="form-group">
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>입학년도</label>
+                      <input className="input-field" type="number" min="1990" max="2100" placeholder="예: 2023" style={{ width: '100%' }} value={form.admissionYear} onChange={e => setForm(f => ({ ...f, admissionYear: e.target.value }))} />
+                      <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>입학년도에 따라 적용되는 졸업요건이 달라질 수 있습니다.</div>
+                    </div>
+                    <div className="form-group">
                       <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>대학</label>
                       <input className="input-field" style={{ width: '100%' }} value={form.university} onChange={e => setForm(f => ({ ...f, university: e.target.value }))} />
                     </div>
                     <div className="form-group">
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>주전공-복수전공</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>전공</label>
                       <input className="input-field" style={{ width: '100%' }} value={form.major} onChange={e => setForm(f => ({ ...f, major: e.target.value }))} />
+                      <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>주전공 기준으로 졸업요건을 계산합니다. 복수전공은 현재 지원하지 않습니다.</div>
                     </div>
                     <div className="form-group">
                       <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>학년</label>

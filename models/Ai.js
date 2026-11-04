@@ -183,9 +183,42 @@ const weeklyPlanSchema = new Schema({
     // 아직 등록을 안 한 것을 구분 못 하므로, false일 때 distribution.errors에
     // 안내를 남긴다(services/ai/planService.js).
     hasTimetable: { type: Boolean, default: true },
+    // 이 계획을 만들 때 쓴 "하루 최대 학습 시간"(사용자 설정, 기본 6)
+    dailyHoursCap: { type: Number, default: null },
   },
 
   prevCompletionRate: { type: Number, default: null },
+
+  // 지난 실행 기록(시간 기준 달성률)과 "지난주 돌아보기" 응답으로 서버가 계산한 시간 조정.
+  // 화면에 "왜 이번 주 계획이 이렇게 나왔는지" 보여 주기 위해 이유 문장까지 저장한다.
+  adjustment: {
+    type: new Schema({
+      applied: { type: Boolean, default: false },
+      hoursFactor: { type: Number, default: 1 },
+      hoursLimit: { type: Number, default: 0 }, // 이번 주 총 배정 시간 상한 = 가용 시간 × hoursFactor
+      categoryFactors: {
+        type: [new Schema({ category: String, factor: Number }, { _id: false })],
+        default: [],
+      },
+      reasons: { type: [String], default: [] },
+      basisWeeks: { type: Number, default: 0 },
+      basisTimeRate: { type: Number, default: null },
+    }, { _id: false }),
+    default: null,
+  },
+
+  // 이 주 계획에 대한 "돌아보기" 응답(다음 계획을 만들 때 읽는다): 완료 항목은 체감 난도, 미완료 항목은 이유.
+  review: {
+    reviewedAt: { type: Date, default: null },
+    items: {
+      type: [new Schema({
+        planItemIndex: { type: Number, required: true },
+        difficulty: { type: String, enum: ['easy', 'normal', 'hard', null], default: null },
+        missReason: { type: String, enum: ['time', 'hard', 'other', null], default: null },
+      }, { _id: false })],
+      default: [],
+    },
+  },
   generation: { type: generationMetaSchema, default: () => ({}) },
 
   distribution: {
@@ -207,6 +240,12 @@ weeklyPlanSchema.index({ userId: 1, weekStart: 1 }, { unique: true });
 const rankedItemSchema = new Schema({
   name: { type: String, required: true },
   rank: { type: Number, required: true }, // 직무 안에서 importance 순위(1~5)
+}, { _id: false });
+
+const criteriaItemSchema = new Schema({
+  name: { type: String, required: true },
+  rank: { type: Number, required: true },
+  supported: { type: Boolean, default: false }, // 학생 입력(과목·기술·경험)에서 근거를 찾았는지
 }, { _id: false });
 
 const recommendationCandidateSchema = new Schema({
@@ -232,6 +271,24 @@ const recommendationCandidateSchema = new Schema({
     // 점수를 준 직무 쪽 항목 — 이 필드가 생기기 전 문서에는 없다(화면에서 없으면 줄을 숨김)
     topKnowledge: { type: rankedItemSchema, default: null },
     topAbility: { type: rankedItemSchema, default: null },
+    // 지식 점수의 근거 강도(이수·수강 중 과목 수, 강도, 성적 계수) — 이 필드가 생기기 전 문서에는 없다
+    knowledgeBasis: {
+      type: new Schema({
+        completed: { type: Number, default: 0 },
+        current: { type: Number, default: 0 },
+        strength: { type: Number, default: 1 },
+        gradeFactor: { type: Number, default: 1 },
+      }, { _id: false }),
+      default: null,
+    },
+    // 이 직무가 요구하는 핵심 지식·능력 상위 항목과, 학생 입력에서 근거를 찾았는지
+    criteria: {
+      type: new Schema({
+        knowledge: { type: [criteriaItemSchema], default: [] },
+        abilities: { type: [criteriaItemSchema], default: [] },
+      }, { _id: false }),
+      default: null,
+    },
   },
 }, { _id: false });
 
@@ -267,6 +324,17 @@ const careerRecommendationSchema = new Schema({
   },
   interests: { type: [String], default: [] }, // JobCatalog.jobLrclNm 값
   confidence: { type: String, enum: ['low', 'normal'], default: 'normal' },
+  // 항목별 입력 여부(없으면 이 필드가 생기기 전 문서). false는 "없다"가 아니라 "입력하지 않았다"이다.
+  inputState: {
+    type: new Schema({
+      major: { type: Boolean, default: false },
+      cert: { type: Boolean, default: false },
+      knowledge: { type: Boolean, default: false },
+      skill: { type: Boolean, default: false },
+      pref: { type: Boolean, default: false },
+    }, { _id: false }),
+    default: null,
+  },
 
   candidates: { type: [recommendationCandidateSchema], default: [] },
   picks: { type: [recommendationPickSchema], default: [] },

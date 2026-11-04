@@ -171,6 +171,7 @@ function toChecklistItem(slot) {
     source: 'ai',
     weeklyPlanId: slot.weeklyPlanId,
     planItemIndex: slot.planItemIndex,
+    plannedHours: slot.hours, // 시간 기준 달성률 계산용
   };
 }
 

@@ -45,6 +45,7 @@ function Academic() {
   const [gradAvailable, setGradAvailable] = useState(null) // null = 로딩중
   const [gradMessage, setGradMessage] = useState('')
   const [gradProfile, setGradProfile] = useState(null)
+  const [gradBasis, setGradBasis] = useState(null)
 
   const gpaResult = useMemo(() => calcGpaFromRows(rows), [rows])
 
@@ -127,6 +128,7 @@ function Academic() {
       }
       setGradAvailable(true)
       setGradProfile(json.profile)
+      setGradBasis(json.basis || null)
     } catch (err) {
       console.error(err)
       setGradAvailable(false)
@@ -318,6 +320,7 @@ function Academic() {
           available={gradAvailable}
           message={gradMessage}
           profile={gradProfile}
+          basis={gradBasis}
           progressTotals={progressTotals}
         />
       )}
@@ -449,7 +452,43 @@ function CreditTab({ trendLoading, trendRecords, progressTotals, progressReq }) 
   )
 }
 
-function GradTab({ available, message, profile, progressTotals }) {
+// 어떤 기준으로 졸업요건을 계산했는지(학교·학과·입학년도·출처) 보여 준다
+function formatBasisDate(value) {
+  const d = value ? new Date(value) : null
+  if (!d || Number.isNaN(d.getTime())) return null
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+}
+
+function GradBasis({ basis }) {
+  if (!basis) return null
+
+  let yearLabel
+  if (!basis.admissionYear) yearLabel = '입학년도 미입력 (학교 기본 요건)'
+  else if (basis.cohortFromYear) yearLabel = `${basis.admissionYear}학번 (${basis.cohortFromYear}학번부터 적용되는 요건)`
+  else yearLabel = `${basis.admissionYear}학번 (학교 기본 요건)`
+
+  const updated = formatBasisDate(basis.updatedAt)
+  const lines = [
+    ['적용 기준', [basis.university, basis.major, yearLabel].filter(Boolean).join(' · ')],
+    ['출처', `대학관계자 등록${updated ? ` · 최종 수정 ${updated}` : ''} · ${basis.hasMajorSpecific ? '학과 추가 요건 포함' : '학과 추가 요건 없음(학교 기본값)'}`],
+  ]
+  if (!basis.admissionYear) {
+    lines.push(['안내', basis.schoolHasCohorts
+      ? '이 학교는 입학년도에 따라 학점 요건이 다릅니다. 마이페이지 > 학사정보에서 입학년도를 입력하면 해당 요건이 적용됩니다.'
+      : '마이페이지 > 학사정보에서 입학년도를 입력해 두면, 입학년도별 요건이 등록될 때 자동으로 적용됩니다.'])
+  }
+  lines.push(['범위', '복수전공은 현재 지원하지 않으며, 주전공 기준으로 계산합니다.'])
+
+  return (
+    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 14, fontSize: 12, lineHeight: 1.7 }}>
+      {lines.map(([label, text]) => (
+        <div key={label}><b>{label}</b>{'  '}{text}</div>
+      ))}
+    </div>
+  )
+}
+
+function GradTab({ available, message, profile, basis, progressTotals }) {
   if (available === null) {
     return <div className="card"><div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>불러오는 중...</div></div>
   }
@@ -496,6 +535,7 @@ function GradTab({ available, message, profile, progressTotals }) {
       <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.6 }}>
         대학관계자가 등록한 졸업요건입니다. 학생은 조회만 가능합니다.
       </p>
+      <GradBasis basis={basis} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.5px', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>이수 학점 요건</div>

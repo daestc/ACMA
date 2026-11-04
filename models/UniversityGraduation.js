@@ -31,10 +31,27 @@ const majorRequirementSchema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { _id: true });
 
+// 입학년도별 덮어쓰기: 학교 기본값 위에 "이 입학년도부터" 달라지는 학점 항목만 얹는다.
+// 지정하지 않은 항목은 학교 기본값을 쓰므로 default를 두지 않는다(default가 있으면 "지정 안 함"과 구분되지 않음).
+const cohortOverrideSchema = new mongoose.Schema({
+  requiredTotalCredits: { type: Number },
+  requiredMajorCredits: { type: Number },
+  requiredMajorElective: { type: Number },
+  requiredGeneralCredits: { type: Number },
+  requiredGeneralElective: { type: Number },
+}, { _id: false });
+
+const cohortRequirementSchema = new mongoose.Schema({
+  fromYear: { type: Number, required: true, min: 1990, max: 2100 },
+  requirements: { type: cohortOverrideSchema, default: () => ({}) },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+}, { _id: true });
+
 const universityGraduationSchema = new mongoose.Schema({
   university: { type: String, required: true, unique: true, trim: true },
   requirements: { type: graduationRequirementsSchema, default: () => ({}) },
   majorRequirements: { type: [majorRequirementSchema], default: [] },
+  cohortRequirements: { type: [cohortRequirementSchema], default: [] },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });
 

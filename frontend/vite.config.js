@@ -9,6 +9,7 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
       '/user': 'http://localhost:3000',
       '/auth/me': 'http://localhost:3000',
+      '/auth/csrf-token': 'http://localhost:3000',
       '/auth/logout': 'http://localhost:3000',
       '/auth/check-email': 'http://localhost:3000',
       '/auth/change-password': 'http://localhost:3000',

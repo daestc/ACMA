@@ -2,18 +2,12 @@ const userService = require('../services/userService');
 const logger = require('../config/logger');
 const noticeController = require("./noticeController");
 const careerService = require('../services/careerService');
+const dateCalculate = require('../services/dateCalculateService');
 const UniversitySchedule = require('../models/UniversitySchedule'); 
 
-function getDDayLabel(targetDate) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(targetDate);
-    target.setHours(0, 0, 0, 0);
-    const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-
-    if (diff === 0) return 'D-Day';
-    if (diff > 0) return `D-${diff}`;
-    return `종료`;
+// 학사일정 D-Day — 공지사항 화면과 같은 규칙(시작 전이면 시작일, 진행 중이면 종료일 기준)
+function getDDayLabel(startDate, endDate) {
+    return dateCalculate.getScheduleDday(startDate, endDate).text;
 }
 
 // getHomePage(EJS 렌더)와 getHomeApi(React용 JSON)가 공유하는 데이터 로딩 로직.
@@ -61,10 +55,9 @@ async function loadHomeData(user) {
 
       // 제목에 '고사'나 '시험'이 들어가면 examSchedules, 아니면 generalSchedules로 분류
       rawSchedules.forEach(schedule => {
-          const targetDate = schedule.endDate || schedule.startDate;
           const mappedSchedule = {
               ...schedule,
-              dDayLabel: getDDayLabel(targetDate)
+              dDayLabel: getDDayLabel(schedule.startDate, schedule.endDate)
           };
 
           if (mappedSchedule.title.includes('고사') || mappedSchedule.title.includes('시험')) {

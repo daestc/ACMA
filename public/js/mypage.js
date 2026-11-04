@@ -222,12 +222,13 @@ async function saveProfile() {
   const university = document.getElementById('university').value;
   const major = document.getElementById('major').value;
   const grade = document.getElementById('grade')?.value || '';
+  const admissionYear = document.getElementById('admissionYear')?.value ?? '';
   const enrollmentStatus = document.getElementById('enrollmentStatus').value;
   try {
     const response = await fetch('/user/updateProfile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, university, major, grade, enrollmentStatus })
+      body: JSON.stringify({ studentId, university, major, grade, admissionYear, enrollmentStatus })
     });
     const result = await response.json();
     if (result.success) {
@@ -240,7 +241,7 @@ async function saveProfile() {
       }
       fetchUserProfile();
     } else {
-      alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.');
+      alert(result.message || '프로필 업데이트에 실패했습니다. 다시 시도해주세요.');
     }
   } catch (error) {
     console.error('Error updating profile:', error);
@@ -278,6 +279,8 @@ async function fetchUserProfile() {
     if (!studentIdEl) return;
 
     studentIdEl.value = user.studentId || '';
+    const admissionYearEl = document.getElementById('admissionYear');
+    if (admissionYearEl) admissionYearEl.value = user.admissionYear || '';
     document.getElementById('university').value = user.university || '';
     document.getElementById('major').value = user.major || '';
     const gradeEl = document.getElementById('grade');

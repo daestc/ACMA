@@ -59,6 +59,7 @@ router.get('/check-email', controller.checkEmail);
 
 // ── 세션 정보
 router.get('/me', controller.getMe);
+router.get('/csrf-token', controller.getCsrfToken); // React 개발 서버용 — 같은 출처에서만 읽을 수 있다
 
 // ── 카카오
 router.get('/kakao',          passport.authenticate('kakao'));

@@ -36,27 +36,12 @@ function isUniversityScheduleActive(schedule) {
 }
 
 function getUniversityScheduleDday(schedule) {
-    const today = startOfDay(new Date());
-    const start = startOfDay(schedule.startDate);
-    const end = startOfDay(getScheduleEndDate(schedule));
-
-    if (end < today) {
-        return { diff: -1, dDayText: '종료', dDayBadgeClass: 'red' };
-    }
-    if (start >= today) {
-        const diff = dateCaculate.getRemainingDays(start);
-        return {
-            diff,
-            dDayText: dateCaculate.formatDDayText(diff),
-            dDayBadgeClass: diff === 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'),
-        };
-    }
-
-    const diff = dateCaculate.getRemainingDays(end);
+    // 계산은 dateCalculateService.getScheduleDday 한 곳에서 한다 (홈·관리자 홈과 같은 값).
+    const { diff, text } = dateCaculate.getScheduleDday(schedule.startDate, getScheduleEndDate(schedule));
     return {
         diff,
-        dDayText: diff === 0 ? 'D-Day' : `D-${diff}`,
-        dDayBadgeClass: diff === 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'),
+        dDayText: text,
+        dDayBadgeClass: diff <= 0 ? 'red' : (diff <= 7 ? 'amber' : 'blue'),
     };
 }
 

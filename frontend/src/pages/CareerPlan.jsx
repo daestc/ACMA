@@ -5,6 +5,17 @@ const CATEGORY_LABEL = { cert: '자격증', course: '과목', skill: '스킬', p
 const CATEGORY_BADGE = { cert: 'badge-purple', course: 'badge-blue', skill: 'badge-green', project: 'badge-amber', language: 'badge-blue', graduation: 'badge-red', other: 'badge-blue' }
 const ACADEMIC_PHASE_LABEL = { normal: '평소', midterm: '중간고사 기간', final: '기말고사 기간', vacation: '방학', registration: '수강신청 기간' }
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+// 지난주 돌아보기: 완료한 항목은 체감 난도, 미완료 항목은 이유를 고른다(모두 선택 사항)
+const DIFFICULTY_OPTIONS = [['easy', '쉬움'], ['normal', '적당'], ['hard', '어려움']]
+const MISS_OPTIONS = [['time', '시간 부족'], ['hard', '난도 높음'], ['other', '다른 일정']]
+const REVIEW_STATE_LABEL = { done: '완료', partial: '일부만 완료', missed: '못 함' }
+
+function reviewSummaryText(review) {
+  const s = review.summary
+  if (!s) return '지난 계획을 돌아봅니다.'
+  const basis = s.basis === 'hours' ? ` (시간 기준: 완료 ${s.completedHours}h / 계획 ${s.plannedHours}h)` : ' (항목 개수 기준)'
+  return `지난 계획(${formatKstDate(review.weekStart)} ~ ${formatKstDate(review.weekEnd)})의 달성률은 ${Math.round(s.timeRate * 100)}%입니다${basis}. 항목별로 한 번씩 골라 주세요.`
+}
 
 function pctBadgeClass(pct) {
   if (pct >= 70) return 'badge-green'
@@ -20,6 +31,12 @@ function CareerPlan() {
   const [weekStartInput, setWeekStartInput] = useState(todayKstDateString())
   const [currentTargetJob, setCurrentTargetJob] = useState(null) // {jobCode, title} | null
   const [days, setDays] = useState(null)
+
+  // 하루 학습 가능 시간(사용자 설정)과 지난주 돌아보기
+  const [dailyHours, setDailyHours] = useState('')
+  const [dailyHoursDefault, setDailyHoursDefault] = useState(6)
+  const [settingsMsg, setSettingsMsg] = useState(null) // { ok, text }
+  const [review, setReview] = useState(null) // { weekStart, data, answers: { [planItemIndex]: value } }
 
   const [statsBody, setStatsBody] = useState(null)
   const [history, setHistory] = useState(null)
@@ -110,6 +127,7 @@ function CareerPlan() {
       ; (async () => {
         await loadCurrentTargetJob()
         if (cancelled) return
+        loadDailyHoursSetting()
         loadCurrentPlan()
         loadStatsAndHistory()
       })()
@@ -119,8 +137,84 @@ function CareerPlan() {
     }
   }, [])
 
+  async function loadDailyHoursSetting() {
+    const data = await callApi('/ai/weekly-plan/settings')
+    if (data.httpStatus !== 200) return
+    setDailyHours(data.dailyStudyHours == null ? '' : String(data.dailyStudyHours))
+    setDailyHoursDefault(data.defaultHours ?? 6)
+  }
+
+  async function saveDailyHours() {
+    const data = await callApi('/ai/weekly-plan/settings', { method: 'POST', body: JSON.stringify({ dailyStudyHours: dailyHours }) })
+    if (data.httpStatus === 200) {
+      setSettingsMsg({
+        ok: true,
+        text: data.dailyStudyHours
+          ? `하루 최대 ${data.dailyStudyHours}시간으로 저장했습니다. 다음에 만드는 계획부터 적용됩니다.`
+          : `기본값(${data.defaultHours}시간)으로 되돌렸습니다.`,
+      })
+    } else {
+      setSettingsMsg({ ok: false, text: data.message || '저장하지 못했습니다.' })
+    }
+  }
+
+  // 돌아볼 지난 계획이 있고 아직 답하지 않았으면 먼저 물어본다(건너뛰기 가능).
   async function generatePlan() {
     const weekStart = weekStartInput || todayKstDateString()
+    const data = await callApi(`/ai/weekly-plan/review?weekStart=${encodeURIComponent(weekStart)}`)
+    if (data.httpStatus === 200 && data.available && !data.reviewedAt) {
+      const answers = {}
+      data.items.forEach((item) => {
+        const prior = item.state === 'done' ? item.difficulty : item.missReason
+        if (prior) answers[item.planItemIndex] = prior
+      })
+      setReview({ weekStart, data, answers })
+      setSection('review')
+      return
+    }
+    await requestGeneration(weekStart)
+  }
+
+  function pickReview(planItemIndex, value) {
+    setReview((prev) => {
+      const answers = { ...prev.answers }
+      if (answers[planItemIndex] === value) delete answers[planItemIndex]
+      else answers[planItemIndex] = value
+      return { ...prev, answers }
+    })
+  }
+
+  function cancelReview() {
+    setReview(null)
+    loadCurrentPlan()
+  }
+
+  async function skipReviewAndGenerate() {
+    const weekStart = review?.weekStart || todayKstDateString()
+    setReview(null)
+    await requestGeneration(weekStart)
+  }
+
+  async function saveReviewAndGenerate() {
+    if (!review) return
+    const items = review.data.items
+      .filter((item) => review.answers[item.planItemIndex])
+      .map((item) => (item.state === 'done'
+        ? { planItemIndex: item.planItemIndex, difficulty: review.answers[item.planItemIndex] }
+        : { planItemIndex: item.planItemIndex, missReason: review.answers[item.planItemIndex] }))
+    if (items.length > 0) {
+      const saved = await callApi(`/ai/weekly-plan/${review.data.planId}/review`, { method: 'POST', body: JSON.stringify({ items }) })
+      if (saved.httpStatus !== 200) {
+        alert('답변을 저장하지 못했습니다. 건너뛰고 생성하거나 잠시 후 다시 시도해주세요.')
+        return
+      }
+    }
+    const weekStart = review.weekStart
+    setReview(null)
+    await requestGeneration(weekStart)
+  }
+
+  async function requestGeneration(weekStart) {
     const data = await callApi('/ai/weekly-plan', { method: 'POST', body: JSON.stringify({ weekStart }) })
     if (data.httpStatus === 202 && data.id) {
       currentPlanIdRef.current = data.id
@@ -158,6 +252,54 @@ function CareerPlan() {
   return (
     <>
       <AllBlockedBanner />
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>하루 학습 가능 시간</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 }}>시간표의 빈 시간 중 하루에 최대 이만큼만 계획에 씁니다. 비우면 기본 {dailyHoursDefault}시간입니다.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="number" className="input-field" min="1" max="12" step="0.5" placeholder={String(dailyHoursDefault)} style={{ width: 90 }} value={dailyHours} onChange={(e) => setDailyHours(e.target.value)} />
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>시간</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={saveDailyHours}>저장</button>
+          </div>
+        </div>
+        {settingsMsg && <div style={{ fontSize: 12, marginTop: 8, color: settingsMsg.ok ? 'var(--green)' : 'var(--red)' }}>{settingsMsg.text}</div>}
+      </div>
+
+      {section === 'review' && review && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-title">지난주 돌아보기 <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text2)' }}>(선택)</span></div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, margin: '6px 0 12px' }}>{reviewSummaryText(review.data)}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {review.data.items.map((item) => {
+              const isDone = item.state === 'done'
+              const options = isDone ? DIFFICULTY_OPTIONS : MISS_OPTIONS
+              return (
+                <div key={item.planItemIndex} style={{ padding: '12px 14px', background: 'var(--bg3)', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 13 }}>{item.title}</strong>
+                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{REVIEW_STATE_LABEL[item.state]} · {item.completedHours}h / {item.plannedHours}h</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', margin: '8px 0 6px' }}>{isDone ? '체감 난도는 어땠나요?' : '왜 다 못 했나요?'}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {options.map(([value, label]) => (
+                      <button key={value} type="button" className={`btn btn-sm ${review.answers[item.planItemIndex] === value ? 'btn-accent' : 'btn-ghost'}`} onClick={() => pickReview(item.planItemIndex, value)}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 12, lineHeight: 1.5 }}>답변은 이번 주 계획의 시간을 조정하는 데 쓰입니다. 건너뛰어도 계획은 만들어집니다.</p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={cancelReview}>취소</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={skipReviewAndGenerate}>건너뛰고 생성</button>
+            <button type="button" className="btn btn-accent btn-sm" onClick={saveReviewAndGenerate}>저장하고 생성</button>
+          </div>
+        </div>
+      )}
 
       {section === 'empty' && (
         <div className="card" style={{ textAlign: 'center', padding: '48px 20px' }}>
@@ -227,6 +369,16 @@ function CareerPlan() {
             })()}
 
             <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginTop: 14 }}>{plan.goal || ''}</p>
+
+            {plan.adjustment && (
+              <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--bg3)', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>이번 주 계획 조정</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>하루 최대 {plan.computed?.dailyHoursCap || 6}시간 · 총 시간 한도 {plan.adjustment.hoursLimit}h</div>
+                {plan.adjustment.applied
+                  ? plan.adjustment.reasons.map((r, i) => <div key={i} style={{ fontSize: 12, lineHeight: 1.6 }}>• {r}</div>)
+                  : <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>조정 없음 — 지난 기록과 돌아보기 답변에서 조정할 내용이 없었습니다.</div>}
+              </div>
+            )}
 
             {plan.jobCode && currentTargetJob?.jobCode && plan.jobCode !== currentTargetJob.jobCode && (
               <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, fontSize: 12, lineHeight: 1.6 }}>

@@ -10,10 +10,18 @@
   if (!token) return;
   var csrfValue = token.content;
   var _fetch = window.fetch;
+  // 같은 출처 요청에만 토큰을 붙인다. 외부 도메인(예: 토스페이먼츠 SDK의 로그·모니터링 요청)에도
+  // 붙이면 토큰이 제3자에게 전달되고, 허용되지 않은 헤더라 CORS 사전 요청이 막힌다.
+  function isSameOrigin(url) {
+    try {
+      var raw = (url && url.url) ? url.url : String(url);
+      return new URL(raw, window.location.href).origin === window.location.origin;
+    } catch (e) { return false; }
+  }
   window.fetch = function(url, opts) {
     opts = opts || {};
     var method = (opts.method || 'GET').toUpperCase();
-    if (method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') {
+    if ((method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') && isSameOrigin(url)) {
       opts.headers = Object.assign({ 'X-CSRF-Token': csrfValue }, opts.headers);
     }
     return _fetch.call(this, url, opts);

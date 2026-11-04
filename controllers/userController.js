@@ -100,14 +100,27 @@ const updateProfile = async (req, res) => {
     }
 
     const { studentId, university, major, enrollmentStatus, grade } = req.body;
+
+    // 입학년도: 보내지 않으면 그대로 두고, 빈 값이면 지우고, 값이 있으면 4자리 연도만 허용한다.
+    let admissionYear;
+    if (req.body.admissionYear !== undefined) {
+      const raw = String(req.body.admissionYear ?? '').trim();
+      admissionYear = raw === '' ? null : Number(raw);
+      const currentYear = new Date().getFullYear();
+      if (admissionYear !== null && (!Number.isInteger(admissionYear) || admissionYear < 1990 || admissionYear > currentYear + 1)) {
+        return res.status(400).json({ success: false, message: `입학년도는 1990~${currentYear + 1} 사이의 4자리 연도로 입력해주세요.` });
+      }
+    }
+
     const { universityChanged, clearedLectureCount } = await userService.updateProfile(
       user.email,
-      { studentId, university, major, enrollmentStatus, grade },
+      { studentId, university, major, enrollmentStatus, grade, admissionYear },
     );
 
     req.session.user = {
       ...req.session.user,
       studentId,
+      ...(admissionYear !== undefined ? { admissionYear } : {}),
       university: university?.trim() || '',
       major,
       enrollmentStatus,

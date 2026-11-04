@@ -1,4 +1,5 @@
 const { WeeklyPlan, CareerPortfolio, CareerDiagnosis } = require('../models/Ai');
+const User = require('../models/User');
 const { DailyChecklist } = require('../models/Calendar');
 const { Job } = require('../models/Certifications_jobs');
 const contextBuilder = require('../services/ai/contextBuilder');
@@ -9,6 +10,7 @@ const completionService = require('../services/ai/completionService');
 const portfolioService = require('../services/ai/portfolioService');
 const diagnosisService = require('../services/ai/diagnosisService');
 const recommendationService = require('../services/ai/recommendationService');
+const { refreshDdays } = require('../services/ai/refreshDday');
 const kstDate = require('../utils/kstDate');
 const logger = require('../config/logger');
 
@@ -146,6 +148,72 @@ async function getWeeklyPlanStats(req, res) {
     return res.json({ success: true, ...stats });
   } catch (error) {
     logger.error(`[ai] getWeeklyPlanStats error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+// ── 지난주 돌아보기 / 학습 가능 시간 ─────────────────────────────────
+// 다음 계획을 만들기 전에 지난 계획의 항목별 실행 상태를 보여 주고(완료 항목은 체감 난도,
+// 미완료 항목은 이유를 선택), 그 응답과 시간 기준 달성률로 서버가 다음 주 시간을 조정한다.
+// 응답은 모두 선택 사항이라 건너뛰어도 계획 생성은 된다.
+
+const DEFAULT_DAILY_STUDY_HOURS = 6;
+
+async function getWeeklyPlanReview(req, res) {
+  try {
+    const weekStart = resolveWeekStart(req.query.weekStart);
+    const target = await completionService.getReviewTarget(req.user.id, weekStart);
+    if (!target || target.items.length === 0) return res.json({ success: true, available: false });
+    return res.json({ success: true, available: true, ...target });
+  } catch (error) {
+    logger.error(`[ai] getWeeklyPlanReview error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function saveWeeklyPlanReview(req, res) {
+  try {
+    if (!/^[a-f\d]{24}$/i.test(String(req.params.id || ''))) return res.status(404).json({ success: false });
+    const saved = await completionService.saveReview(req.user.id, req.params.id, req.body?.items);
+    if (!saved) return res.status(404).json({ success: false });
+    return res.json({ success: true, ...saved });
+  } catch (error) {
+    logger.error(`[ai] saveWeeklyPlanReview error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+async function getWeeklyPlanSettings(req, res) {
+  try {
+    const user = await User.findById(req.user.id).select('dailyStudyHours').lean();
+    return res.json({
+      success: true,
+      dailyStudyHours: user?.dailyStudyHours ?? null,
+      defaultHours: DEFAULT_DAILY_STUDY_HOURS,
+      min: 1,
+      max: 12,
+    });
+  } catch (error) {
+    logger.error(`[ai] getWeeklyPlanSettings error: ${error.message}`);
+    res.status(500).json({ success: false });
+  }
+}
+
+// 하루 최대 학습 시간. 빈 값이면 기본값(6시간)으로 되돌린다. 0.5시간 단위, 1~12시간.
+async function saveWeeklyPlanSettings(req, res) {
+  try {
+    const raw = req.body?.dailyStudyHours;
+    let hours = null;
+    if (raw !== null && raw !== undefined && String(raw).trim() !== '') {
+      hours = Number(raw);
+      if (!Number.isFinite(hours) || hours < 1 || hours > 12 || Math.round(hours * 2) !== hours * 2) {
+        return res.status(400).json({ success: false, message: '하루 학습 시간은 1~12시간 사이에서 0.5시간 단위로 입력해주세요.' });
+      }
+    }
+    await User.updateOne({ _id: req.user.id }, { $set: { dailyStudyHours: hours } });
+    return res.json({ success: true, dailyStudyHours: hours, defaultHours: DEFAULT_DAILY_STUDY_HOURS });
+  } catch (error) {
+    logger.error(`[ai] saveWeeklyPlanSettings error: ${error.message}`);
     res.status(500).json({ success: false });
   }
 }
@@ -472,7 +540,7 @@ async function getDiagnosis(req, res) {
     if (doc.status !== 'done') {
       return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, missing: doc.missing || [] });
     }
-    return res.json({ status: doc.status, data: doc });
+    return res.json({ status: doc.status, data: refreshDdays(doc) });
   } catch (error) {
     logger.error(`[ai] getDiagnosis error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -486,7 +554,7 @@ async function getLatestDiagnosis(req, res) {
       .lean();
     if (!doc) return res.status(404).json({ success: false });
 
-    return res.json({ status: doc.status, data: doc });
+    return res.json({ status: doc.status, data: refreshDdays(doc) });
   } catch (error) {
     logger.error(`[ai] getLatestDiagnosis error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -587,7 +655,7 @@ async function getRecommendation(req, res) {
     if (!doc) return res.status(404).json({ success: false });
 
     if (doc.status === 'pending') return res.json({ status: doc.status });
-    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: refreshDdays(doc) });
   } catch (error) {
     logger.error(`[ai] getRecommendation error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -598,7 +666,7 @@ async function getLatestRecommendation(req, res) {
   try {
     const doc = await recommendationService.getLatestRecommendation(req.user.id);
     if (!doc) return res.status(404).json({ success: false });
-    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: doc });
+    return res.json({ status: doc.status, errorMessage: doc.errorMessage || null, data: refreshDdays(doc) });
   } catch (error) {
     logger.error(`[ai] getLatestRecommendation error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -623,6 +691,10 @@ module.exports = {
   getCurrentWeeklyPlan,
   getWeeklyPlanHistory,
   getWeeklyPlanStats,
+  getWeeklyPlanReview,
+  saveWeeklyPlanReview,
+  getWeeklyPlanSettings,
+  saveWeeklyPlanSettings,
   getTodayChecklist,
   redistributeWeeklyPlan,
   getWeeklyPlanChecklist,

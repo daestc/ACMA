@@ -332,6 +332,13 @@ exports.postChangePassword = async (req, res) => {
 
 // ── 세션 정보 조회 (클라이언트 provider 확인용) ──────────
 
+// React 개발 서버(5173)가 POST에 붙일 CSRF 토큰. EJS 화면은 meta 태그로 받으므로 쓰지 않는다.
+// 토큰은 세션별 값이라 로그인·로그아웃 뒤에는 다시 받아야 한다.
+exports.getCsrfToken = (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ csrfToken: req.session?.csrfToken || null });
+};
+
 exports.getMe = async (req, res) => {
   if (!req.session?.user) return res.status(401).json({ ok: false });
 

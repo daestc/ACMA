@@ -42,6 +42,14 @@ export function todayKstDateString() {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
+// 서버 dateCalculateService.formatDDayText와 같은 규칙 — 양수만 "D-n", 0은 "D-Day", 음수는 "마감".
+// `D-${dDay}`로 그대로 이어 붙이면 음수일 때 "D--242"처럼 마이너스가 겹쳐 보인다.
+export function formatDDay(dDay) {
+  if (dDay > 0) return `D-${dDay}`
+  if (dDay === 0) return 'D-Day'
+  return '마감'
+}
+
 export function formatKstDate(isoString) {
   if (!isoString) return '-'
   const d = new Date(new Date(isoString).getTime() + 9 * 60 * 60 * 1000)

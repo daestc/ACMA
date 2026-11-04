@@ -6,8 +6,11 @@ const {
   getMajorList,
   getMajorAdditionalRequirements,
   saveMajorAdditionalRequirements,
+  saveCohortRequirements,
+  deleteCohortRequirements,
 } = require('./graduationService');
 const { buildStaffUniversityFilter } = require('./lectureAdminService');
+const { getScheduleDday } = require('./dateCalculateService');
 
 function requireUniversity(university) {
   const value = university?.trim();
@@ -104,18 +107,6 @@ function formatScheduleRange(startDate, endDate) {
   return `${startLabel} ~ ${end.toLocaleDateString('ko-KR', dateOpts)}`;
 }
 
-function getDDayLabel(targetDate) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(targetDate);
-  target.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-
-  if (diff === 0) return 'D-Day';
-  if (diff > 0) return `D-${diff}`;
-  return `종료`;
-}
-
 function mapScheduleItem(schedule) {
   const targetDate = schedule.endDate || schedule.startDate;
   return {
@@ -123,7 +114,8 @@ function mapScheduleItem(schedule) {
     title: schedule.title,
     description: schedule.description,
     dateLabel: formatScheduleRange(schedule.startDate, schedule.endDate),
-    dDayLabel: getDDayLabel(targetDate),
+    // 학생 홈·공지사항과 같은 규칙(시작 전이면 시작일, 진행 중이면 종료일 기준)
+    dDayLabel: getScheduleDday(schedule.startDate, schedule.endDate).text,
     isUpcoming: new Date(targetDate) >= new Date(new Date().setHours(0, 0, 0, 0)),
   };
 }
@@ -188,5 +180,7 @@ module.exports = {
   getMajorList,
   getMajorAdditionalRequirements,
   saveMajorAdditionalRequirements,
+  saveCohortRequirements,
+  deleteCohortRequirements,
   getStaffDashboard,
 };

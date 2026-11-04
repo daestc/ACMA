@@ -48,7 +48,8 @@ function validateWeeklyPlan(data, context) {
   // 가용 시간 초과분 정리: isDeadline 항목은 절대 자르지 않고, 나머지는 priority
   // 오름차순(1=최우선)으로 정렬한 뒤 예산을 넘는 지점부터 뒤에서 잘라낸다.
   // ??는 NaN을 걸러내지 못하므로 Number.isFinite로 직접 검사한다.
-  const rawAvailableHours = context?.computed?.availableHoursTotal;
+  // 이번 주 시간 한도: 최근 수행 기록으로 조정된 hoursLimit가 있으면 그것, 없으면 가용 시간 전체.
+  const rawAvailableHours = context?.computed?.hoursLimit ?? context?.computed?.availableHoursTotal;
   const availableHoursTotal = Number.isFinite(rawAvailableHours) ? rawAvailableHours : Infinity;
   const deadlineItems = items.filter(i => i.isDeadline);
   const normalItems = items.filter(i => !i.isDeadline).sort((a, b) => a.priority - b.priority);

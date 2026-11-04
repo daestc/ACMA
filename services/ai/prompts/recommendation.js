@@ -1,6 +1,6 @@
 const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
 
-const VERSION = 'recommendation.v1';
+const VERSION = 'recommendation.v2';
 const ANGLES = ['안정', '확장', '도전'];
 const SUMMARY_MAX_CHARS = 120;
 const KNOWLEDGE_LIMIT = 3;
@@ -29,7 +29,10 @@ const SYSTEM_PROMPT = `당신은 한국 대학생에게 진로 후보 직무를 
 7. 입력 데이터에 없는 경력·프로젝트·자격증·과목을 지어내지 마라.
 8. evidence에는 [사용 가능한 근거] 목록의 문자열만 원문 그대로 넣는다. 추천 사유에서 실제로 기댄 것만
    넣고, 없으면 빈 배열로 둔다.
-9. ${NO_RAW_FIELD_NAMES}`;
+9. [입력되지 않은 항목]에 있는 것은 학생에게 없다는 뜻이 아니라 입력하지 않았다는 뜻이다. "경험이 없다",
+   "자격증이 부족하다"처럼 단정하지 말고, 필요하면 "입력된 정보에는 없다"거나 입력하면 더 정확해진다는
+   식으로만 쓴다. 입력된 정보로 확인되는 강점을 중심으로 쓴다.
+10. ${NO_RAW_FIELD_NAMES}`;
 
 function buildSystem() {
   return SYSTEM_PROMPT;
@@ -56,6 +59,20 @@ function buildStudentBlock(context) {
     경험: (context?.specs?.experiences || []).map(e => e.title),
     수상: (context?.specs?.awards || []).map(a => a.name),
   });
+}
+
+const INPUT_LABELS = {
+  major: '전공',
+  cert: '자격증',
+  knowledge: '이수·수강 과목',
+  skill: '기술·경험',
+  pref: '체크리스트 응답',
+};
+
+// 학생이 입력하지 않은 항목 이름들. inputState가 없는 옛 호출에서는 빈 배열이다.
+function missingInputLabels(inputState) {
+  if (!inputState) return [];
+  return Object.entries(INPUT_LABELS).filter(([key]) => inputState[key] === false).map(([, label]) => label);
 }
 
 function rankedNames(items, limit) {
@@ -96,11 +113,13 @@ function buildCandidateBlock(candidate, job) {
  * @param {string[]} prefLabels 체크리스트 응답 문구("선호: …", "방식: …", "중시: …")
  * @param {string[]} facts 근거 화이트리스트
  */
-function buildUser(context, candidates, jobsByCode, prefLabels, facts) {
+function buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState) {
   const factsBlock = (facts || []).map(f => `- ${f}`).join('\n') || '(근거 없음)';
   const prefsBlock = (prefLabels || []).map(p => `- ${p}`).join('\n') || '(응답 없음)';
   const candidatesBlock = JSON.stringify(candidates.map(c => buildCandidateBlock(c, jobsByCode.get(c.jobCode))));
-  return `[사용 가능한 근거]\n${factsBlock}\n\n[학생의 체크리스트 응답]\n${prefsBlock}\n\n`
+  const missing = missingInputLabels(inputState);
+  const missingBlock = missing.length ? `[입력되지 않은 항목]\n${missing.map(m => `- ${m}`).join('\n')}\n\n` : '';
+  return `[사용 가능한 근거]\n${factsBlock}\n\n[학생의 체크리스트 응답]\n${prefsBlock}\n\n${missingBlock}`
     + `[학생 정보]\n${JSON.stringify(buildStudentBlock(context))}\n\n[후보 직무]\n${candidatesBlock}`;
 }
 
@@ -136,4 +155,4 @@ function buildOutputSchema(candidateCodes, facts) {
   };
 }
 
-module.exports = { VERSION, ANGLES, buildSystem, buildUser, buildOutputSchema };
+module.exports = { VERSION, ANGLES, buildSystem, buildUser, buildOutputSchema, missingInputLabels };

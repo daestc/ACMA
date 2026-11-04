@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { callApi, pollUntilDone, ScoreBreakdown, MissingList, AllBlockedBanner } from '../components/CareerAi/careerAiUtils'
+import { callApi, pollUntilDone, ScoreBreakdown, MissingList, AllBlockedBanner, formatDDay, todayKstDateString } from '../components/CareerAi/careerAiUtils'
 import { useNavigate } from 'react-router-dom'
 
 const SEVERITY_BADGE = { high: 'badge-red', medium: 'badge-amber', low: 'badge-blue' }
@@ -7,7 +7,7 @@ const ACTION_TYPE_LABEL = { cert: '자격증', project: '프로젝트', course: 
 
 function gapScheduleBadge(gap) {
   if (gap.actionType === 'cert' && gap.dDay != null) {
-    return <span className="badge badge-red" style={{ marginLeft: 6 }}>{gap.examType || '시험'} D-{gap.dDay}</span>
+    return <span className="badge badge-red" style={{ marginLeft: 6 }}>{gap.examType || '시험'} {formatDDay(gap.dDay)}</span>
   }
   if (gap.relatedCertName) {
     return <span className="badge badge-amber" style={{ marginLeft: 6 }}>관련 자격증: {gap.relatedCertName}(일정 확인 필요)</span>
@@ -137,7 +137,11 @@ function CareerDiagnosis() {
   async function addGapToPlan(gapId) {
     if (!diagnosisId) return
     setGapButtonState((prev) => ({ ...prev, [gapId]: 'pending' }))
-    const data = await callApi(`/ai/diagnosis/${diagnosisId}/gaps/${gapId}/to-plan`, { method: 'POST' })
+    // 계획 화면이 보여주는 "이번 주"와 같은 주에 넣는다 (weekStart 생략 시 서버 기본값은 화~토에 다음 주).
+    const data = await callApi(`/ai/diagnosis/${diagnosisId}/gaps/${gapId}/to-plan`, {
+      method: 'POST',
+      body: JSON.stringify({ weekStart: todayKstDateString() }),
+    })
 
     if (data.httpStatus === 200) {
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'added' }))

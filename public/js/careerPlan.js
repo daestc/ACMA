@@ -21,15 +21,10 @@ let pollTimer = null;
 let currentTargetJob = null; // loadCurrentTargetJob()이 채움 — 계획 jobCode와 대조용
 
 // KST 자정 기준 오늘 날짜(YYYY-MM-DD) — <input type="date"> value로 그대로 쓸 수 있다.
-function todayKstDateString() {
-  const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-}
-
 // escapeHtml/formatKstDate는 careerAi.js(공용, 이 스크립트보다 먼저 로드됨) 참고.
 
 function showSection(id) {
-  ['cp-empty', 'cp-pending', 'cp-failed', 'cp-plan'].forEach(sectionId => {
+  ['cp-empty', 'cp-pending', 'cp-failed', 'cp-plan', 'cp-review'].forEach(sectionId => {
     document.getElementById(sectionId).style.display = sectionId === id ? 'block' : 'none';
   });
 }
@@ -92,6 +87,7 @@ function renderPlan(plan) {
   document.getElementById('cp-hours-fill').style.width = pct + '%';
 
   document.getElementById('cp-goal').textContent = plan.goal || '';
+  renderAdjustment(plan);
 
   // 계획 생성 시점 목표 직무(plan.jobCode)와 지금 목표 직무가 다르면 배너를 띄운다 —
   // 옛 jobCode 없는 계획(스키마 추가 이전 생성분)은 대조할 수 없으므로 조용히 건너뛴다.
@@ -200,6 +196,14 @@ function startPolling() {
   );
 }
 
+// ── 지난주 돌아보기: 새 계획을 만들기 전에 지난 계획의 항목별 실행 상태를 보여 주고
+// (완료 → 체감 난도, 미완료 → 이유) 그 응답으로 서버가 이번 주 시간을 조정한다. 모두 선택 사항이다.
+const DIFFICULTY_OPTIONS = [['easy', '쉬움'], ['normal', '적당'], ['hard', '어려움']];
+const MISS_OPTIONS = [['time', '시간 부족'], ['hard', '난도 높음'], ['other', '다른 일정']];
+const REVIEW_STATE_LABEL = { done: '완료', partial: '일부만 완료', missed: '못 함' };
+let reviewContext = null; // { weekStart(생성할 주), data(서버 응답) }
+const reviewAnswers = new Map(); // planItemIndex → 선택한 값
+
 async function generatePlan() {
   // weekStart를 안 보내면 서버가 "오늘이 일/월이 아니면 다음 주"를 기본값으로 잡는다
   // (이미 절반 지난 주를 계획해봐야 의미가 적다는 이유 — controllers/aiController.js
@@ -207,6 +211,113 @@ async function generatePlan() {
   // 있으므로, 화면에 보여준 주와 항상 같은 주를 생성하도록 명시적으로 오늘 날짜를 보낸다.
   const weekStart = document.getElementById('cp-weekstart')?.value || todayKstDateString();
 
+  // 돌아볼 지난 계획이 있고 아직 답하지 않았으면 먼저 물어본다(건너뛰기 가능).
+  const review = await callApi(`/ai/weekly-plan/review?weekStart=${encodeURIComponent(weekStart)}`);
+  if (review.httpStatus === 200 && review.available && !review.reviewedAt) {
+    showReview(weekStart, review);
+    return;
+  }
+  await requestGeneration(weekStart);
+}
+
+function reviewButtons(item) {
+  const isDone = item.state === 'done';
+  const options = isDone ? DIFFICULTY_OPTIONS : MISS_OPTIONS;
+  const current = reviewAnswers.get(item.planItemIndex);
+  return options.map(([value, label]) =>
+    `<button type="button" class="btn btn-sm ${current === value ? 'btn-accent' : 'btn-ghost'}" onclick="pickReview(${item.planItemIndex}, '${value}')">${label}</button>`,
+  ).join(' ');
+}
+
+function renderReviewItems() {
+  const items = reviewContext?.data?.items || [];
+  document.getElementById('cp-review-items').innerHTML = items.map(item => `
+    <div style="padding:12px 14px;background:var(--bg3);border-radius:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <strong style="font-size:13px;">${escapeHtml(item.title)}</strong>
+        <span style="font-size:11px;color:var(--text2);">${REVIEW_STATE_LABEL[item.state] || ''} · ${item.completedHours}h / ${item.plannedHours}h</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin:8px 0 6px;">${item.state === 'done' ? '체감 난도는 어땠나요?' : '왜 다 못 했나요?'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${reviewButtons(item)}</div>
+    </div>`).join('');
+}
+
+function showReview(weekStart, review) {
+  reviewContext = { weekStart, data: review };
+  reviewAnswers.clear();
+  review.items.forEach(item => {
+    const prior = item.state === 'done' ? item.difficulty : item.missReason;
+    if (prior) reviewAnswers.set(item.planItemIndex, prior);
+  });
+
+  const s = review.summary;
+  const rate = s ? `${Math.round(s.timeRate * 100)}%` : '-';
+  document.getElementById('cp-review-summary').textContent = s
+    ? `지난 계획(${formatKstDate(review.weekStart)} ~ ${formatKstDate(review.weekEnd)})의 달성률은 ${rate}입니다${s.basis === 'hours' ? ` (시간 기준: 완료 ${s.completedHours}h / 계획 ${s.plannedHours}h)` : ' (항목 개수 기준)'}. 항목별로 한 번씩 골라 주세요.`
+    : '지난 계획을 돌아봅니다.';
+  renderReviewItems();
+  showSection('cp-review');
+}
+
+function pickReview(planItemIndex, value) {
+  if (reviewAnswers.get(planItemIndex) === value) reviewAnswers.delete(planItemIndex);
+  else reviewAnswers.set(planItemIndex, value);
+  renderReviewItems();
+}
+
+function cancelReview() {
+  reviewContext = null;
+  loadCurrentPlan();
+}
+
+async function skipReviewAndGenerate() {
+  const weekStart = reviewContext?.weekStart || todayKstDateString();
+  reviewContext = null;
+  await requestGeneration(weekStart);
+}
+
+async function saveReviewAndGenerate() {
+  const ctx = reviewContext;
+  if (!ctx) return;
+  const answers = ctx.data.items
+    .filter(item => reviewAnswers.has(item.planItemIndex))
+    .map(item => (item.state === 'done'
+      ? { planItemIndex: item.planItemIndex, difficulty: reviewAnswers.get(item.planItemIndex) }
+      : { planItemIndex: item.planItemIndex, missReason: reviewAnswers.get(item.planItemIndex) }));
+
+  if (answers.length > 0) {
+    const saved = await callApi(`/ai/weekly-plan/${ctx.data.planId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ items: answers }),
+    });
+    if (saved.httpStatus !== 200) {
+      alert('답변을 저장하지 못했습니다. 건너뛰고 생성하거나 잠시 후 다시 시도해주세요.');
+      return;
+    }
+  }
+  reviewContext = null;
+  await requestGeneration(ctx.weekStart);
+}
+
+// 이번 주 계획이 어떻게 조정되었는지(이유 포함)를 보여 준다. 조정 정보가 없는 옛 계획은 비워 둔다.
+function renderAdjustment(plan) {
+  const el = document.getElementById('cp-adjustment');
+  const adj = plan.adjustment;
+  if (!el) return;
+  if (!adj) {
+    el.innerHTML = '';
+    return;
+  }
+  const cap = plan.computed?.dailyHoursCap || 6;
+  const head = `<div style="font-size:12px;font-weight:700;margin-bottom:4px;">이번 주 계획 조정</div>`;
+  const meta = `<div style="font-size:11px;color:var(--text2);margin-bottom:4px;">하루 최대 ${cap}시간 · 총 시간 한도 ${adj.hoursLimit}h</div>`;
+  const body = adj.applied
+    ? adj.reasons.map(r => `<div style="font-size:12px;line-height:1.6;">• ${escapeHtml(r)}</div>`).join('')
+    : '<div style="font-size:12px;color:var(--text2);line-height:1.6;">조정 없음 — 지난 기록과 돌아보기 답변에서 조정할 내용이 없었습니다.</div>';
+  el.innerHTML = `<div style="margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:8px;">${head}${meta}${body}</div>`;
+}
+
+async function requestGeneration(weekStart) {
   const data = await callApi('/ai/weekly-plan', {
     method: 'POST',
     body: JSON.stringify({ weekStart }),
@@ -231,6 +342,36 @@ async function redistribute() {
     loadCurrentPlan();
   } else {
     alert(data.message || '재분배에 실패했습니다.');
+  }
+}
+
+// 하루 학습 가능 시간(사용자 설정). 비우면 기본값 6시간.
+async function loadDailyHoursSetting() {
+  const data = await callApi('/ai/weekly-plan/settings');
+  if (data.httpStatus !== 200) return;
+  const input = document.getElementById('cp-daily-hours');
+  if (input) {
+    input.value = data.dailyStudyHours ?? '';
+    input.placeholder = String(data.defaultHours ?? 6);
+  }
+}
+
+async function saveDailyHours() {
+  const input = document.getElementById('cp-daily-hours');
+  const msg = document.getElementById('cp-settings-msg');
+  const data = await callApi('/ai/weekly-plan/settings', {
+    method: 'POST',
+    body: JSON.stringify({ dailyStudyHours: input.value }),
+  });
+  msg.style.display = 'block';
+  if (data.httpStatus === 200) {
+    msg.style.color = 'var(--green)';
+    msg.textContent = data.dailyStudyHours
+      ? `하루 최대 ${data.dailyStudyHours}시간으로 저장했습니다. 다음에 만드는 계획부터 적용됩니다.`
+      : `기본값(${data.defaultHours}시간)으로 되돌렸습니다.`;
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = data.message || '저장하지 못했습니다.';
   }
 }
 
@@ -325,6 +466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (weekstartInput) weekstartInput.value = todayKstDateString();
   // currentTargetJob이 채워진 뒤에 렌더해야 첫 로드에서도 직무 불일치 배너가 정확히 뜬다.
   await loadCurrentTargetJob();
+  loadDailyHoursSetting();
   loadCurrentPlan();
   loadStatsAndHistory();
   renderAllBlockedBanner('cp-all-blocked-banner');

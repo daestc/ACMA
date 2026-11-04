@@ -36,6 +36,8 @@ router.post('/graduation/save', staffController.saveGraduation);// 졸업요건 
 router.get('/graduation/majors', staffController.getMajorList);// 전공 목록 조회
 router.get('/graduation/majors/:major', staffController.getMajorGraduation);// 전공 졸업요건 조회
 router.post('/graduation/majors', staffController.saveMajorGraduation);// 전공 졸업요건 저장
+router.post('/graduation/cohorts', staffController.saveCohortGraduation);// 입학년도별 졸업요건 저장
+router.delete('/graduation/cohorts/:fromYear', staffController.deleteCohortGraduation);// 입학년도별 졸업요건 삭제
 
 router.get('/suggestions', suggestionController.getStaffPage);// 학생 건의 관리
 // '/suggestions/list'는 리터럴 경로라서 아래 '/suggestions/:id' 파라미터 라우트보다

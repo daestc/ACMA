@@ -184,7 +184,7 @@ async function updateProfile(userEmail, profileData) {
     throw new Error('사용자를 찾지 못했습니다.');
   }
 
-  const { studentId, university, major, enrollmentStatus, grade } = profileData;
+  const { studentId, university, major, enrollmentStatus, grade, admissionYear } = profileData;
   const oldUniversity = user.university?.trim() || '';
   const newUniversity = university?.trim() || '';
   const universityChanged = oldUniversity !== newUniversity;
@@ -196,7 +196,8 @@ async function updateProfile(userEmail, profileData) {
 
   await User.findOneAndUpdate(
     { email: userEmail },
-    { studentId, university: newUniversity, major, enrollmentStatus },
+    // admissionYear가 undefined면 mongoose가 키를 버리므로 기존 값이 유지된다(null은 삭제)
+    { studentId, university: newUniversity, major, enrollmentStatus, admissionYear },
   );
 
   // 학년은 User가 아니라 UniversityProfile.grade에 저장된다(AI 컨텍스트가 여기서
@@ -230,6 +231,7 @@ async function getProfile(userEmail) {
       email: user.email,
       role: user.role,
       studentId: user.studentId,
+      admissionYear: user.admissionYear ?? null,
       university: user.university,
       major: user.major,
       enrollmentStatus: user.enrollmentStatus,

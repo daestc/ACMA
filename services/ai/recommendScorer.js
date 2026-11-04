@@ -3,7 +3,22 @@
 // 하며 scripts/checkRecommendScorer.js가 검사한다 — 한 글자만 달라도 에러 없이 0점이 된다.
 
 const WEIGHTS = { major: 15, cert: 20, knowledge: 25, skill: 20, pref: 20 };
-const CERT_POINT = 12;
+// 자격증 한 개당 점수는 등급에 따라 다르다(직무 관련 자격증 목록과 이름이 일치할 때만 센다).
+// 등급은 이름 끝으로 판별하고, 산업기사가 '기사'로도 끝나므로 먼저 검사한다.
+// 등급 표기가 없는 자격(급수·민간 자격 등)은 기본 점수를 준다.
+const CERT_GRADE_POINTS = [
+  [/(기술사|기능장)$/, 15],
+  [/산업기사$/, 9],
+  [/기사$/, 12],
+  [/기능사$/, 6],
+];
+const DEFAULT_CERT_POINT = 12;
+// 지식 점수의 "근거 강도": 직무 핵심 지식과 맞는 과목이 많고 성적이 괜찮을수록 높다.
+// 과목 하나만 맞아도 만점이 나오던 문제(교수 상담 반영)를 막는다. 성적은 보조 지표라 최대 20%만 깎는다.
+// 수강 중인 과목(성적 없음)은 이수 과목의 절반으로 센다.
+const KNOWLEDGE_STRENGTH = { base: 0.4, perCourse: 0.2, currentCourseWeight: 0.5 };
+const GRADE_POINTS = { 'A+': 4.5, A: 4.0, 'B+': 3.5, B: 3.0, 'C+': 2.5, C: 2.0, 'D+': 1.5, D: 1.0 };
+const GRADE_FACTORS = [[3.5, 1.0], [2.5, 0.9], [0, 0.8]]; // [평균 평점 이상, 계수] — B+ 이상 / C+~B / 그 미만
 const PREF_POINTS = { work: 12, style: 4, salary: 4 };
 // 직무마다 지식·능력·성격이 정확히 5개. importance 값은 필드마다 척도가 다르고 상위 5개끼리
 // 몰려 있어(능력 중앙값 92) 차이가 안 나서, 직무 안에서의 순위로 가중한다(계획서 v3.2 §4-2-1).
@@ -236,10 +251,14 @@ function mapSubjectsToKnowledge(subjects) {
 function extractUserSignals(context) {
   const majors = [context?.profile?.major, context?.profile?.doubleMajor].filter(Boolean);
   const certs = (context?.specs?.certifications || []).map(c => c?.name).filter(Boolean);
-  const subjects = [...new Set([
-    ...(context?.academic?.majorCourses || []).map(s => s?.name),
-    ...(context?.academic?.currentSubjects || []).map(s => s?.name),
-  ].filter(Boolean))];
+  // 이수 과목(성적 있음)이 먼저고, 같은 이름이 수강 중에도 있으면 이수로 본다.
+  const completedCourses = (context?.academic?.majorCourses || []).filter(c => c?.name);
+  const completedNames = new Set(completedCourses.map(c => c.name));
+  const currentCourses = (context?.academic?.currentSubjects || []).filter(s => s?.name && !completedNames.has(s.name));
+  const subjectInfo = new Map(); // 과목명 → { completed, grade }
+  completedCourses.forEach(c => subjectInfo.set(c.name, { completed: true, grade: c.grade ?? null }));
+  currentCourses.forEach(s => { if (!subjectInfo.has(s.name)) subjectInfo.set(s.name, { completed: false, grade: null }); });
+  const subjects = [...subjectInfo.keys()];
   const skills = (context?.specs?.skills || []).map(s => s?.name).filter(Boolean);
   const experiences = (context?.specs?.experiences || []).map(e => e?.title).filter(Boolean);
 
@@ -248,7 +267,7 @@ function extractUserSignals(context) {
 
   return {
     majors, certs, subjects, skills, experiences,
-    certIndex,
+    certIndex, subjectInfo,
     knowledgeSubjects: mapSubjectsToKnowledge(subjects),
     skillAbilities: mapSkillsToAbilities(skills, experiences),
   };
@@ -310,6 +329,52 @@ function buildSalaryPool(jobs) {
   return (jobs || []).map(j => j?.averageSalary?.median50 || 0).filter(v => v > 0).sort((a, b) => a - b);
 }
 
+function certPoint(certKey) {
+  const rule = CERT_GRADE_POINTS.find(([pattern]) => pattern.test(certKey));
+  return rule ? rule[1] : DEFAULT_CERT_POINT;
+}
+
+// 그 지식을 뒷받침하는 과목들로 근거 강도를 계산한다.
+function knowledgeBasis(subjectNames, subjectInfo) {
+  let completed = 0;
+  let current = 0;
+  const gradePoints = [];
+  (subjectNames || []).forEach(name => {
+    const info = subjectInfo?.get(name);
+    if (info && !info.completed) { current += 1; return; }
+    completed += 1;
+    const point = GRADE_POINTS[info?.grade];
+    if (point !== undefined) gradePoints.push(point);
+  });
+
+  const effectiveCourses = completed + KNOWLEDGE_STRENGTH.currentCourseWeight * current;
+  const strength = Math.min(1, KNOWLEDGE_STRENGTH.base + KNOWLEDGE_STRENGTH.perCourse * effectiveCourses);
+  const average = gradePoints.length ? gradePoints.reduce((a, b) => a + b, 0) / gradePoints.length : null;
+  const gradeFactor = average === null ? 1 : GRADE_FACTORS.find(([min]) => average >= min)[1];
+  return { completed, current, strength: Math.round(strength * 100) / 100, gradeFactor };
+}
+
+// 직무 지식 상위 항목 중 "순위 가중 × 근거 강도 × 성적 계수"가 가장 큰 것을 고른다.
+// 1순위 지식에 수강 중 과목 하나만 있고 2순위 지식에 이수 과목이 여럿이면 후자가 더 높게 나온다.
+function bestKnowledgeMatch(items, signals) {
+  let best = null;
+  rankedItems(items).forEach((item, idx) => {
+    const subjects = signals.knowledgeSubjects.get(item.name);
+    if (!subjects) return;
+    const basis = knowledgeBasis(subjects, signals.subjectInfo);
+    const value = (RANK_WEIGHT[idx] || 0) * basis.strength * basis.gradeFactor;
+    if (!best || value > best.value) best = { name: item.name, rank: idx + 1, value, basis };
+  });
+  return best;
+}
+
+// 이 직무가 요구하는 핵심 지식·능력 상위 항목과, 학생 입력에서 근거를 찾았는지(화면의 "평가 기준").
+function buildCriteria(job, knowledgeNames, abilityNames) {
+  const top = (items, names) => rankedItems(items).slice(0, RANK_WEIGHT.length)
+    .map((item, i) => ({ name: item.name, rank: i + 1, supported: names.has(item.name) }));
+  return { knowledge: top(job.knowledge, knowledgeNames), abilities: top(job.abilities, abilityNames) };
+}
+
 // 직무 쪽 데이터가 없으면 그 항목은 0점이며 환산하지 않는다(계획서 §3-5).
 function scoreJob(signals, prefs, job, salaryPool = []) {
   const breakdown = { major: 0, cert: 0, knowledge: 0, skill: 0, pref: 0 };
@@ -318,6 +383,7 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   const matched = {
     major: null, certs: [], subjects: [], skills: [], experiences: [], prefs: [],
     topKnowledge: null, topAbility: null,
+    knowledgeBasis: null, criteria: null,
   };
 
   const majorHit = signals.majors.find(m => majorMatch(m, job.relatedDepartments));
@@ -327,18 +393,23 @@ function scoreJob(signals, prefs, job, salaryPool = []) {
   }
 
   const jobCerts = new Set(job.certNames || []);
-  const heldCerts = [...new Set([...signals.certIndex].filter(([key]) => jobCerts.has(key)).map(([, name]) => name))];
-  breakdown.cert = Math.min(WEIGHTS.cert, heldCerts.length * CERT_POINT);
+  const heldKeys = [...signals.certIndex.keys()].filter(key => jobCerts.has(key));
+  const heldCerts = [...new Set(heldKeys.map(key => signals.certIndex.get(key)))];
+  breakdown.cert = Math.min(WEIGHTS.cert, heldKeys.reduce((sum, key) => sum + certPoint(key), 0));
   matched.certs = heldCerts;
 
   const knowledgeNames = new Set(signals.knowledgeSubjects.keys());
-  const topKnowledge = bestRankMatch(job.knowledge, knowledgeNames);
-  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.weight || 0));
-  if (topKnowledge) matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
+  const topKnowledge = bestKnowledgeMatch(job.knowledge, signals);
+  breakdown.knowledge = Math.round(WEIGHTS.knowledge * (topKnowledge?.value || 0));
+  if (topKnowledge) {
+    matched.topKnowledge = { name: topKnowledge.name, rank: topKnowledge.rank };
+    matched.knowledgeBasis = topKnowledge.basis;
+  }
   const heldKnowledge = rankedItems(job.knowledge).filter(k => knowledgeNames.has(k.name));
   matched.subjects = [...new Set(heldKnowledge.flatMap(k => signals.knowledgeSubjects.get(k.name)))];
 
   const abilityNames = new Set(signals.skillAbilities.keys());
+  matched.criteria = buildCriteria(job, knowledgeNames, abilityNames);
   const topAbility = bestRankMatch(job.abilities, abilityNames);
   breakdown.skill = Math.round(WEIGHTS.skill * (topAbility?.weight || 0));
   if (topAbility) matched.topAbility = { name: topAbility.name, rank: topAbility.rank };
@@ -432,6 +503,18 @@ function countSignalKinds(signals, prefs) {
   ].filter(Boolean).length;
 }
 
+// 학생이 그 항목을 입력했는지. 점수가 0이어도 "입력하지 않음"과 "입력했지만 일치 없음"을 구분하기 위함이다.
+// 입력하지 않은 것을 "없다"고 단정하지 않는다(교수 상담 반영).
+function buildInputState(signals, prefs) {
+  return {
+    major: signals.majors.length > 0,
+    cert: signals.certs.length > 0,
+    knowledge: signals.subjects.length > 0,
+    skill: signals.skills.length + signals.experiences.length > 0,
+    pref: (prefs?.work || []).length > 0 || Boolean(prefs?.style) || Boolean(prefs?.value),
+  };
+}
+
 function calcConfidence(signals, prefs) {
   return countSignalKinds(signals, prefs) >= MIN_SIGNAL_KINDS ? 'normal' : 'low';
 }
@@ -459,4 +542,11 @@ module.exports = {
   pickDiverse,
   countSignalKinds,
   calcConfidence,
+  buildInputState,
+  CERT_GRADE_POINTS,
+  DEFAULT_CERT_POINT,
+  KNOWLEDGE_STRENGTH,
+  GRADE_FACTORS,
+  certPoint,
+  knowledgeBasis,
 };

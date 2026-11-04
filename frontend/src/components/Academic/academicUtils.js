@@ -1,6 +1,21 @@
-export const SEMESTER_OPTIONS = [
-  '2026-1', '2025-2', '2025-1', '2024-2', '2024-1', '2023-2', '2023-1',
-]
+// 학기 선택 목록 — 가장 최근에 시작한 학기부터 과거 순서 (첫 항목 = 현재 학기).
+// 3~8월은 1학기, 9월~다음 해 2월은 2학기로 본다. 예전엔 '2026-1'까지 하드코딩이라
+// 2026-2학기부터는 현재 학기를 고를 수 없었다. (서버 utils/semesterOptions.js와 같은 규칙)
+function buildSemesterOptions(count = 8) {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const month = kst.getUTCMonth() + 1
+  let year = month <= 2 ? kst.getUTCFullYear() - 1 : kst.getUTCFullYear()
+  let term = month >= 3 && month <= 8 ? 1 : 2
+
+  const options = []
+  for (let i = 0; i < count; i += 1) {
+    options.push(`${year}-${term}`)
+    if (term === 1) { year -= 1; term = 2 } else { term = 1 }
+  }
+  return options
+}
+
+export const SEMESTER_OPTIONS = buildSemesterOptions()
 
 export const GRADE_OPTIONS = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F']
 
@@ -35,6 +50,8 @@ export function calcGpaFromRows(rows) {
   let pts = 0
   let creds = 0
   rows.forEach((row) => {
+    // 과목명이 빈 행은 제외 — 과목을 하나도 안 넣었는데 "예상 평점 4.50"이 보이는 것을 막는다.
+    if (!String(row.subjectName || '').trim()) return
     const c = parseInt(row.credits, 10) || 3
     const g = row.grade
     pts += (GRADE_MAP[g] ?? 0) * c

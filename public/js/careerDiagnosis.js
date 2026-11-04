@@ -243,7 +243,11 @@ async function addGapToPlan(gapId, buttonEl) {
   if (!currentDiagnosisId) return;
   buttonEl.disabled = true;
 
-  const data = await callApi(`/ai/diagnosis/${currentDiagnosisId}/gaps/${gapId}/to-plan`, { method: 'POST' });
+  // 계획 화면이 보여주는 "이번 주"와 같은 주에 넣는다 (weekStart 생략 시 서버 기본값은 화·토에 다음 주).
+  const data = await callApi(`/ai/diagnosis/${currentDiagnosisId}/gaps/${gapId}/to-plan`, {
+    method: 'POST',
+    body: JSON.stringify({ weekStart: todayKstDateString() }),
+  });
 
   if (data.httpStatus === 200) {
     buttonEl.textContent = '추가됨';

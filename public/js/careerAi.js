@@ -7,6 +7,15 @@
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 60000;
 
+// 오늘 날짜(KST) "YYYY-MM-DD". 계획 화면(/career/plan)이 보여주는 "이번 주"와 진단 화면의
+// "이번 주 계획에 추가"가 같은 주를 가리키도록 두 화면이 이 값을 weekStart로 보낸다 —
+// 안 보내면 서버가 "오늘이 일·월이 아니면 다음 주"를 기본값으로 잡아서(aiController
+// resolveWeekStart), 화요일~토요일에는 이번 주 계획이 있는데도 "먼저 계획을 생성해 주세요"가 뜬다.
+function todayKstDateString() {
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
 // fetch를 감싸서 항상 { httpStatus, ...body } 형태로 반환 — 호출부가 매번
 // response.ok/response.json()을 따로 안 챙겨도 되게 한다.
 async function callApi(url, options = {}) {

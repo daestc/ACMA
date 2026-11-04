@@ -5,6 +5,7 @@ const weeklyPlanPrompt = require('./prompts/weeklyPlan');
 const aiClient = require('./aiClient');
 const validator = require('./validator');
 const dailyDistributor = require('./dailyDistributor');
+const planAdjustment = require('./planAdjustment');
 const logger = require('../../config/logger');
 
 const GENERIC_FAILURE_MESSAGE = '생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
@@ -115,6 +116,12 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
       schema: weeklyPlanPrompt.OUTPUT_JSON_SCHEMA,
     });
 
+    // 난도가 높다는 응답이 많은 카테고리는 서버가 항목 시간을 늘린다(AI가 임의로 맞추지 않음).
+    // 한도 검사는 그 뒤에 하므로, 늘어난 만큼 우선순위 낮은 항목이 빠질 수 있다.
+    if (Array.isArray(data?.items)) {
+      data.items = planAdjustment.applyCategoryFactors(data.items, context.adjustment?.categoryFactors);
+    }
+
     const { valid, sanitized, errors: validationErrors } = validator.validateWeeklyPlan(data, context);
     if (!valid) {
       // 항목 내용(개인 학사 데이터 인용 가능성)은 로그에 남기지 않고, 구조 정보와
@@ -152,7 +159,9 @@ async function generateWeeklyPlan(docId, userId, weekStart) {
         academicPhase: context.computed.academicPhase,
         semester: context.computed.semester,
         hasTimetable: context.computed.hasTimetable,
+        dailyHoursCap: context.computed.dailyHoursCap,
       },
+      adjustment: context.adjustment,
       prevCompletionRate: context.prevCompletionRate,
       generation: buildGenerationMeta(meta, weeklyPlanPrompt.VERSION),
     }, { new: true }).lean();

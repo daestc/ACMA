@@ -209,6 +209,49 @@
 				</div>
 
 			</div>
+
+			<div class="card" style="margin-top:16px;">
+				<div class="card-header">
+					<span class="card-title">📅 입학년도별 학점 요건</span>
+					<span class="badge badge-purple">선택</span>
+				</div>
+
+				<p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+					입학년도에 따라 이수 학점이 달라지는 경우에만 등록하세요. 등록한 입학년도 이후 입학생에게 적용되며(더 최근에 등록한 값이 우선), 비워 둔 항목은 학교 기본값을 사용합니다.
+					입학년도를 입력하지 않은 학생에게는 학교 기본값이 적용됩니다.
+				</p>
+
+				<div id="coh-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+
+				<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;align-items:end;">
+					<div>
+						<label class="staff-label">입학년도부터</label>
+						<input class="input-field" id="coh-year" type="number" min="1990" max="2100" placeholder="예: 2023" style="width:100%;">
+					</div>
+					<div>
+						<label class="staff-label">총 이수학점</label>
+						<input class="input-field" id="coh-total" type="number" min="0" placeholder="기본값 사용" style="width:100%;">
+					</div>
+					<div>
+						<label class="staff-label">전공필수</label>
+						<input class="input-field" id="coh-major-req" type="number" min="0" placeholder="기본값 사용" style="width:100%;">
+					</div>
+					<div>
+						<label class="staff-label">전공선택</label>
+						<input class="input-field" id="coh-major-el" type="number" min="0" placeholder="기본값 사용" style="width:100%;">
+					</div>
+					<div>
+						<label class="staff-label">교양필수</label>
+						<input class="input-field" id="coh-gen-req" type="number" min="0" placeholder="기본값 사용" style="width:100%;">
+					</div>
+					<div>
+						<label class="staff-label">교양선택</label>
+						<input class="input-field" id="coh-gen-el" type="number" min="0" placeholder="기본값 사용" style="width:100%;">
+					</div>
+				</div>
+				<button class="btn btn-accent" id="coh-save-btn" style="margin-top:12px;" onclick="saveCohortGraduation()">💾 입학년도별 요건 저장</button>
+				<div id="coh-msg" style="display:none;font-size:12px;border-radius:var(--radius-sm);padding:9px 12px;margin-top:10px;"></div>
+			</div>
 		</div>
 	</main>
 
@@ -241,6 +284,7 @@
 	</style>
 	<script>
 		window.initialSchoolCerts = <%- JSON.stringify(requirements?.requiredCertifications || []) %>;
+		window.initialCohorts = <%- JSON.stringify((cohorts || []).map(c => ({ fromYear: c.fromYear, requirements: c.requirements || {} }))) %>;
 	</script>
 	<script src="/js/common.js"></script>
 	<script src="/js/staffGraduation.js"></script>
