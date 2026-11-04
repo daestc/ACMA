@@ -9,6 +9,39 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const DIFFICULTY_OPTIONS = [['easy', '쉬움'], ['normal', '적당'], ['hard', '어려움']]
 const MISS_OPTIONS = [['time', '시간 부족'], ['hard', '난도 높음'], ['other', '다른 일정']]
 const REVIEW_STATE_LABEL = { done: '완료', partial: '일부만 완료', missed: '못 함' }
+const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.'
+
+// 항목별 진행률(서버 계산, progress.items[i]) — 화면은 표시만 한다.
+function ItemProgress({ item, progress }) {
+  if (!progress) return null
+  if (!(item.estimatedHours > 0)) {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <span className={`badge ${progress.status === 'done' ? 'badge-green' : 'badge-blue'}`}>{progress.status === 'done' ? '완료' : '미완료'}</span>
+      </div>
+    )
+  }
+  const pct = Math.min(100, Math.round((progress.doneHours / progress.plannedHours) * 100))
+  return (
+    <div className="progress-wrap" style={{ marginTop: 10 }}>
+      <div className="progress-header">
+        <span className="progress-label" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          진행
+          {progress.status === 'done' && <span className="badge badge-green">완료</span>}
+          {progress.status === 'overdue' && <span className="badge badge-red">밀림 {progress.overdueHours}h</span>}
+          {progress.status === 'unplaced' && <span className="badge badge-amber">미배치 {progress.unplacedHours}h</span>}
+        </span>
+        <span className="progress-value">{progress.doneHours}h / {progress.plannedHours}h</span>
+      </div>
+      <div className="progress-track">
+        <div className={`progress-fill ${progress.status === 'done' ? 'fill-green' : 'fill-blue'}`} style={{ width: `${pct}%` }} />
+      </div>
+      {progress.status === 'overdue' && (
+        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>재분배하면 남은 시간이 다시 배치됩니다</div>
+      )}
+    </div>
+  )
+}
 
 function reviewSummaryText(review) {
   const s = review.summary
@@ -27,6 +60,7 @@ function pctBadgeClass(pct) {
 function CareerPlan() {
   const [section, setSection] = useState('empty')
   const [plan, setPlan] = useState(null)
+  const [progress, setProgress] = useState(null)
   const [failedMsg, setFailedMsg] = useState('생성에 실패했습니다.')
   const [weekStartInput, setWeekStartInput] = useState(todayKstDateString())
   const [currentTargetJob, setCurrentTargetJob] = useState(null) // {jobCode, title} | null
@@ -60,9 +94,10 @@ function CareerPlan() {
     setDays(data.days || [])
   }
 
-  function renderPlanDoc(doc) {
+  function renderPlanDoc(doc, planProgress) {
     currentPlanIdRef.current = doc._id
     setPlan(doc)
+    setProgress(planProgress || null)
     setSection('plan')
     loadDailyChecklist(doc._id)
   }
@@ -73,7 +108,7 @@ function CareerPlan() {
     stopPolling()
     pollTimerRef.current = pollUntilDone(`/ai/weekly-plan/${currentPlanIdRef.current}`, null, (data) => {
       if (data.status === 'done' && data.data) {
-        renderPlanDoc(data.data)
+        renderPlanDoc(data.data, data.progress)
       } else {
         setFailedMsg(data.errorMessage || '생성에 실패했습니다.')
         setSection('failed')
@@ -98,10 +133,18 @@ function CareerPlan() {
       return
     }
     if (data.status === 'done' && data.data) {
-      renderPlanDoc(data.data)
+      renderPlanDoc(data.data, data.progress)
       return
     }
     setSection('empty')
+  }
+
+  // 보고 있는 계획을 진행률과 함께 다시 불러온다(체크 토글 후 진행 막대 갱신용).
+  async function reloadPlan(planId) {
+    const data = await callApi(`/ai/weekly-plan/${planId}`)
+    if (data.httpStatus === 200 && data.status === 'done' && data.data) {
+      renderPlanDoc(data.data, data.progress)
+    }
   }
 
   async function loadCurrentTargetJob() {
@@ -241,7 +284,7 @@ function CareerPlan() {
   async function toggleChecklistItem(itemId) {
     const data = await callApi(`/ai/weekly-plan/checklist/${itemId}/toggle`, { method: 'POST' })
     if (data.httpStatus === 200 && currentPlanIdRef.current) {
-      loadDailyChecklist(currentPlanIdRef.current)
+      reloadPlan(currentPlanIdRef.current)
     }
   }
 
@@ -336,7 +379,7 @@ function CareerPlan() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={redistribute}>재분배</button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={generateDisabled} title={generateTitle} onClick={generatePlan}>다시 생성</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={generateDisabled} title={generateTitle} onClick={() => { if (window.confirm(REGENERATE_CONFIRM)) generatePlan() }}>다시 생성</button>
               </div>
             </div>
 
@@ -390,7 +433,7 @@ function CareerPlan() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(plan.items || []).length === 0 ? (
               <div className="card" style={{ textAlign: 'center', padding: 20, color: 'var(--text2)', fontSize: 13 }}>배치된 항목이 없습니다.</div>
-            ) : plan.items.map((item) => (
+            ) : plan.items.map((item, index) => (
               <div className="card" key={item._id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -401,6 +444,7 @@ function CareerPlan() {
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
                 </div>
                 {item.reason && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, lineHeight: 1.6 }}>{item.reason}</p>}
+                <ItemProgress item={item} progress={progress?.items?.[index]} />
               </div>
             ))}
           </div>
