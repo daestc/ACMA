@@ -185,6 +185,16 @@ async function updateProfile(userEmail, profileData) {
   }
 
   const { studentId, university, major, enrollmentStatus, grade, admissionYear } = profileData;
+  // 복수전공은 User.major에 섞지 않고 프로필에만 둔다(합친 문자열은 학과 요건·학과 목록·전공 점수
+  // 비교를 모두 깨뜨린다). 본문에 없으면(예전 화면·EJS 마이페이지) 건드리지 않고, 빈값이면 null로 지운다.
+  const doubleMajorProvided = profileData.doubleMajor !== undefined;
+  const doubleMajor = String(profileData.doubleMajor ?? '').trim() || null;
+  const primaryMajor = String(major ?? '').trim();
+  if (doubleMajorProvided && doubleMajor && doubleMajor === primaryMajor) {
+    const err = new Error('주전공과 복수전공이 같습니다.');
+    err.code = 'SAME_MAJOR';
+    throw err;
+  }
   const oldUniversity = user.university?.trim() || '';
   const newUniversity = university?.trim() || '';
   const universityChanged = oldUniversity !== newUniversity;
@@ -201,20 +211,21 @@ async function updateProfile(userEmail, profileData) {
   );
 
   // 학년은 User가 아니라 UniversityProfile.grade에 저장된다(AI 컨텍스트가 여기서
-  // 읽음 — services/ai/contextBuilder.js). 문서가 아직 없으면 만들되(major는 스키마
-  // 필수 필드라 $setOnInsert로 채움), 이미 있으면 grade만 갱신하고 다른 필드는
-  // 건드리지 않는다(enrollmentStatus enum이 User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
+  // 읽음 — services/ai/contextBuilder.js). 전공은 학년 저장과 상관없이 매번 프로필에도 맞춘다 —
+  // 예전엔 문서를 처음 만들 때만 넣어서, 전공을 바꿔도 프로필에는 예전 학과가 남아 AI 컨텍스트와
+  // 추천 전공 점수가 예전 전공 기준이었다. 다른 필드는 건드리지 않는다(enrollmentStatus enum이
+  // User와 다른 값 체계라 잘못 덮어쓰면 깨짐).
+  const profileSet = { major: (major || user.major || '미설정').trim() || '미설정' };
+  if (doubleMajorProvided) profileSet.doubleMajor = doubleMajor;
   const gradeNum = Number(grade);
   if (grade !== undefined && grade !== null && String(grade).trim() !== '' && Number.isFinite(gradeNum)) {
-    await UniversityProfile.findOneAndUpdate(
-      { userId: user._id },
-      {
-        $set: { grade: gradeNum },
-        $setOnInsert: { userId: user._id, major: (major || user.major || '미설정').trim() || '미설정' },
-      },
-      { upsert: true, setDefaultsOnInsert: true },
-    );
+    profileSet.grade = gradeNum;
   }
+  await UniversityProfile.findOneAndUpdate(
+    { userId: user._id },
+    { $set: profileSet, $setOnInsert: { userId: user._id } },
+    { upsert: true, setDefaultsOnInsert: true },
+  );
 
   return { universityChanged, clearedLectureCount };
 }
@@ -224,7 +235,7 @@ async function getProfile(userEmail) {
     const user = await User.findOne({ email: userEmail });
     if (!user) throw new Error('사용자를 찾지 못했습니다.');
 
-    const universityProfile = await UniversityProfile.findOne({ userId: user._id }).select('grade').lean();
+    const universityProfile = await UniversityProfile.findOne({ userId: user._id }).select('grade doubleMajor').lean();
 
     return {
       name: user.name,
@@ -234,6 +245,7 @@ async function getProfile(userEmail) {
       admissionYear: user.admissionYear ?? null,
       university: user.university,
       major: user.major,
+      doubleMajor: universityProfile?.doubleMajor ?? null,
       enrollmentStatus: user.enrollmentStatus,
       grade: universityProfile?.grade ?? null,
     };

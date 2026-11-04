@@ -17,7 +17,7 @@ const UniversityProfileSchema = new mongoose.Schema({
   },
   
   major: { type: String, required: true, trim: true }, // 전공
-  doubleMajor: { type: String, default: null }, // 복수전공 (현재 입력 경로 없음, 졸업요건 계산 미지원)
+  doubleMajor: { type: String, default: null }, // 복수전공 (마이페이지 "복수전공(선택)" — userService.updateProfile)
 
   // 졸업요건은 대학관계자가 등록한 UniversityGraduation에서만 가져온다(services/graduationService.js).
   // 예전에는 여기에 학생별 졸업요건 기본값(130/42/…)이 자동 저장되어 학교 등록값을 덮어썼다.
