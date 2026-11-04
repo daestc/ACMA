@@ -15,6 +15,8 @@ const DEFAULT_REQUIREMENTS = {
   requiredCapstonDesign: null,
   requiredNCProgram: null,
   requiredVolunteer: null,
+  doubleMajorPrimaryCredits: null,
+  doubleMajorCredits: null,
 };
 
 function normalizeMajor(major) {
@@ -28,6 +30,9 @@ const CREDIT_FIELDS = [
   'requiredMajorElective',
   'requiredGeneralCredits',
   'requiredGeneralElective',
+  // 복수전공 학점도 학점 항목이라 입학년도별로 달라질 수 있다
+  'doubleMajorPrimaryCredits',
+  'doubleMajorCredits',
 ];
 
 const MIN_ADMISSION_YEAR = 1990;
@@ -71,6 +76,9 @@ function mergeGraduationRequirements(schoolRequirements = {}, majorAdditional = 
     requiredCapstonDesign: pick(major.requiredCapstonDesign, school.requiredCapstonDesign),
     requiredNCProgram: pick(major.requiredNCProgram, school.requiredNCProgram),
     requiredVolunteer: pick(major.requiredVolunteer, school.requiredVolunteer),
+    // 학과 추가요건에는 없는 학점 항목이라 학교 기본값 → 입학년도별만 본다. 여기서 빠뜨리면 병합할 때 사라진다.
+    doubleMajorPrimaryCredits: credit('doubleMajorPrimaryCredits'),
+    doubleMajorCredits: credit('doubleMajorCredits'),
   };
 }
 
@@ -310,8 +318,8 @@ async function getStaffGraduationForStudent(university, major, admissionYear) {
 }
 
 // 학교 기본값 → 입학년도별 학점 → 학과 추가요건 순으로 병합한 최종 졸업요건.
-// 전공은 항상 회원 정보(User.major) 기준이다. 학사 프로필의 전공은 처음 만들 때만 기록되어
-// 전공을 바꿔도 갱신되지 않으므로, 회원 전공이 비어 있을 때만 대체값으로 쓴다.
+// 전공은 항상 회원 정보(User.major) 기준이다. 학사 프로필의 전공은 회원 전공이 비어 있을 때만
+// 대체값으로 쓴다(마이페이지 저장 때 프로필 전공도 함께 갱신된다 — userService.updateProfile).
 async function resolveRequirements(userId) {
   const [user, profile] = await Promise.all([
     User.findById(userId).select('university major admissionYear').lean(),

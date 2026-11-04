@@ -136,6 +136,7 @@ const updateBulkGrades = async (req, res) => {
       subjectName: String(s.subjectName || '').trim(),
       subjectType: String(s.subjectType || '').trim(),
       grade: String(s.grade || '').trim(),
+      majorTrack: String(s.majorTrack || '').trim(),
     })).filter(s => s.subjectName);
 
     // 2. 서비스 함수에 "객체 형태"로 인자 전달 (이름 매핑 주의)
@@ -329,6 +330,10 @@ const getProgress = async (req, res) => {
 
     const profile = await academicService.getUniversityProfile(user);
     const graduation = await resolveRequirements(user);
+    // 복수전공 계산(트랙별 취득 학점·남은 학점·안내)은 calcRemainingCredits가 한다.
+    const credits = await academicService.calcRemainingCredits(user);
+    totals.primary_major = credits.earned.primaryMajor;
+    totals.double_major = credits.earned.doubleMajor;
 
     // 예전 응답을 읽는 화면(내 현황 등)이 profile.GraduationRequirements를 쓰므로
     // 학교·학과·입학년도를 반영해 계산한 값을 같은 자리에 넣는다.
@@ -338,6 +343,9 @@ const getProgress = async (req, res) => {
       profile: { ...(profile || {}), GraduationRequirements: graduation.available ? graduation.requirements : null },
       graduationAvailable: graduation.available,
       graduationRequirements: graduation.available ? graduation.requirements : null,
+      remaining: credits.remaining,
+      doubleMajorMode: Boolean(credits.doubleMajorMode),
+      doubleMajorNotice: credits.doubleMajorNotice ?? null,
     });
   } catch (error) {
     logger.error(error);

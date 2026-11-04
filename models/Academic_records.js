@@ -42,6 +42,9 @@ const academicRecordSchema = new Schema(
           default: null,
         },
 
+        // 복수전공자의 전공 과목이 어느 전공 학점인지. subjectType이 major_로 시작하는 과목에만 의미가 있다.
+        majorTrack: { type: String, enum: ['primary', 'double'], default: 'primary' },
+
         isRetake: { type: Boolean, default: false }, //추가:재수강 여부
         // isIncludedInGPA: { type: Boolean, default: true }, //추가: gpa계산 여부 p/np는 gpa에서 없어야 하기 때문
 
