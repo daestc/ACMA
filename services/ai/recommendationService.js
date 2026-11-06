@@ -208,7 +208,7 @@ async function requestRecommendation(userId, rawPrefs, rawInterests) {
     userId, status: 'pending', prefs, interests, confidence, inputState, candidates, picks: scorePicks,
   });
   setImmediate(() => {
-    generateRecommendation(doc._id, userId, context, candidates, prefs, jobsByCode, inputState).catch(error => {
+    generateRecommendation(doc._id, userId, context, candidates, prefs, jobsByCode, inputState, interests).catch(error => {
       logger.error(`[ai] recommendation background crash (docId=${doc._id}): ${error.message}`);
     });
   });
@@ -241,7 +241,7 @@ function buildGenerationMeta(meta) {
  * 후보 안에서 AI가 3개를 골라 angle·사유·근거를 붙인다. requestRecommendation의 setImmediate에서 호출.
  * 실패하면 status만 failed로 바꾼다 — candidates와 점수 picks는 pending 저장 때 이미 들어 있다.
  */
-async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode, inputState) {
+async function generateRecommendation(docId, userId, context, candidates, prefs, jobsByCode, inputState, interests = []) {
   try {
     const prefLabels = buildPrefLabels(prefs);
     // 공용 collectEvidenceFacts는 진단·포트폴리오와 공유하므로 고치지 않고, 체크리스트 문구와 후보 근거
@@ -256,7 +256,7 @@ async function generateRecommendation(docId, userId, context, candidates, prefs,
 
     const { data, meta } = await aiClient.generateJSON({
       system: recommendationPrompt.buildSystem(),
-      user: recommendationPrompt.buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState),
+      user: recommendationPrompt.buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState, interests),
       schema: recommendationPrompt.buildOutputSchema(candidateCodes, facts),
     });
 

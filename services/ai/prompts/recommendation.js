@@ -1,6 +1,7 @@
 const { NO_RAW_FIELD_NAMES } = require('./sharedRules');
 
-const VERSION = 'recommendation.v2';
+// v3 = v2 + [탐색 분야] 블록(학생이 직접 고른 대분류)과 규칙 11
+const VERSION = 'recommendation.v3';
 const ANGLES = ['안정', '확장', '도전'];
 const SUMMARY_MAX_CHARS = 120;
 const KNOWLEDGE_LIMIT = 3;
@@ -32,7 +33,10 @@ const SYSTEM_PROMPT = `당신은 한국 대학생에게 진로 후보 직무를 
 9. [입력되지 않은 항목]에 있는 것은 학생에게 없다는 뜻이 아니라 입력하지 않았다는 뜻이다. "경험이 없다",
    "자격증이 부족하다"처럼 단정하지 말고, 필요하면 "입력된 정보에는 없다"거나 입력하면 더 정확해진다는
    식으로만 쓴다. 입력된 정보로 확인되는 강점을 중심으로 쓴다.
-10. ${NO_RAW_FIELD_NAMES}`;
+10. ${NO_RAW_FIELD_NAMES}
+11. [탐색 분야]가 있으면, 학생이 전공과 다른 분야를 일부러 탐색하는 중이다. 이때 '안정'은 "이 분야 후보 중
+    학생 데이터와 가장 잘 맞는 직무"라는 뜻이다. 매칭 항목이 적으면 "잘 맞는다"고 단정하지 말고, 입력된
+    역량 중 이 분야에서 쓸 수 있는 것(예: 엑셀·통계·발표 경험)을 중심으로 쓴다.`;
 
 function buildSystem() {
   return SYSTEM_PROMPT;
@@ -112,15 +116,20 @@ function buildCandidateBlock(candidate, job) {
  * @param {Map} jobsByCode jobCode → JobCatalog 문서(summary·knowledge·relatedCertifications)
  * @param {string[]} prefLabels 체크리스트 응답 문구("선호: …", "방식: …", "중시: …")
  * @param {string[]} facts 근거 화이트리스트
+ * @param {object} inputState 학생이 입력한 항목(scorer.buildInputState)
+ * @param {string[]} interests 학생이 직접 고른 대분류(탐색 분야). 비면 블록을 넣지 않는다.
  */
-function buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState) {
+function buildUser(context, candidates, jobsByCode, prefLabels, facts, inputState, interests = []) {
   const factsBlock = (facts || []).map(f => `- ${f}`).join('\n') || '(근거 없음)';
   const prefsBlock = (prefLabels || []).map(p => `- ${p}`).join('\n') || '(응답 없음)';
   const candidatesBlock = JSON.stringify(candidates.map(c => buildCandidateBlock(c, jobsByCode.get(c.jobCode))));
   const missing = missingInputLabels(inputState);
   const missingBlock = missing.length ? `[입력되지 않은 항목]\n${missing.map(m => `- ${m}`).join('\n')}\n\n` : '';
+  const exploreBlock = (interests || []).length
+    ? `[탐색 분야]\n학생이 직접 고른 분야: ${interests.join(', ')}\n후보 직무는 모두 이 분야 안에서 골랐다.\n\n`
+    : '';
   return `[사용 가능한 근거]\n${factsBlock}\n\n[학생의 체크리스트 응답]\n${prefsBlock}\n\n${missingBlock}`
-    + `[학생 정보]\n${JSON.stringify(buildStudentBlock(context))}\n\n[후보 직무]\n${candidatesBlock}`;
+    + `${exploreBlock}[학생 정보]\n${JSON.stringify(buildStudentBlock(context))}\n\n[후보 직무]\n${candidatesBlock}`;
 }
 
 // jobCode는 enum으로 후보 밖 직무를 구조적으로 막는다. facts가 비면 evidence 속성을 아예 뺀다 —
