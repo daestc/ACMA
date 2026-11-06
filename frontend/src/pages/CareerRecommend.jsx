@@ -120,7 +120,34 @@ function ChoiceButton({ active, onClick, children }) {
   )
 }
 
-function Checklist({ questions, prefs, setPrefs, busy, onSubmit, onSkip }) {
+// 고용24 직업 대분류 카드(직무 수·중분류 예시). 체크리스트의 "분야 지정"과 관심 분야 질문 화면이 함께 쓴다.
+function CategoryCards({ categories, selected, setSelected }) {
+  const toggle = (name) => setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]))
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+      {categories.map((c) => {
+        const active = selected.includes(c.name)
+        return (
+          <button
+            type="button"
+            key={c.name}
+            onClick={() => toggle(c.name)}
+            style={{
+              textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+              border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+              background: active ? 'var(--accent-bg, var(--bg3))' : 'var(--bg2, transparent)',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--accent)' : 'var(--text)' }}>{c.name} <span style={{ fontWeight: 400, color: 'var(--text2)' }}>{c.jobCount}</span></div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>{c.examples.join(', ')}</div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function Checklist({ questions, prefs, setPrefs, busy, onSubmit, onSkip, exploreOn, setExploreOn, categories, interests, setInterests }) {
   const { work, style, value } = questions
   const toggleWork = (key) => setPrefs((prev) => {
     if (prev.work.includes(key)) return { ...prev, work: prev.work.filter((k) => k !== key) }
@@ -145,6 +172,22 @@ function Checklist({ questions, prefs, setPrefs, busy, onSubmit, onSkip }) {
       <div style={{ fontSize: 13, fontWeight: 700, margin: '12px 0 6px' }}>{value.label}</div>
       <div>{value.options.map((o) => <ChoiceButton key={o.key} active={prefs.value === o.key} onClick={() => pickOne('value', o.key)}>{o.label}</ChoiceButton>)}</div>
 
+      {/* 분야 지정(선택): 켜고 1개 이상 고르면 그 대분류 직무 안에서만 추천한다. 기본은 전체 직무. */}
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <input type="checkbox" checked={exploreOn} onChange={(e) => setExploreOn(e.target.checked)} />
+          분야 지정 <span style={{ fontWeight: 400, color: 'var(--text2)' }}>(선택)</span>
+        </label>
+        <p style={{ fontSize: 12, color: 'var(--text2)', margin: '4px 0 0', lineHeight: 1.6 }}>
+          전공과 다른 분야를 둘러보고 싶다면 분야를 골라 보세요. 고른 분야의 직무끼리 같은 점수 기준으로 비교해 추천합니다(여러 개 선택 가능).
+        </p>
+        {exploreOn && (
+          <div style={{ marginTop: 10 }}>
+            <CategoryCards categories={categories} selected={interests} setSelected={setInterests} />
+          </div>
+        )}
+      </div>
+
       <div style={{ marginTop: 16, textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-ghost" disabled={busy} onClick={onSkip}>건너뛰기</button>
         <button type="button" className="btn btn-accent" disabled={busy} onClick={onSubmit}>{busy ? '추천 중...' : '추천 받기'}</button>
@@ -162,33 +205,13 @@ function CareerNetLink() {
 }
 
 function InterestPicker({ categories, selected, setSelected, busy, onSubmit }) {
-  const toggle = (name) => setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]))
   return (
     <div className="card">
       <div className="card-title">관심 있는 분야를 골라 주세요</div>
       <p style={{ fontSize: 12, color: 'var(--text2)', margin: '6px 0 14px' }}>
         입력된 정보만으로는 후보를 가려내기 어렵습니다. 고른 분야 안에서만 추천합니다(여러 개 선택 가능).
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-        {categories.map((c) => {
-          const active = selected.includes(c.name)
-          return (
-            <button
-              type="button"
-              key={c.name}
-              onClick={() => toggle(c.name)}
-              style={{
-                textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                background: active ? 'var(--accent-bg, var(--bg3))' : 'var(--bg2, transparent)',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--accent)' : 'var(--text)' }}>{c.name} <span style={{ fontWeight: 400, color: 'var(--text2)' }}>{c.jobCount}</span></div>
-              <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.5 }}>{c.examples.join(', ')}</div>
-            </button>
-          )
-        })}
-      </div>
+      <CategoryCards categories={categories} selected={selected} setSelected={setSelected} />
       <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12, lineHeight: 1.6 }}>
         아직 입력한 정보가 적다면, 진로검사로 내가 중요하게 여기는 가치를 먼저 확인해 보세요. → <CareerNetLink />
       </p>
@@ -301,6 +324,7 @@ function CareerRecommend() {
   const [sentPrefs, setSentPrefs] = useState(null) // 관심분야를 고른 뒤 같은 prefs로 다시 보낸다
   const [categories, setCategories] = useState([])
   const [interests, setInterests] = useState([])
+  const [exploreOn, setExploreOn] = useState(false) // 체크리스트의 "분야 지정" 토글
   const [doc, setDoc] = useState(null)
   const [busy, setBusy] = useState(false)
   const [selectingCode, setSelectingCode] = useState(null)
@@ -320,6 +344,8 @@ function CareerRecommend() {
       if (form.last) {
         setPrefs({ ...EMPTY_PREFS, ...form.last.prefs })
         setInterests(form.last.interests || [])
+        // 지난 추천에서 분야를 골랐으면 토글을 켠 상태로 미리 선택해 둔다
+        if ((form.last.interests || []).length > 0) setExploreOn(true)
       }
       if (latest.httpStatus === 200 && latest.data) {
         setDoc(latest.data)
@@ -405,8 +431,13 @@ function CareerRecommend() {
           prefs={prefs}
           setPrefs={setPrefs}
           busy={busy}
-          onSubmit={() => request(prefs, [])}
+          onSubmit={() => request(prefs, exploreOn && interests.length > 0 ? interests : [])}
           onSkip={() => request(null, [])}
+          exploreOn={exploreOn}
+          setExploreOn={setExploreOn}
+          categories={categories}
+          interests={interests}
+          setInterests={setInterests}
         />
       )}
 
@@ -426,6 +457,12 @@ function CareerRecommend() {
 
       {step === 'result' && doc && (
         <div>
+          {(doc.interests || []).length > 0 && (
+            <div style={{ background: 'var(--accent-bg, var(--bg3))', padding: '10px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.6, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>선택한 분야({doc.interests.join(', ')}) 안에서 추천했습니다. 적합도는 이 분야 직무끼리 비교한 점수입니다.</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setError(null); setInterests(doc.interests); setExploreOn(true); setStep('checklist') }}>분야 바꿔서 다시 추천</button>
+            </div>
+          )}
           {doc.status === 'failed' && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red)', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
               ⚠️ {doc.errorMessage || 'AI 추천 사유 생성에 실패했습니다. 점수 기준 추천을 보여드립니다.'}
@@ -447,7 +484,9 @@ function CareerRecommend() {
           </div>
           {(doc.picks || []).length < 3 && (
             <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
-              조건에 맞는 직무가 적어 {(doc.picks || []).length}개만 추천되었습니다. 관심분야를 넓혀 다시 시도해 보세요.
+              {(doc.interests || []).length > 0
+                ? `이 분야에는 후보 직무가 적어 ${(doc.picks || []).length}개만 추천했습니다. 분야를 더 골라 보세요.`
+                : `조건에 맞는 직무가 적어 ${(doc.picks || []).length}개만 추천되었습니다. 관심분야를 넓혀 다시 시도해 보세요.`}
             </div>
           )}
 
