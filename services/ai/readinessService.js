@@ -30,8 +30,19 @@ function languageBreakdown(context) {
 // 영역별 0~100 점수 + 배점(weight) + 총점(total = Σ(score×weight)/100).
 // 단일 숫자만 주면 사용자가 뭘 채워야 할지 알 수 없어서, 총점 대신(혹은 총점과 함께)
 // breakdown 배열을 반환한다 — 로직이 아니라 반환값의 확장이다.
+// 전공 이수: 대학 졸업 기준 전공 학점이 있으면 취득 비율, 없으면(대학 요건 없음) 예전처럼 과목 수 ÷ 10.
+function majorBreakdown(context, majorCourses) {
+  const required = context?.academic?.requiredMajorCredits;
+  if (Number.isFinite(required) && required > 0) {
+    const earned = Number(context?.academic?.earnedMajorCredits) || 0;
+    return { score: Math.round(Math.min(1, earned / required) * 100), detail: `${earned} / ${required}학점` };
+  }
+  return { score: scoreOf(majorCourses.length, MAJOR_COURSES_FULL), detail: majorCourses.length ? `${majorCourses.length}과목 이수` : '미등록' };
+}
+
 function calcBreakdown(context) {
   const majorCourses = context?.academic?.majorCourses || [];
+  const major = majorBreakdown(context, majorCourses);
   const certifications = context?.specs?.certifications || [];
   const experiences = context?.specs?.experiences || [];
   const skills = context?.specs?.skills || [];
@@ -40,7 +51,7 @@ function calcBreakdown(context) {
 
   return [
     { key: 'job', label: '목표 직무', score: context?.targetJob ? 100 : 0, weight: 20, detail: context?.targetJob ? '설정됨' : '미설정' },
-    { key: 'major', label: '전공 이수', score: scoreOf(majorCourses.length, MAJOR_COURSES_FULL), weight: 20, detail: majorCourses.length ? `${majorCourses.length}과목 이수` : '미등록' },
+    { key: 'major', label: '전공 이수', score: major.score, weight: 20, detail: major.detail },
     { key: 'certification', label: '자격증', score: scoreOf(certifications.length, CERTS_FULL), weight: 20, detail: certifications.length ? `${certifications.length}개 보유` : '미등록' },
     { key: 'experience', label: '경험·활동', score: scoreOf(experiences.length, EXPERIENCES_FULL), weight: 15, detail: experiences.length ? `${experiences.length}건` : '미등록' },
     { key: 'skill', label: '보유 스킬', score: scoreOf(skills.length, SKILLS_FULL), weight: 10, detail: skills.length ? `${skills.length}개` : '미등록' },

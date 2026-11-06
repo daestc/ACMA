@@ -209,6 +209,9 @@ async function buildUserContext(userId) {
     academic: {
       gpa: credits.gpa ?? null,
       earnedCredits: credits.earnedTotal ?? null,
+      // 전공 학점 취득/졸업 기준(대학 요건이 없으면 null → compact가 키를 지운다). 준비도 "전공 이수"에서 쓴다.
+      earnedMajorCredits: credits.earnedMajor ?? null,
+      requiredMajorCredits: credits.requiredMajor ?? null,
       remaining: {
         total: credits.total ?? null,
         majorRequired: credits.majorRequired ?? null,
