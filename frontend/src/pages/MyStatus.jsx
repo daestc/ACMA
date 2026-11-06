@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SpecModal from '../components/MyStatus/SpecModal'
 import { SPEC_CONFIGS } from '../components/MyStatus/specConfigs'
 
@@ -9,6 +10,26 @@ const LANG_LABEL = {
   other: { name: '기타', flag: '🌐', bg: 'var(--bg3)' },
 }
 const SKILL_LEVEL_BADGE = { 하급: 'badge-blue', 중급: 'badge-amber', 고급: 'badge-green' }
+
+const roundHours = (n) => Math.round(n * 10) / 10
+
+// GET /ai/weekly-plan/current 응답 → 이번 주 목표달성 카드 표시값 (서버 진행률 그대로 합산)
+function summarizeWeeklyPlan(weeklyPlan) {
+  if (!weeklyPlan) return { value: '...', sub: null }
+  if (weeklyPlan.status === 'none') return { value: '계획 없음', sub: '눌러서 주간 계획 만들기' }
+  if (weeklyPlan.status === 'error') return { value: '-', sub: null }
+  if (weeklyPlan.status !== 'done') return { value: '생성 중', sub: null }
+
+  const items = weeklyPlan.progress?.items || []
+  const planned = roundHours(items.reduce((sum, p) => sum + (Number(p.plannedHours) || 0), 0))
+  const done = roundHours(items.reduce((sum, p) => sum + (Number(p.doneHours) || 0), 0))
+  const goal = weeklyPlan.progress?.goal
+  return {
+    value: planned > 0 ? `${Math.round((done / planned) * 100)}%` : '-',
+    sub: `${done}h / ${planned}h`,
+    goalLine: goal ? `내 목표 ${goal.doneHours}h / ${goal.plannedHours}h` : null,
+  }
+}
 
 function fmtYM(value) {
   if (!value) return ''
@@ -52,6 +73,8 @@ function MyStatus() {
   const [specsLoaded, setSpecsLoaded] = useState(false)
   const [specs, setSpecs] = useState({ awards: [], languages: [], experiences: [], skills: [] })
   const [diagnosis, setDiagnosis] = useState({ status: 'loading' })
+  const [weeklyPlan, setWeeklyPlan] = useState(null) // 이번 주 목표달성 카드 (null = 불러오는 중)
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('cert')
   const [specModal, setSpecModal] = useState({ open: false, type: null, item: null })
 
@@ -121,6 +144,22 @@ function MyStatus() {
     }
   }, [])
 
+  // 이번 주 목표달성 카드: { status: 'none' | 'pending' | 'done' | 'error', progress }
+  const loadWeeklyPlan = useCallback(async () => {
+    try {
+      const res = await fetch('/ai/weekly-plan/current', { credentials: 'same-origin' })
+      if (res.status === 404) {
+        setWeeklyPlan({ status: 'none' })
+        return
+      }
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setWeeklyPlan({ status: data.status === 'done' ? 'done' : 'pending', progress: data.progress || null })
+    } catch {
+      setWeeklyPlan({ status: 'error' })
+    }
+  }, [])
+
   const loadDiagnosis = useCallback(async () => {
     try {
       const res = await fetch('/ai/diagnosis/latest', { credentials: 'same-origin' })
@@ -147,7 +186,10 @@ function MyStatus() {
     loadGpaRecords()
     loadSpecs()
     loadDiagnosis()
-  }, [loadProfile, loadCareerAndCerts, loadProgress, loadGpaRecords, loadSpecs, loadDiagnosis])
+    loadWeeklyPlan()
+  }, [loadProfile, loadCareerAndCerts, loadProgress, loadGpaRecords, loadSpecs, loadDiagnosis, loadWeeklyPlan])
+
+  const weeklySummary = useMemo(() => summarizeWeeklyPlan(weeklyPlan), [weeklyPlan])
 
   const gpaSummary = useMemo(() => {
     const normalized = (gpaRecords || [])
@@ -202,7 +244,17 @@ function MyStatus() {
       <div className="grid-4" style={{ marginBottom: 16 }}>
         <div className="stat-card blue"><div className="stat-icon">📊</div><div className="stat-label">현재 평점</div><div className="stat-value">{gpaSummary.average != null ? gpaSummary.average.toFixed(2) : (gpaLoaded ? '-' : '...')}</div></div>
         <div className="stat-card green"><div className="stat-icon">📚</div><div className="stat-label">이수 학점</div><div className="stat-value">{gpaSummary.average != null ? gpaSummary.totalCredits : (gpaLoaded ? '-' : '...')}</div></div>
-        <div className="stat-card amber"><div className="stat-icon">📝</div><div className="stat-label">이번 주 목표달성</div><div className="stat-value">...</div></div>
+        <div
+          className="stat-card amber"
+          style={weeklyPlan?.status === 'none' ? { cursor: 'pointer' } : undefined}
+          onClick={weeklyPlan?.status === 'none' ? () => navigate('/career/plan') : undefined}
+        >
+          <div className="stat-icon">📝</div>
+          <div className="stat-label">이번 주 목표달성</div>
+          <div className="stat-value">{weeklySummary.value}</div>
+          {weeklySummary.sub && <div className="stat-sub">{weeklySummary.sub}</div>}
+          {weeklySummary.goalLine && <div className="stat-sub">{weeklySummary.goalLine}</div>}
+        </div>
         <div className="stat-card purple"><div className="stat-icon">🏅</div><div className="stat-label">취득 자격증</div><div className="stat-value">{careerLoaded ? `${acquiredCerts.length} 개` : '...'}</div></div>
       </div>
 
