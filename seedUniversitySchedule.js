@@ -9,8 +9,8 @@ require('dotenv').config();
 const connectDB = require('./config/database');
 const UniversitySchedule = require('./models/UniversitySchedule');
 
-const UNIVERSITY = '대진대학교';
-
+// const UNIVERSITY = '대진대학교';
+const UNIVERSITY = 'AcadMe대학교';
 // semester_start는 원문 학사일정표엔 개강일 하루만 있지만, weeklyPlan 프롬프트 규칙
 // ("개강 첫 주는 수강 과목 파악과 학기 계획 수립에 배분")이 주 단위로 동작해야
 // 의미가 있으므로 개강일부터 1주일로 기간을 잡는다.
