@@ -46,8 +46,19 @@ async function getSchedules(university, { page = 1, limit = SCHEDULE_PAGE_SIZE }
   };
 }
 
-async function createSchedule({ university, title, startDate, endDate, description, createdBy }) {
+// 일정 종류 허용 값은 모델 enum을 그대로 쓴다(따로 적어 두면 모델과 어긋날 수 있다).
+const SCHEDULE_TYPES = UniversitySchedule.schema.path('type').enumValues;
+
+// type은 주간 계획의 학사 단계 판단(시험 기간·방학·개강·수강신청)에 쓰인다. 없거나 빈값이면 'other'
+// (type을 보내지 않는 예전 화면 호환), enum에 없는 값은 400.
+async function createSchedule({ university, title, type, startDate, endDate, description, createdBy }) {
   const univ = requireUniversity(university);
+  const scheduleType = type == null || String(type).trim() === '' ? 'other' : String(type).trim();
+  if (!SCHEDULE_TYPES.includes(scheduleType)) {
+    const err = new Error('일정 종류가 올바르지 않습니다.');
+    err.code = 'VALIDATION';
+    throw err;
+  }
   if (!title?.trim()) {
     const err = new Error('일정 제목을 입력해주세요.');
     err.code = 'VALIDATION';
@@ -59,11 +70,20 @@ async function createSchedule({ university, title, startDate, endDate, descripti
     throw err;
   }
 
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  if (end && end < start) {
+    const err = new Error('종료일이 시작일보다 빠릅니다.');
+    err.code = 'VALIDATION';
+    throw err;
+  }
+
   return UniversitySchedule.create({
     university: univ,
     title: title.trim(),
-    startDate: new Date(startDate),
-    endDate: endDate ? new Date(endDate) : null,
+    type: scheduleType,
+    startDate: start,
+    endDate: end,
     description: description?.trim() || null,
     createdBy,
   });

@@ -67,12 +67,13 @@ const postSchedule = async (req, res) => {
     const schedule = await staffService.createSchedule({
       university: req.user.university,
       title: req.body.title,
+      type: req.body.type,
       startDate: req.body.startDate,
       endDate: req.body.endDate,
       description: req.body.description,
       createdBy: req.user.id,
     });
-    logger.info(`학교 일정 등록 | ${schedule.title} | univ=${req.user.university} | by=${req.user.email}`);
+    logger.info(`학교 일정 등록 | ${schedule.title} | type=${schedule.type} | univ=${req.user.university} | by=${req.user.email}`);
     res.json({ ok: true, schedule });
   } catch (err) {
     if (err.code === 'VALIDATION' || err.code === 'NO_UNIVERSITY') {
