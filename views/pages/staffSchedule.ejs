@@ -46,6 +46,10 @@
 
 					<div style="display:flex;flex-direction:column;gap:10px;">
 						<div>
+							<label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">일정 종류</label>
+							<select class="input-field" id="sch-type" style="width:100%;"></select>
+						</div>
+						<div>
 							<label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">제목</label>
 							<input class="input-field" id="sch-title" placeholder="예: 2026-1학기 수강신청" style="width:100%;">
 						</div>
@@ -59,6 +63,7 @@
 								<input class="input-field" id="sch-end" type="date" style="width:100%;">
 							</div>
 						</div>
+						<div id="sch-end-hint" style="display:none;font-size:11px;color:var(--text2);margin-top:-4px;">종료일이 없으면 시작일 하루만 기간으로 인식됩니다.</div>
 						<div>
 							<label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">설명 (선택)</label>
 							<textarea class="input-field" id="sch-desc" rows="3" placeholder="일정 안내 내용" style="width:100%;resize:vertical;"></textarea>
@@ -82,7 +87,7 @@
 								<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;">
 									<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
 										<div>
-											<div style="font-size:14px;font-weight:700;"><%= s.title %></div>
+											<div style="font-size:14px;font-weight:700;"><span class="sch-type-badge" data-type="<%= s.type %>" data-title="<%= s.title %>"></span><%= s.title %></div>
 											<div style="font-size:12px;color:var(--text2);margin-top:4px;">
 												<%= new Date(s.startDate).toLocaleDateString('ko-KR') %>
 												<% if (s.endDate) { %> ~ <%= new Date(s.endDate).toLocaleDateString('ko-KR') %><% } %>

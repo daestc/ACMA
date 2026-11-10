@@ -17,7 +17,38 @@
 // "그 페이지만 다시 불러오기" 대신 로컬 목록에서 바로 제거하는 방식으로 바꿨다.
 import { useEffect, useRef, useState } from 'react'
 
+// 일정 종류(UniversitySchedule.type) — 서버 허용 값은 모델 enum이고, 표시 이름은 여기 한 곳에만 둔다.
+// 중간·기말고사는 주간 계획의 시험 기간 판단에, 방학·개강·수강신청은 학사 단계 판단에 쓰인다.
+const SCHEDULE_TYPES = [
+  { value: 'semester_start', label: '개강', placeholder: '예: 2026-2학기 개강' },
+  { value: 'midterm', label: '중간고사', placeholder: '예: 2026-2학기 중간고사' },
+  { value: 'final', label: '기말고사', placeholder: '예: 2026-2학기 기말고사' },
+  { value: 'vacation', label: '방학', placeholder: '예: 2026 겨울방학' },
+  { value: 'registration', label: '수강신청', placeholder: '예: 2026-1학기 수강신청' },
+  { value: 'holiday', label: '휴일', placeholder: '예: 개교기념일' },
+  { value: 'orientation', label: '오리엔테이션', placeholder: '예: 신입생 오리엔테이션' },
+  { value: 'other', label: '기타', placeholder: '예: 2026-1학기 수강신청' },
+]
+const TYPE_BY_VALUE = Object.fromEntries(SCHEDULE_TYPES.map((t) => [t.value, t]))
+const EXAM_TYPES = ['midterm', 'final']
+// 기간이 의미 있는 종류 — 종료일이 없으면 시작일 하루만 그 기간으로 인식된다
+const PERIOD_TYPES = ['semester_start', 'midterm', 'final', 'vacation', 'registration']
+// 종류를 고르기 전에 등록된 일정('기타')인데 제목이 시험처럼 보이면 관계자가 알아보게 표시한다
+const LOOKS_LIKE_EXAM = /중간고사|기말고사|시험/
+
+function TypeBadge({ schedule }) {
+  const type = TYPE_BY_VALUE[schedule.type] ? schedule.type : 'other'
+  const needsCheck = type === 'other' && LOOKS_LIKE_EXAM.test(schedule.title || '')
+  return (
+    <>
+      <span className={`badge ${EXAM_TYPES.includes(type) ? 'badge-red' : 'badge-gray'}`} style={{ marginRight: 6 }}>{TYPE_BY_VALUE[type].label}</span>
+      {needsCheck && <span style={{ fontSize: 11, color: 'var(--text2)', marginRight: 6 }}>종류 확인 필요</span>}
+    </>
+  )
+}
+
 function StaffSchedule() {
+  const [type, setType] = useState('other')
   const [title, setTitle] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -86,12 +117,12 @@ function StaffSchedule() {
       const res = await fetch('/staff/schedules/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: t, startDate, endDate, description: d }),
+        body: JSON.stringify({ type, title: t, startDate, endDate, description: d }),
       })
       const data = await res.json()
       if (data.ok) {
         setMsg({ text: '일정이 등록되었습니다.', isError: false })
-        setTitle(''); setStartDate(''); setEndDate(''); setDescription('')
+        setType('other'); setTitle(''); setStartDate(''); setEndDate(''); setDescription('')
         loadList(1, true)
       } else {
         setMsg({ text: data.message || '등록에 실패했습니다.', isError: true })
@@ -134,8 +165,14 @@ function StaffSchedule() {
       <div className="card">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
+            <label>일정 종류</label>
+            <select className="input-field" value={type} onChange={(e) => setType(e.target.value)} style={{ width: '100%' }}>
+              {SCHEDULE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
             <label>제목</label>
-            <input className="input-field" placeholder="예: 2026-1학기 수강신청" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%' }} />
+            <input className="input-field" placeholder={TYPE_BY_VALUE[type].placeholder} value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
@@ -147,6 +184,9 @@ function StaffSchedule() {
               <input className="input-field" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ width: '100%' }} />
             </div>
           </div>
+          {PERIOD_TYPES.includes(type) && !endDate && (
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: -4 }}>종료일이 없으면 시작일 하루만 기간으로 인식됩니다.</div>
+          )}
           <div>
             <label>설명 (선택)</label>
             <textarea className="input-field" rows="3" placeholder="일정 안내 내용" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
@@ -174,7 +214,7 @@ function StaffSchedule() {
               <div key={s._id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{s.title}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}><TypeBadge schedule={s} />{s.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
                       {new Date(s.startDate).toLocaleDateString('ko-KR')}
                       {s.endDate && <> ~ {new Date(s.endDate).toLocaleDateString('ko-KR')}</>}
