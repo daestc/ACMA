@@ -607,7 +607,10 @@ function validatePlanItemInput(body = {}, { partial = false } = {}) {
     value.category = body.category;
   }
   if (!partial || has('estimatedHours')) {
-    const hours = typeof body.estimatedHours === 'string' && body.estimatedHours.trim() === '' ? NaN : Number(body.estimatedHours);
+    // 숫자나 숫자 문자열만 받는다 — Number(null)=0, Number(true)=1, Number('')=0으로 통과하지 않게
+    const raw = body.estimatedHours;
+    const isNumeric = typeof raw === 'number' || (typeof raw === 'string' && raw.trim() !== '');
+    const hours = isNumeric ? Number(raw) : NaN;
     if (!Number.isFinite(hours) || hours < 0 || hours > ITEM_MAX_HOURS || !Number.isInteger(hours * 2)) {
       return { error: `시간은 0~${ITEM_MAX_HOURS}시간, 0.5시간 단위로 입력해 주세요.` };
     }
