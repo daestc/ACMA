@@ -141,11 +141,18 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
 
           const dow = kstDate.getKstDayOfWeek(kstDate.fromKstDateString(date));
           const capacity = (availableHoursByDay?.[dow] || 0) - (usedHoursByDate.get(date) || 0);
-          if (capacity < MIN_SLOT_HOURS) continue;
+          // 1시간 미만 조각은 만들지 않되, 남은 시간 자체가 1시간 미만(0.5h 꼬리)이면 그만큼은 넣는다
+          const minSlot = remaining < MIN_SLOT_HOURS ? remaining : MIN_SLOT_HOURS;
+          if (capacity < minSlot) continue;
 
           let slot = Math.min(remaining, capacity, MAX_SLOT_HOURS);
           slot = Math.round(slot * 2) / 2; // 0.5시간 단위 반올림
-          if (slot < MIN_SLOT_HOURS) continue;
+          // 이 조각 뒤에 1시간 미만 꼬리가 남으면 조각을 그만큼 줄여 꼬리를 1시간으로 만든다(3.5h → 2.5h + 1h)
+          const tail = remaining - slot;
+          if (tail > 0 && tail < MIN_SLOT_HOURS && slot - (MIN_SLOT_HOURS - tail) >= MIN_SLOT_HOURS) {
+            slot -= MIN_SLOT_HOURS - tail;
+          }
+          if (slot < minSlot) continue;
 
           if (sameDaySlot) {
             sameDaySlot.hours += slot;
