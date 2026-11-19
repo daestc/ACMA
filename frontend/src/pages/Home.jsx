@@ -364,18 +364,18 @@ function Home() {
         />
       </div>
 
-      {/* 오늘의 강의 & 할 일 / 최근 공지사항 */}
+      {/* 오늘의 강의 & 주간 계획 / 최근 공지사항 */}
       <div className="grid-2" style={{ marginBottom: 16 }}>
         <div className="card">
           <div className="card-header">
-            <span className="card-title">📋 오늘의 강의 & 할 일</span>
+            <span className="card-title">📋 오늘의 강의 & 주간 계획</span>
           </div>
           <div className="tabs" style={{ marginBottom: 14 }}>
             <button className={`tab-btn ${activeTab === 'lecture' ? 'active' : ''}`} onClick={() => setActiveTab('lecture')}>강의 일정</button>
             {SHOW_LEGACY_TODO_HABIT && (
               <button className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`} onClick={() => setActiveTab('todo')}>할 일</button>
             )}
-            <button className={`tab-btn ${activeTab === 'aiplan' ? 'active' : ''}`} onClick={() => setActiveTab('aiplan')}>AI 계획</button>
+            <button className={`tab-btn ${activeTab === 'aiplan' ? 'active' : ''}`} onClick={() => setActiveTab('aiplan')}>주간 계획</button>
           </div>
 
           <div style={{ display: activeTab === 'lecture' ? 'block' : 'none' }}>
@@ -420,11 +420,11 @@ function Home() {
           )}
 
           <div style={{ display: activeTab === 'aiplan' ? 'block' : 'none' }}>
-            {aiPlan === null && <div className="check-item"><span className="check-text">오늘의 AI 계획을 불러오는 중...</span></div>}
-            {aiPlan === 'unavailable' && <div className="check-item"><span className="check-text">오늘의 AI 계획을 불러오지 못했습니다.</span></div>}
+            {aiPlan === null && <div className="check-item"><span className="check-text">오늘의 주간 계획을 불러오는 중...</span></div>}
+            {aiPlan === 'unavailable' && <div className="check-item"><span className="check-text">오늘의 주간 계획을 불러오지 못했습니다.</span></div>}
             {Array.isArray(aiPlan) && aiPlan.length === 0 && (
               <>
-                <div className="check-item todo-exam"><span className="check-text">오늘 배정된 AI 계획이 없습니다</span></div>
+                <div className="check-item todo-exam"><span className="check-text">오늘 배정된 주간 계획이 없습니다</span></div>
                 <a className="card-action" style={{ bottom: 0 }} href="/career/plan">계획 만들기</a>
               </>
             )}
