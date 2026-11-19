@@ -84,6 +84,10 @@ async function getPlanProgress(userId, plan) {
 
   const round = n => +n.toFixed(1);
   const items = (plan.items || []).map((item, index) => {
+    // 삭제 표시된 항목은 자리(index)만 지키고 시간은 0 — 화면·MyStatus 합계에서 빠진다
+    if (item.removed) {
+      return { index, removed: true, plannedHours: 0, doneHours: 0, scheduledHours: 0, overdueHours: 0, unplacedHours: 0, status: 'removed' };
+    }
     const b = byIndex.get(index) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
     const plannedHours = item.estimatedHours || 0;
     const unplacedHours = Math.max(0, plannedHours - b.done - b.scheduled - b.overdue);
@@ -107,7 +111,7 @@ async function getPlanProgress(userId, plan) {
   // 학생 목표가 있으면 forGoal 항목들의 합. 완료가 계획을 넘은 항목은 계획 시간까지만 센다.
   let goal = null;
   if (plan.userGoal) {
-    const goalItems = items.filter(p => plan.items[p.index].forGoal);
+    const goalItems = items.filter(p => !p.removed && plan.items[p.index].forGoal);
     goal = {
       plannedHours: round(goalItems.reduce((sum, p) => sum + p.plannedHours, 0)),
       doneHours: round(goalItems.reduce((sum, p) => sum + Math.min(p.doneHours, p.plannedHours), 0)),
@@ -202,7 +206,7 @@ async function getWeeklyPlanHistory(userId, limit = DEFAULT_HISTORY_LIMIT) {
     weekStart: plan.weekStart,
     weekEnd: plan.weekEnd,
     goal: plan.goal,
-    itemCount: (plan.items || []).length,
+    itemCount: (plan.items || []).filter(item => !item.removed).length,
     completionRate: rateOf(itemsByPlan.get(String(plan._id)) || []),
     allocatedHours: plan.computed?.allocatedHours ?? 0,
     academicPhase: plan.computed?.academicPhase ?? null,
@@ -382,7 +386,7 @@ async function getReviewTarget(userId, targetWeekStart) {
 
   const items = summary
     ? [...summary.perItem.entries()]
-      .filter(([idx]) => plan.items?.[idx])
+      .filter(([idx]) => plan.items?.[idx] && !plan.items[idx].removed)
       .sort(([a], [b]) => a - b)
       .map(([idx, info]) => ({
         planItemIndex: idx,

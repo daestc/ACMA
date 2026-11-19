@@ -173,6 +173,12 @@ const weeklyPlanSchema = new Schema({
     dueDate: { type: Date, default: null }, // 마감 항목의 실제 마감일 (서버가 채움, LLM 아님)
     forGoal: { type: Boolean, default: false }, // userGoal에 직접 기여하는 항목
     doneWhen: { type: String, default: null, maxlength: 60 }, // 완료 기준(관찰 가능한 결과물·수량). 옛 계획은 null
+    // 직접 편집. 옛 문서는 source가 없음 = AI, removed가 없음 = 삭제 안 됨(마이그레이션 없음)
+    source: { type: String, enum: ['ai', 'user', 'diagnosis'], default: 'ai' },
+    // 삭제는 표시만 한다 — 체크리스트 조각·돌아보기 응답이 배열 인덱스(planItemIndex)로 항목을 가리켜서,
+    // 배열에서 빼면 뒤 항목들의 완료 시간이 한 칸씩 다른 항목에 붙는다(설계서 3-2)
+    removed: { type: Boolean, default: false },
+    editedAt: { type: Date, default: null },
   }],
 
   computed: {

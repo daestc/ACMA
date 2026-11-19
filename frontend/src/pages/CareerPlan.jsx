@@ -19,7 +19,51 @@ function reviewSummaryText(review) {
 
 const USER_GOAL_MAX_LENGTH = 100
 const USER_GOAL_PLACEHOLDER = '예: 정보처리기사 필기 대비 위주로'
-const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.'
+const REGENERATE_CONFIRM = '다시 생성하면 항목이 새로 만들어지고, 직접 추가·수정한 항목도 사라집니다. 이미 완료한 기록은 주간 달성률에만 남습니다.'
+const SOURCE_BADGE_LABEL = { user: '직접 추가', diagnosis: '진단' }
+const ITEM_TITLE_MAX = 40
+const ITEM_DONE_WHEN_MAX = 60
+// Date → KST 날짜 문자열(YYYY-MM-DD). 지난 주 판정을 서버(kstDate)와 같은 기준으로 한다.
+const kstDateString = (d) => new Date(new Date(d).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+// 항목 추가·수정 폼(카드 안 인라인). 검증은 서버가 하고 실패 메시지를 그대로 보여 준다.
+function ItemEditForm({ initial, hasGoal, saving, onSave, onCancel }) {
+  const [title, setTitle] = useState(initial.title || '')
+  const [category, setCategory] = useState(initial.category || 'other')
+  const [hours, setHours] = useState(String(initial.estimatedHours ?? 2))
+  const [doneWhen, setDoneWhen] = useState(initial.doneWhen || '')
+  const [forGoal, setForGoal] = useState(Boolean(initial.forGoal))
+
+  const submit = () => onSave({
+    title,
+    category,
+    estimatedHours: hours === '' ? '' : Number(hours), // 빈칸을 0시간으로 바꾸지 않는다(서버가 400)
+    doneWhen,
+    ...(hasGoal ? { forGoal } : {}),
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input className="input-field" style={{ flex: '2 1 200px' }} placeholder="항목 제목" maxLength={ITEM_TITLE_MAX} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <select className="input-field" style={{ flex: '1 1 100px' }} value={category} onChange={(e) => setCategory(e.target.value)}>
+          {Object.entries(CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <input className="input-field" style={{ flex: '0 1 90px' }} type="number" min="0" max="12" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} aria-label="시간" />
+      </div>
+      <input className="input-field" placeholder="완료 기준 (예: 기출 2회분 풀고 오답 정리)" maxLength={ITEM_DONE_WHEN_MAX} value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} />
+      {hasGoal && (
+        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={forGoal} onChange={(e) => setForGoal(e.target.checked)} /> 내 목표와 관련된 항목
+        </label>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={onCancel}>취소</button>
+        <button type="button" className="btn btn-accent btn-sm" disabled={saving} onClick={submit}>{saving ? '저장 중...' : '저장'}</button>
+      </div>
+    </div>
+  )
+}
 
 // 항목별 진행률(서버 계산, progress.items[i]) — 화면은 표시만 한다.
 function ItemProgress({ item, progress }) {
@@ -82,6 +126,9 @@ function CareerPlan() {
   const [section, setSection] = useState('empty')
   const [plan, setPlan] = useState(null)
   const [progress, setProgress] = useState(null)
+  // 항목 직접 편집: 수정 중인 항목 _id, 추가 폼이면 'new'
+  const [editingItemId, setEditingItemId] = useState(null)
+  const [itemSaving, setItemSaving] = useState(false)
   const [failedMsg, setFailedMsg] = useState('생성에 실패했습니다.')
   const [weekStartInput, setWeekStartInput] = useState(todayKstDateString())
   const [userGoalInput, setUserGoalInput] = useState('')
@@ -315,6 +362,39 @@ function CareerPlan() {
   const generateDisabled = !currentTargetJob
   const generateTitle = generateDisabled ? '목표 직무를 먼저 설정해주세요.' : ''
   const today = todayKstDateString()
+  // 지난 주 계획은 편집하지 않는다(서버도 week_over 409)
+  const editable = Boolean(plan) && kstDateString(plan.weekEnd) >= today
+  const activeItemCount = (plan?.items || []).filter((item) => !item.removed).length
+
+  // 항목 추가(itemId 'new')·수정. 응답의 갱신된 계획·진행률로 바로 그린다(일별 보기도 다시 불러옴).
+  async function saveItem(itemId, body) {
+    if (!plan) return
+    setItemSaving(true)
+    const data = itemId === 'new'
+      ? await callApi(`/ai/weekly-plan/${plan._id}/items`, { method: 'POST', body: JSON.stringify(body) })
+      : await callApi(`/ai/weekly-plan/${plan._id}/items/${itemId}`, { method: 'PATCH', body: JSON.stringify(body) })
+    setItemSaving(false)
+    if (data.httpStatus === 200 && data.success && data.data) {
+      setEditingItemId(null)
+      renderPlanDoc(data.data, data.progress)
+    } else {
+      alert(data.message || '저장하지 못했습니다.')
+    }
+  }
+
+  async function deleteItem(item) {
+    const message = item.isDeadline
+      ? '마감 일정이 있는 항목입니다. 그래도 삭제할까요?'
+      : `"${item.title}" 항목을 삭제할까요? 이미 완료한 기록은 달성률에 남습니다.`
+    if (!window.confirm(message)) return
+    const data = await callApi(`/ai/weekly-plan/${plan._id}/items/${item._id}`, { method: 'DELETE' })
+    if (data.httpStatus === 200 && data.success && data.data) {
+      if (editingItemId === item._id) setEditingItemId(null)
+      renderPlanDoc(data.data, data.progress)
+    } else {
+      alert(data.message || '삭제하지 못했습니다.')
+    }
+  }
 
   return (
     <>
@@ -476,18 +556,33 @@ function CareerPlan() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(plan.items || []).length === 0 ? (
+            {activeItemCount === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 20, color: 'var(--text2)', fontSize: 13 }}>배치된 항목이 없습니다.</div>
-            ) : plan.items.map((item, index) => (
+            )}
+            {/* filter 후 map 하지 않는다 — index가 progress.items[index]와 어긋난다. 삭제 표시된 항목은 null */}
+            {(plan.items || []).map((item, index) => item.removed ? null : editingItemId === item._id ? (
+              <div className="card" key={item._id}>
+                <ItemEditForm initial={item} hasGoal={Boolean(plan.userGoal)} saving={itemSaving} onSave={(body) => saveItem(item._id, body)} onCancel={() => setEditingItemId(null)} />
+              </div>
+            ) : (
               <div className="card" key={item._id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className={`badge ${CATEGORY_BADGE[item.category] || 'badge-blue'}`}>{CATEGORY_LABEL[item.category] || item.category}</span>
                     {item.isDeadline && <span className="badge badge-red">마감 {formatKstDate(item.dueDate)}</span>}
                     {item.forGoal && <span className="badge badge-green">목표</span>}
+                    {SOURCE_BADGE_LABEL[item.source] && <span className="badge badge-gray">{SOURCE_BADGE_LABEL[item.source]}</span>}
                     <strong>{item.title}</strong>
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
+                    {editable && (
+                      <>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingItemId(item._id)}>수정</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteItem(item)}>삭제</button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {item.doneWhen
                   ? <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>✓ 완료 기준: {item.doneWhen}</div>
@@ -495,6 +590,13 @@ function CareerPlan() {
                 {item.reason && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, lineHeight: 1.6 }}>{item.reason}</p>}
                 <ItemProgress item={item} progress={progress?.items?.[index]} />
               </div>
+            ))}
+            {editable && (editingItemId === 'new' ? (
+              <div className="card">
+                <ItemEditForm initial={{ category: 'other', estimatedHours: 2 }} hasGoal={Boolean(plan.userGoal)} saving={itemSaving} onSave={(body) => saveItem('new', body)} onCancel={() => setEditingItemId(null)} />
+              </div>
+            ) : (
+              <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setEditingItemId('new')}>+ 항목 추가</button>
             ))}
           </div>
 

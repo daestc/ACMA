@@ -53,7 +53,10 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   // unplaced: 배치하지 못한 시간을 항목 인덱스별로 — errors(화면에 그대로 보이는 문자열)와 별도로
   // 맞춤 판정(planService.fitNewItemHours)이 숫자로 비교할 수 있게 한다. 배치를 아예 못 하는 경우엔
   // 모든 항목이 미배치다(빈 배열로 두면 "다 들어갔다"로 읽힌다).
-  const allUnplaced = () => (weeklyPlan.items || []).map((item, index) => ({ index, hours: item.estimatedHours || 0 }));
+  const allUnplaced = () => (weeklyPlan.items || [])
+    .map((item, index) => ({ index, hours: item.estimatedHours || 0, removed: item.removed }))
+    .filter(u => !u.removed)
+    .map(({ index, hours }) => ({ index, hours }));
 
   if (availableDates.length === 0) {
     errors.push('이번 주가 이미 다 지나 배치할 수 있는 날짜가 없습니다.');
@@ -91,6 +94,8 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   const sortedItems = sortForDistribution(weeklyPlan.items || []);
 
   for (const { item, idx } of sortedItems) {
+    // 삭제 표시된 항목은 배치하지 않는다 — 인덱스는 그대로 두고 값만 무시(미완료 조각은 재분배 때 정리됨)
+    if (item.removed) continue;
     const dueDateStr = item.dueDate ? kstDate.toKstDateString(new Date(item.dueDate)) : null;
     const isZeroHour = !(item.estimatedHours > 0);
     const done = doneByItem.get(idx) || { hours: 0, slices: 0 };

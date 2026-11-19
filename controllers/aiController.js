@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { WeeklyPlan, CareerPortfolio, CareerDiagnosis } = require('../models/Ai');
 const User = require('../models/User');
 const { DailyChecklist } = require('../models/Calendar');
@@ -582,7 +583,147 @@ function isWeekOver(plan) {
   return kstDate.toKstDateString(plan.weekEnd) < kstDate.toKstDateString(new Date());
 }
 
-const sumItemHours = items => +items.reduce((sum, item) => sum + (item.estimatedHours || 0), 0).toFixed(1);
+const activeItems = items => items.filter(item => !item.removed);
+const sumItemHours = items => +activeItems(items).reduce((sum, item) => sum + (item.estimatedHours || 0), 0).toFixed(1);
+
+const PLAN_ITEM_CATEGORIES = WeeklyPlan.schema.path('items').schema.path('category').enumValues;
+const ITEM_TITLE_MAX_LENGTH = 40;
+const ITEM_DONE_WHEN_MAX_LENGTH = 60;
+const ITEM_MAX_HOURS = 12;
+
+// 항목 입력 검증(설계서 4-4). partial이면 보낸 필드만 검사하고 돌려준다.
+// @returns {{ value?: object, error?: string }}
+function validatePlanItemInput(body = {}, { partial = false } = {}) {
+  const has = key => Object.prototype.hasOwnProperty.call(body, key);
+  const value = {};
+
+  if (!partial || has('title')) {
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    if (!title || title.length > ITEM_TITLE_MAX_LENGTH) return { error: `제목은 1~${ITEM_TITLE_MAX_LENGTH}자로 입력해 주세요.` };
+    value.title = title;
+  }
+  if (!partial || has('category')) {
+    if (!PLAN_ITEM_CATEGORIES.includes(body.category)) return { error: '분류가 올바르지 않습니다.' };
+    value.category = body.category;
+  }
+  if (!partial || has('estimatedHours')) {
+    const hours = typeof body.estimatedHours === 'string' && body.estimatedHours.trim() === '' ? NaN : Number(body.estimatedHours);
+    if (!Number.isFinite(hours) || hours < 0 || hours > ITEM_MAX_HOURS || !Number.isInteger(hours * 2)) {
+      return { error: `시간은 0~${ITEM_MAX_HOURS}시간, 0.5시간 단위로 입력해 주세요.` };
+    }
+    value.estimatedHours = hours;
+  }
+  if (has('doneWhen')) {
+    if (body.doneWhen != null && typeof body.doneWhen !== 'string') return { error: '완료 기준이 올바르지 않습니다.' };
+    const doneWhen = (body.doneWhen || '').trim();
+    if (doneWhen.length > ITEM_DONE_WHEN_MAX_LENGTH) return { error: `완료 기준은 ${ITEM_DONE_WHEN_MAX_LENGTH}자까지입니다.` };
+    value.doneWhen = doneWhen || null;
+  }
+  if (has('forGoal')) value.forGoal = body.forGoal === true || body.forGoal === 'true';
+
+  if (partial && Object.keys(value).length === 0) return { error: '수정할 내용이 없습니다.' };
+  return { value };
+}
+
+// 편집할 수 있는 계획(본인·생성 완료·아직 안 끝난 주)을 불러온다. 안 되면 응답을 보내고 null.
+async function loadEditablePlan(req, res) {
+  const plan = mongoose.isValidObjectId(req.params.id) ? await WeeklyPlan.findById(req.params.id) : null;
+  if (!plan || String(plan.userId) !== String(req.user.id)) {
+    res.status(404).json({ success: false, message: '계획을 찾을 수 없습니다.' });
+    return null;
+  }
+  if (plan.status !== 'done') {
+    res.status(409).json({ success: false, reason: 'generating', message: '계획을 만드는 중입니다. 끝난 뒤 다시 시도해 주세요.' });
+    return null;
+  }
+  if (isWeekOver(plan)) {
+    res.status(409).json({ success: false, reason: 'week_over', message: '이미 끝난 주의 계획은 수정할 수 없습니다.' });
+    return null;
+  }
+  return plan;
+}
+
+// 삭제 표시되지 않은 항목을 _id로 찾는다
+function findActiveItem(plan, itemId) {
+  const item = mongoose.isValidObjectId(itemId) ? plan.items.id(itemId) : null;
+  return item && !item.removed ? item : null;
+}
+
+// 편집 후 공통 마무리: 배정 시간 재계산 → 저장 → 재분배(완료 조각 보존) → 갱신된 계획과 진행률 응답.
+// 화면이 다시 조회하지 않고 그대로 그린다.
+async function finishPlanEdit(plan, res, extra = {}) {
+  plan.computed.allocatedHours = sumItemHours(plan.items);
+  await plan.save();
+  await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+  const data = await WeeklyPlan.findById(plan._id).lean();
+  const progress = await completionService.getPlanProgress(plan.userId, data);
+  return res.json({ success: true, ...extra, data, progress });
+}
+
+// 학생이 직접 추가한 항목은 학생이 정한 시간 그대로 넣는다(맞춤 판정 없음) — 못 들어간 시간은
+// "미배치 Nh"로 보인다. 진단 항목만 서버가 시간을 맞춘다(addGapToWeeklyPlan).
+async function addWeeklyPlanItem(req, res) {
+  try {
+    const plan = await loadEditablePlan(req, res);
+    if (!plan) return;
+    const { value, error } = validatePlanItemInput(req.body);
+    if (error) return res.status(400).json({ success: false, message: error });
+    if (activeItems(plan.items).length >= MAX_PLAN_ITEMS) {
+      return res.status(409).json({ success: false, reason: 'too_many', message: `항목은 ${MAX_PLAN_ITEMS}개까지입니다.` });
+    }
+
+    plan.items.push({
+      title: value.title,
+      category: value.category,
+      estimatedHours: value.estimatedHours,
+      doneWhen: value.doneWhen ?? null,
+      forGoal: Boolean(value.forGoal) && Boolean(plan.userGoal),
+      priority: 3,
+      isDeadline: false,
+      source: 'user',
+      editedAt: new Date(),
+    });
+    return finishPlanEdit(plan, res, { itemIndex: plan.items.length - 1 });
+  } catch (error) {
+    logger.error(`[ai] addWeeklyPlanItem error: ${error.message}`);
+    res.status(500).json({ success: false, message: '항목을 추가하지 못했습니다.' });
+  }
+}
+
+async function updateWeeklyPlanItem(req, res) {
+  try {
+    const plan = await loadEditablePlan(req, res);
+    if (!plan) return;
+    const item = findActiveItem(plan, req.params.itemId);
+    if (!item) return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
+    const { value, error } = validatePlanItemInput(req.body, { partial: true });
+    if (error) return res.status(400).json({ success: false, message: error });
+
+    if ('forGoal' in value) value.forGoal = value.forGoal && Boolean(plan.userGoal);
+    Object.assign(item, value, { editedAt: new Date() });
+    return finishPlanEdit(plan, res);
+  } catch (error) {
+    logger.error(`[ai] updateWeeklyPlanItem error: ${error.message}`);
+    res.status(500).json({ success: false, message: '항목을 수정하지 못했습니다.' });
+  }
+}
+
+async function removeWeeklyPlanItem(req, res) {
+  try {
+    const plan = await loadEditablePlan(req, res);
+    if (!plan) return;
+    const item = findActiveItem(plan, req.params.itemId);
+    if (!item) return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
+
+    // 배열에서 빼지 않는다(설계서 3-2) — 표시만 하고 재분배가 미완료 조각을 정리한다. 완료 조각은 남는다.
+    item.removed = true;
+    item.editedAt = new Date();
+    return finishPlanEdit(plan, res);
+  } catch (error) {
+    logger.error(`[ai] removeWeeklyPlanItem error: ${error.message}`);
+    res.status(500).json({ success: false, message: '항목을 삭제하지 못했습니다.' });
+  }
+}
 
 // 진단의 gap 하나를 대상 주 WeeklyPlan의 항목으로 옮긴다. 빈 WeeklyPlan을 대신
 // 만들어주지 않는다 — Phase 3의 가용시간 검증을 우회하게 되기 때문.
@@ -630,10 +771,10 @@ async function addGapToWeeklyPlan(req, res) {
     if (isWeekOver(plan)) {
       return res.status(409).json({ success: false, reason: 'week_over', message: '이미 끝난 주의 계획에는 추가할 수 없습니다.' });
     }
-    if (plan.items.some(item => item.title === gap.item)) {
+    if (activeItems(plan.items).some(item => item.title === gap.item)) {
       return res.status(409).json({ success: false, reason: 'duplicate', message: '이미 이번 주 계획에 추가된 항목입니다.' });
     }
-    if (plan.items.length >= MAX_PLAN_ITEMS) {
+    if (activeItems(plan.items).length >= MAX_PLAN_ITEMS) {
       return res.status(409).json({ success: false, reason: 'too_many', message: `항목은 ${MAX_PLAN_ITEMS}개까지입니다.` });
     }
 
@@ -647,6 +788,8 @@ async function addGapToWeeklyPlan(req, res) {
       reason: gap.reason,
       relatedType: 'CareerDiagnosis',
       relatedId: diagnosis._id,
+      source: 'diagnosis',
+      doneWhen: null,
     };
     const hours = await planService.fitNewItemHours(plan.toObject(), newItem);
     if (hours === 0) {
@@ -657,13 +800,9 @@ async function addGapToWeeklyPlan(req, res) {
       });
     }
 
-    plan.items.push({ ...newItem, estimatedHours: hours });
-    plan.computed.allocatedHours = sumItemHours(plan.items);
-    await plan.save();
+    plan.items.push({ ...newItem, estimatedHours: hours, editedAt: new Date() });
     // 재분배가 완료한 조각을 보존하므로 이미 한 일은 그대로 남는다
-    await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
-
-    return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1, estimatedHours: hours });
+    return finishPlanEdit(plan, res, { weeklyPlanId: plan._id, itemIndex: plan.items.length - 1, estimatedHours: hours });
   } catch (error) {
     logger.error(`[ai] addGapToWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });
@@ -756,6 +895,9 @@ module.exports = {
   getDiagnosis,
   getLatestDiagnosis,
   addGapToWeeklyPlan,
+  addWeeklyPlanItem,
+  updateWeeklyPlanItem,
+  removeWeeklyPlanItem,
   getRecommendationForm,
   requestRecommendation,
   getRecommendation,

@@ -17,6 +17,10 @@ router.get('/weekly-plan/settings', requireLogin, aiController.getWeeklyPlanSett
 router.post('/weekly-plan/settings', requireLogin, aiController.saveWeeklyPlanSettings);
 router.get('/weekly-plan/:id', requireLogin, aiController.getWeeklyPlan);
 router.post('/weekly-plan/:id/review', requireLogin, aiController.saveWeeklyPlanReview);
+// 항목 직접 편집 — :itemId는 items subdoc의 _id(배열 인덱스 아님). 삭제는 removed 표시만 한다.
+router.post('/weekly-plan/:id/items', requireLogin, aiController.addWeeklyPlanItem);
+router.patch('/weekly-plan/:id/items/:itemId', requireLogin, aiController.updateWeeklyPlanItem);
+router.delete('/weekly-plan/:id/items/:itemId', requireLogin, aiController.removeWeeklyPlanItem);
 router.post('/weekly-plan/:id/distribute', requireLogin, aiController.redistributeWeeklyPlan);
 router.get('/weekly-plan/:id/checklist', requireLogin, aiController.getWeeklyPlanChecklist);
 router.post('/weekly-plan/checklist/:itemId/toggle', requireLogin, aiController.toggleChecklistItem);
