@@ -3,6 +3,10 @@ import { Navigate } from 'react-router-dom'
 import { apiGet, apiPost } from '../api'
 import { useAuth } from '../context/AuthContext'
 
+// 할 일 탭과 습관 트래커는 추가·관리 화면이 없어서 숨긴다. 지우지 않고 감추기만 한다 — 추가 화면을
+// 만들면 true로 바꿔 바로 되살린다. 서버 라우트·User.todoList·habitTracker·/api/home 응답은 그대로다.
+const SHOW_LEGACY_TODO_HABIT = false
+
 const WEATHER_CACHE_KEY = 'acme_weather_v1'
 const WEATHER_CACHE_TTL = 30 * 60 * 1000 // 30분
 
@@ -107,7 +111,7 @@ function Home() {
       .then(res => {
         if (cancelled) return
         setData(res)
-        setHabitList(res.habitList || [])
+        setHabitList(SHOW_LEGACY_TODO_HABIT ? (res.habitList || []) : [])
         setLoadState('ready')
       })
       .catch(() => {
@@ -235,6 +239,8 @@ function Home() {
   }, [])
 
   const flushHabitChanges = useCallback(() => {
+    // 습관 카드를 숨기면 보낼 변경도 없다 — 페이지를 떠날 때 요청이 나가지 않게 막는다
+    if (!SHOW_LEGACY_TODO_HABIT) return
     if (Object.keys(pendingChanges.current).length === 0) return
     const blob = new Blob([JSON.stringify({ changes: pendingChanges.current })], { type: 'application/json' })
     navigator.sendBeacon('/user/saveIsCompleted', blob)
@@ -366,7 +372,9 @@ function Home() {
           </div>
           <div className="tabs" style={{ marginBottom: 14 }}>
             <button className={`tab-btn ${activeTab === 'lecture' ? 'active' : ''}`} onClick={() => setActiveTab('lecture')}>강의 일정</button>
-            <button className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`} onClick={() => setActiveTab('todo')}>할 일</button>
+            {SHOW_LEGACY_TODO_HABIT && (
+              <button className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`} onClick={() => setActiveTab('todo')}>할 일</button>
+            )}
             <button className={`tab-btn ${activeTab === 'aiplan' ? 'active' : ''}`} onClick={() => setActiveTab('aiplan')}>AI 계획</button>
           </div>
 
@@ -390,6 +398,7 @@ function Home() {
             ))}
           </div>
 
+          {SHOW_LEGACY_TODO_HABIT && (
           <div style={{ display: activeTab === 'todo' ? 'block' : 'none' }}>
             {(!todoList || todoList.length === 0) ? (
               <div className="check-item todo-exam"><span className="check-text">오늘의 할 일을 추가하세요</span></div>
@@ -408,6 +417,7 @@ function Home() {
               ))
             )}
           </div>
+          )}
 
           <div style={{ display: activeTab === 'aiplan' ? 'block' : 'none' }}>
             {aiPlan === null && <div className="check-item"><span className="check-text">오늘의 AI 계획을 불러오는 중...</span></div>}
@@ -468,6 +478,7 @@ function Home() {
       </div>
 
       {/* 습관 트래커 */}
+      {SHOW_LEGACY_TODO_HABIT && (
       <div className="card">
         <div className="card-header">
           <span className="card-title">🌱 오늘의 습관 트래커</span>
@@ -508,6 +519,7 @@ function Home() {
           ))}
         </div>
       </div>
+      )}
     </>
   )
 }
