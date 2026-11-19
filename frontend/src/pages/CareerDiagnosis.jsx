@@ -138,6 +138,8 @@ function CareerDiagnosis() {
 
     if (data.httpStatus === 200) {
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'added' }))
+      // 서버가 다른 항목을 밀지 않는 시간으로 맞춘다 — 기본 3시간보다 줄었을 때만 알린다
+      if (data.estimatedHours < 3) alert(`이번 주 계획에 ${data.estimatedHours}시간으로 추가했습니다.`)
     } else if (data.httpStatus === 404) {
       alert('먼저 이번 주 계획을 생성해 주세요.')
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'idle' }))
@@ -145,8 +147,12 @@ function CareerDiagnosis() {
     } else if (data.httpStatus === 409 && data.reason === 'job_mismatch') {
       alert(data.message || '목표 직무가 변경되어 추가할 수 없습니다.')
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'idle' }))
-    } else if (data.httpStatus === 409) {
+    } else if (data.httpStatus === 409 && data.reason === 'duplicate') {
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'duplicate' }))
+    } else if (data.httpStatus === 409) {
+      // generating·week_over·too_many·no_capacity — 다시 시도할 수 있으므로 버튼은 그대로 둔다
+      alert(data.message || '추가할 수 없습니다.')
+      setGapButtonState((prev) => ({ ...prev, [gapId]: 'idle' }))
     } else {
       alert(data.message || '추가에 실패했습니다.')
       setGapButtonState((prev) => ({ ...prev, [gapId]: 'idle' }))

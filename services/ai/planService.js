@@ -219,4 +219,28 @@ async function generateWeeklyPlan(docId, userId, weekStart, userGoal = null) {
   }
 }
 
-module.exports = { generateWeeklyPlan, runDistribution };
+const FIT_CANDIDATE_HOURS = [3, 2.5, 2, 1.5, 1];
+
+// 진단 항목을 "다른 항목을 밀어내지 않고 다 들어가는" 가장 큰 시간으로 맞춘다. 0이면 자리 없음.
+// 남은 시간 합으로 판단하면 틀린다(1시간 최소 조각·0.5h 반올림·하루 4개 상한 때문에 6.5h가 남아도 3h가
+// 다 안 들어갈 수 있다 — 설계서 2절) — distribute()를 실제로 돌려 본다. 이미 한 일(완료 조각)을 함께
+// 넘겨야 주 중간에 용량을 과대평가하지 않는다. planDoc은 lean/toObject() 객체, distribute는 DB를 건드리지 않는다.
+async function fitNewItemHours(planDoc, newItem, candidates = FIT_CANDIDATE_HOURS) {
+  const weekDates = kstDate.getWeekDateStrings(planDoc.weekStart);
+  const completed = await completionService.collectCompletedSlices(planDoc.userId, planDoc._id, weekDates);
+  const avail = planDoc.computed?.availableHoursByDay || [];
+  const sumHours = list => list.reduce((s, u) => s + u.hours, 0);
+  // 이미 밀려 있던 기존 항목은 새 항목 탓으로 치지 않는다
+  const baseHours = sumHours(dailyDistributor.distribute(planDoc, avail, completed).unplaced);
+  const newIndex = (planDoc.items || []).length;
+  for (const h of candidates) {
+    const trial = { ...planDoc, items: [...(planDoc.items || []), { ...newItem, estimatedHours: h }] };
+    const { unplaced } = dailyDistributor.distribute(trial, avail, completed);
+    const mine = unplaced.filter(u => u.index === newIndex);
+    const others = sumHours(unplaced.filter(u => u.index !== newIndex));
+    if (mine.length === 0 && others <= baseHours) return h;
+  }
+  return 0;
+}
+
+module.exports = { generateWeeklyPlan, runDistribution, fitNewItemHours };

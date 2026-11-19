@@ -575,6 +575,15 @@ async function getLatestDiagnosis(req, res) {
   }
 }
 
+const MAX_PLAN_ITEMS = 10;
+
+// 주가 끝났는지 KST 날짜 문자열로 비교한다(UTC Date를 직접 비교하면 일요일 밤 KST에서 어긋난다)
+function isWeekOver(plan) {
+  return kstDate.toKstDateString(plan.weekEnd) < kstDate.toKstDateString(new Date());
+}
+
+const sumItemHours = items => +items.reduce((sum, item) => sum + (item.estimatedHours || 0), 0).toFixed(1);
+
 // 진단의 gap 하나를 대상 주 WeeklyPlan의 항목으로 옮긴다. 빈 WeeklyPlan을 대신
 // 만들어주지 않는다 — Phase 3의 가용시간 검증을 우회하게 되기 때문.
 async function addGapToWeeklyPlan(req, res) {
@@ -614,31 +623,47 @@ async function addGapToWeeklyPlan(req, res) {
     if (!plan) {
       return res.status(404).json({ success: false, message: '먼저 주간 계획을 생성해 주세요.' });
     }
-
-    const alreadyExists = plan.items.some(item => item.title === gap.item);
-    if (alreadyExists) {
-      return res.status(409).json({ success: false, message: '이미 이번 주 계획에 추가된 항목입니다.' });
+    // 생성 중인 계획에 넣으면 생성이 끝날 때 items가 통째로 덮여 사라진다
+    if (plan.status !== 'done') {
+      return res.status(409).json({ success: false, reason: 'generating', message: '계획을 만드는 중입니다. 끝난 뒤 다시 추가해 주세요.' });
+    }
+    if (isWeekOver(plan)) {
+      return res.status(409).json({ success: false, reason: 'week_over', message: '이미 끝난 주의 계획에는 추가할 수 없습니다.' });
+    }
+    if (plan.items.some(item => item.title === gap.item)) {
+      return res.status(409).json({ success: false, reason: 'duplicate', message: '이미 이번 주 계획에 추가된 항목입니다.' });
+    }
+    if (plan.items.length >= MAX_PLAN_ITEMS) {
+      return res.status(409).json({ success: false, reason: 'too_many', message: `항목은 ${MAX_PLAN_ITEMS}개까지입니다.` });
     }
 
-    plan.items.push({
+    // 학생이 시간을 정하지 않은 진단 제안이 AI가 짠 1~3순위 항목을 밀어내지 않게 priority 4로 두고,
+    // 다른 항목을 밀지 않는 가장 큰 시간(3h부터)으로 맞춘다.
+    const newItem = {
       title: gap.item,
       category: GAP_ACTION_TYPE_TO_CATEGORY[gap.actionType] || 'other',
-      estimatedHours: 3,
-      priority: 3,
+      priority: 4,
       isDeadline: false,
       reason: gap.reason,
       relatedType: 'CareerDiagnosis',
       relatedId: diagnosis._id,
-    });
-    await plan.save();
-
-    // 추가한 항목을 바로 일별 보기에 배치한다. 재분배가 완료한 조각을 보존하므로 이미 한 일은
-    // 그대로 남는다. 생성 중(pending)인 계획은 생성이 끝날 때 어차피 다시 배치된다.
-    if (plan.status === 'done') {
-      await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+    };
+    const hours = await planService.fitNewItemHours(plan.toObject(), newItem);
+    if (hours === 0) {
+      return res.status(409).json({
+        success: false,
+        reason: 'no_capacity',
+        message: '이번 주 남은 시간에 넣을 자리가 없습니다. 계획에서 다른 항목을 줄이거나 삭제한 뒤 다시 추가해 주세요.',
+      });
     }
 
-    return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1 });
+    plan.items.push({ ...newItem, estimatedHours: hours });
+    plan.computed.allocatedHours = sumItemHours(plan.items);
+    await plan.save();
+    // 재분배가 완료한 조각을 보존하므로 이미 한 일은 그대로 남는다
+    await planService.runDistribution(plan.toObject(), plan.distribution?.notices || []);
+
+    return res.json({ weeklyPlanId: plan._id, itemIndex: plan.items.length - 1, estimatedHours: hours });
   } catch (error) {
     logger.error(`[ai] addGapToWeeklyPlan error: ${error.message}`);
     res.status(500).json({ success: false });

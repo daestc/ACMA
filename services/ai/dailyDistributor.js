@@ -50,9 +50,14 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   const today = kstDate.toKstDateString(new Date());
   const availableDates = weekDates.filter(d => d >= today);
 
+  // unplaced: 배치하지 못한 시간을 항목 인덱스별로 — errors(화면에 그대로 보이는 문자열)와 별도로
+  // 맞춤 판정(planService.fitNewItemHours)이 숫자로 비교할 수 있게 한다. 배치를 아예 못 하는 경우엔
+  // 모든 항목이 미배치다(빈 배열로 두면 "다 들어갔다"로 읽힌다).
+  const allUnplaced = () => (weeklyPlan.items || []).map((item, index) => ({ index, hours: item.estimatedHours || 0 }));
+
   if (availableDates.length === 0) {
     errors.push('이번 주가 이미 다 지나 배치할 수 있는 날짜가 없습니다.');
-    return { byDate: new Map(), errors, weekDates };
+    return { byDate: new Map(), errors, weekDates, unplaced: allUnplaced() };
   }
 
   const hasAnyCapacity = availableDates.some(d => {
@@ -61,13 +66,14 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   });
   if (!hasAnyCapacity) {
     errors.push('가용 시간이 전부 0입니다. 시간표를 등록해 주세요.');
-    return { byDate: new Map(), errors, weekDates };
+    return { byDate: new Map(), errors, weekDates, unplaced: allUnplaced() };
   }
 
   const usedHoursByDate = new Map(availableDates.map(d => [d, 0]));
   const itemCountByDate = new Map(availableDates.map(d => [d, 0]));
   const byDate = new Map(availableDates.map(d => [d, []]));
   let orderCounter = 1000;
+  const unplaced = []; // { index, hours }
 
   const doneByItem = new Map(); // planItemIndex → { hours, slices }
   for (const slice of completedSlices) {
@@ -104,6 +110,7 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
         itemCountByDate.set(date, (itemCountByDate.get(date) || 0) + 1);
       } else {
         errors.push(`"${item.title}"을(를) 배치할 날짜를 찾지 못함`);
+        unplaced.push({ index: idx, hours: 0 });
       }
     } else {
       let remaining = item.estimatedHours - done.hours;
@@ -149,6 +156,7 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
 
       if (remaining > 0) {
         errors.push(`"${item.title}" ${remaining}시간을 배치하지 못함`);
+        unplaced.push({ index: idx, hours: remaining });
       }
     }
 
@@ -166,7 +174,7 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
     });
   }
 
-  return { byDate, errors, weekDates };
+  return { byDate, errors, weekDates, unplaced };
 }
 
 // 하루치 AI 항목을 DailyChecklist에 반영 (단일 날짜, 3단계 — 배치 버전의 기반 단위 로직)
