@@ -71,7 +71,7 @@
   "M-SWAP-3": [{ "type": "mdcl_rank_improves", "mdcl": ["컴퓨터하드웨어·통신공학 기술자"] },
                { "type": "mdcl_rank_worsens",  "mdcl": ["전기·전자공학 기술자 및 시험원"] }],
   "M-SWAP-4": [{ "type": "mdcl_rank_improves", "mdcl": ["연극·영화·방송 전문가"] },
-               { "type": "mdcl_rank_worsens",  "mdcl": ["데이터 전문가"] }],
+               { "type": "mdcl_rank_worsens",  "mdcl": ["디자이너"] }],
   "M-SWAP-5": [{ "type": "mdcl_rank_improves", "mdcl": ["학교 교사"] },
                { "type": "mdcl_rank_worsens",  "mdcl": ["작가·통번역가"] }],
   "M-INT-1": [{ "type": "all_in_lrcl" }],
