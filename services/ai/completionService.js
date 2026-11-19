@@ -1,6 +1,7 @@
 const { DailyChecklist } = require('../../models/Calendar');
 const { WeeklyPlan } = require('../../models/Ai');
 const kstDate = require('../../utils/kstDate');
+const { planHours } = require('./dailyDistributor');
 
 const MAX_INCOMPLETE_ITEMS = 5;
 const DEFAULT_HISTORY_LIMIT = 12;
@@ -89,7 +90,7 @@ async function getPlanProgress(userId, plan) {
       return { index, removed: true, plannedHours: 0, doneHours: 0, scheduledHours: 0, overdueHours: 0, unplacedHours: 0, status: 'removed' };
     }
     const b = byIndex.get(index) || { done: 0, doneSlices: 0, scheduled: 0, overdue: 0 };
-    const plannedHours = item.estimatedHours || 0;
+    const plannedHours = planHours(item); // 배치기와 같은 0.5 단위 값
     const unplacedHours = Math.max(0, plannedHours - b.done - b.scheduled - b.overdue);
     let status;
     if (!(plannedHours > 0)) status = b.doneSlices > 0 ? 'done' : 'on_track';

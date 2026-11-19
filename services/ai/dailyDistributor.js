@@ -6,6 +6,15 @@ const MAX_SLOT_HOURS = 3;    // 한 항목이 하루를 다 채우지 않게
 const MAX_ITEMS_PER_DAY = 4; // 체크리스트가 길면 아무도 안 본다 — 이 알고리즘의 핵심 안전장치
 const CONTENT_MAX_LENGTH = 80;
 
+// 항목의 계획 시간을 0.5시간 단위로 맞춘다(0보다 크면 최소 0.5). AI가 1.2h처럼 0.5 단위가 아닌 시간을 내면
+// 1h 조각을 놓고 0.2h가 남아 "0.19999999999999996시간을 배치하지 못함"이 떴다(부동소수 뺄셈 + 0.5 단위 배치).
+// 배치(distribute)와 진행률(completionService.getPlanProgress)이 같은 값을 써야 "미배치 0.2h"가 남지 않는다.
+function planHours(item) {
+  const h = Number(item?.estimatedHours);
+  if (!(h > 0)) return 0;
+  return Math.max(0.5, Math.round(h * 2) / 2);
+}
+
 function formatContent(title, hours, sliceIndex, totalSlices, isZeroHour) {
   let content;
   if (isZeroHour) {
@@ -54,7 +63,7 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
   // 맞춤 판정(planService.fitNewItemHours)이 숫자로 비교할 수 있게 한다. 배치를 아예 못 하는 경우엔
   // 모든 항목이 미배치다(빈 배열로 두면 "다 들어갔다"로 읽힌다).
   const allUnplaced = () => (weeklyPlan.items || [])
-    .map((item, index) => ({ index, hours: item.estimatedHours || 0, removed: item.removed }))
+    .map((item, index) => ({ index, hours: planHours(item), removed: item.removed }))
     .filter(u => !u.removed)
     .map(({ index, hours }) => ({ index, hours }));
 
@@ -97,12 +106,12 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
     // 삭제 표시된 항목은 배치하지 않는다 — 인덱스는 그대로 두고 값만 무시(미완료 조각은 재분배 때 정리됨)
     if (item.removed) continue;
     const dueDateStr = item.dueDate ? kstDate.toKstDateString(new Date(item.dueDate)) : null;
-    const isZeroHour = !(item.estimatedHours > 0);
+    const isZeroHour = planHours(item) === 0;
     const done = doneByItem.get(idx) || { hours: 0, slices: 0 };
     const slots = []; // { date, hours }
 
     if (isZeroHour && done.slices > 0) continue; // 체크만 하면 되는 항목을 이미 체크함
-    if (!isZeroHour && item.estimatedHours - done.hours <= 0) continue;
+    if (!isZeroHour && planHours(item) - done.hours <= 0) continue;
 
     if (isZeroHour) {
       // 체크만 하면 되는 항목 — 시간 용량을 쓰지 않고 하루에 1회만 배치
@@ -118,7 +127,7 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
         unplaced.push({ index: idx, hours: 0 });
       }
     } else {
-      let remaining = item.estimatedHours - done.hours;
+      let remaining = planHours(item) - done.hours;
 
       // MAX_SLOT_HOURS는 "하루에 이 항목이 한 번에 차지할 수 있는 최대치"이지
       // "하루 전체 상한"이 아니다 — 한 번 훑어서 못 끝내면(예: 6시간짜리 항목이
@@ -167,8 +176,8 @@ function distribute(weeklyPlan, availableHoursByDay, completedSlices = []) {
       }
 
       if (remaining > 0) {
-        errors.push(`"${item.title}" ${remaining}시간을 배치하지 못함`);
-        unplaced.push({ index: idx, hours: remaining });
+        errors.push(`"${item.title}" ${+remaining.toFixed(1)}시간을 배치하지 못함`);
+        unplaced.push({ index: idx, hours: +remaining.toFixed(1) });
       }
     }
 
@@ -276,4 +285,4 @@ async function applyDistributionToChecklists(userId, weeklyPlanId, byDate, weekD
   }
 }
 
-module.exports = { distribute, applyToChecklist, applyDistributionToChecklists };
+module.exports = { planHours, distribute, applyToChecklist, applyDistributionToChecklists };

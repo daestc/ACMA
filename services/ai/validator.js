@@ -35,6 +35,10 @@ function validateWeeklyPlan(data, context) {
       errors.push(`items[${idx}].estimatedHours가 유효하지 않아 0으로 대체`);
       sanitizedItem.estimatedHours = 0;
     }
+    // 0.5시간 단위로 맞춘다(배치기가 0.5 단위로만 놓는다 — dailyDistributor.planHours와 같은 규칙)
+    if (sanitizedItem.estimatedHours > 0) {
+      sanitizedItem.estimatedHours = Math.max(0.5, Math.round(sanitizedItem.estimatedHours * 2) / 2);
+    }
 
     if (!Number.isInteger(sanitizedItem.priority) || sanitizedItem.priority < 1 || sanitizedItem.priority > 5) {
       errors.push(`items[${idx}].priority가 유효하지 않아 3으로 대체`);
