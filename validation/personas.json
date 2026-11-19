@@ -1,0 +1,506 @@
+[
+  {
+    "id": "G-CS-1", "group": "G", "label": "컴공 4학년, 웹·DB 과목 + 정보처리기사 + 프런트엔드 기술",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "웹프로그래밍", "credits": 3, "grade": "A" },
+      { "name": "데이터베이스", "credits": 3, "grade": "B+" },
+      { "name": "웹서버프로그래밍", "credits": 3, "grade": "A" },
+      { "name": "자료구조", "credits": 3, "grade": "B" },
+      { "name": "객체지향프로그래밍", "credits": 3, "grade": "A" }
+    ],
+    "certs": ["정보처리기사"], "skills": ["JavaScript", "React"], "experiences": ["웹 쇼핑몰 팀 프로젝트"],
+    "prefs": { "work": ["build"], "style": "team", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-CS-2", "group": "G", "label": "컴공 3학년, 보안·네트워크 과목, 자격·기술 없음",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "컴퓨터네트워크", "credits": 3, "grade": "A" },
+      { "name": "정보보호개론", "credits": 3, "grade": "A" },
+      { "name": "운영체제", "credits": 3, "grade": "B+" },
+      { "name": "네트워크보안", "credits": 3, "grade": "B" },
+      { "name": "이산수학", "credits": 3, "grade": "C+" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-CS-3", "group": "G", "label": "컴공 4학년, 인공지능·데이터 과목 + SQLD + Python",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "인공지능", "credits": 3, "grade": "A+" },
+      { "name": "머신러닝", "credits": 3, "grade": "A" },
+      { "name": "확률및통계", "credits": 3, "grade": "B+" },
+      { "name": "빅데이터분석", "credits": 3, "grade": "A" },
+      { "name": "선형대수", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["SQLD"], "skills": ["Python", "pandas"], "experiences": ["교내 데이터 분석 경진대회"],
+    "prefs": { "work": ["analyze"], "style": "solo", "value": "salary" }, "interests": []
+  },
+  {
+    "id": "G-CS-4", "group": "G", "label": "컴공 3학년, 시스템·임베디드 과목 + C",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "시스템프로그래밍", "credits": 3, "grade": "B+" },
+      { "name": "컴퓨터구조", "credits": 3, "grade": "A" },
+      { "name": "임베디드시스템", "credits": 3, "grade": "A" },
+      { "name": "디지털논리회로", "credits": 3, "grade": "B" },
+      { "name": "리눅스실습", "credits": 2, "grade": "P" }
+    ],
+    "certs": [], "skills": ["C", "Linux"], "experiences": [],
+    "prefs": { "work": ["build", "operate"], "style": "any", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-CS-5", "group": "G", "label": "컴공 2학년, 웹·DB 과목만(자격·기술 없음)",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "웹프로그래밍", "credits": 3, "grade": "B+" },
+      { "name": "데이터베이스", "credits": 3, "grade": "B" },
+      { "name": "웹프레임워크", "credits": 3, "grade": "A" },
+      { "name": "프로그래밍기초", "credits": 3, "grade": "A" },
+      { "name": "대학영어", "credits": 2, "grade": "B" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-BIZ-1", "group": "G", "label": "경영 4학년, 회계·재무 과목 + 전산회계1급 + Excel",
+    "major": "경영학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "회계원리", "credits": 3, "grade": "A" },
+      { "name": "중급회계", "credits": 3, "grade": "B+" },
+      { "name": "재무관리", "credits": 3, "grade": "A" },
+      { "name": "원가회계", "credits": 3, "grade": "B" },
+      { "name": "세법개론", "credits": 3, "grade": "B+" }
+    ],
+    "certs": ["전산회계1급"], "skills": ["Excel"], "experiences": [],
+    "prefs": { "work": ["precise"], "style": "solo", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-BIZ-2", "group": "G", "label": "경영 3학년, 회계 과목, 자격·기술 없음",
+    "major": "경영학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "회계원리", "credits": 3, "grade": "B+" },
+      { "name": "중급회계", "credits": 3, "grade": "B" },
+      { "name": "경영학원론", "credits": 3, "grade": "A" },
+      { "name": "경제학원론", "credits": 3, "grade": "B" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-BIZ-3", "group": "G", "label": "경영 4학년, 마케팅 과목 + 공모전 경험",
+    "major": "경영학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "마케팅원론", "credits": 3, "grade": "A" },
+      { "name": "소비자행동론", "credits": 3, "grade": "A" },
+      { "name": "광고론", "credits": 3, "grade": "B+" },
+      { "name": "브랜드관리", "credits": 3, "grade": "A" },
+      { "name": "마케팅조사", "credits": 3, "grade": "B" }
+    ],
+    "certs": [], "skills": ["PowerPoint"], "experiences": ["대학생 마케팅 공모전 본선"],
+    "prefs": { "work": ["persuade"], "style": "team", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-BIZ-4", "group": "G", "label": "경영 3학년, 인사·조직 과목",
+    "major": "경영학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "인적자원관리", "credits": 3, "grade": "A" },
+      { "name": "조직행동론", "credits": 3, "grade": "B+" },
+      { "name": "노사관계론", "credits": 3, "grade": "B" },
+      { "name": "경영전략", "credits": 3, "grade": "B+" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": { "work": ["persuade"], "style": "team", "value": "balance" }, "interests": []
+  },
+  {
+    "id": "G-BIZ-5", "group": "G", "label": "경영 4학년, 경영통계·데이터 과목 + 컴활1급 + Python·SQL",
+    "major": "경영학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "경영통계", "credits": 3, "grade": "A" },
+      { "name": "경영정보시스템", "credits": 3, "grade": "A" },
+      { "name": "데이터마이닝", "credits": 3, "grade": "B+" },
+      { "name": "회귀분석", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["컴퓨터활용능력1급"], "skills": ["Python", "SQL", "Excel"], "experiences": [],
+    "prefs": { "work": ["analyze"], "style": "solo", "value": "salary" }, "interests": []
+  },
+  {
+    "id": "G-EE-1", "group": "G", "label": "전자 4학년, 회로·반도체 과목 + 전자기사",
+    "major": "전자공학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "전자회로", "credits": 3, "grade": "A" },
+      { "name": "반도체공학", "credits": 3, "grade": "A" },
+      { "name": "회로이론", "credits": 3, "grade": "B+" },
+      { "name": "반도체소자", "credits": 3, "grade": "B+" },
+      { "name": "VLSI설계", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["전자기사"], "skills": [], "experiences": ["반도체 공정 현장실습"],
+    "prefs": { "work": ["build"], "style": "team", "value": "salary" }, "interests": []
+  },
+  {
+    "id": "G-EE-2", "group": "G", "label": "전자 3학년, 통신 과목, 자격·기술 없음",
+    "major": "전자공학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "통신이론", "credits": 3, "grade": "B+" },
+      { "name": "디지털통신", "credits": 3, "grade": "A" },
+      { "name": "신호및시스템", "credits": 3, "grade": "B" },
+      { "name": "전자기학", "credits": 3, "grade": "C+" },
+      { "name": "무선통신시스템", "credits": 3, "grade": "B+" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-EE-3", "group": "G", "label": "전자 4학년, 전력·전기 과목 + 전기기사",
+    "major": "전자공학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "전력공학", "credits": 3, "grade": "A" },
+      { "name": "전기기기", "credits": 3, "grade": "B+" },
+      { "name": "전력전자", "credits": 3, "grade": "A" },
+      { "name": "제어공학", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["전기기사"], "skills": [], "experiences": [],
+    "prefs": { "work": ["operate"], "style": "any", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-EE-4", "group": "G", "label": "전자 3학년, 임베디드·마이크로프로세서 과목 + C",
+    "major": "전자공학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "마이크로프로세서", "credits": 3, "grade": "A" },
+      { "name": "임베디드시스템설계", "credits": 3, "grade": "B+" },
+      { "name": "디지털시스템설계", "credits": 3, "grade": "A" },
+      { "name": "C프로그래밍", "credits": 3, "grade": "A" }
+    ],
+    "certs": [], "skills": ["C", "Arduino"], "experiences": ["교내 로봇 동아리"],
+    "prefs": { "work": ["build"], "style": "solo", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-EE-5", "group": "G", "label": "전자 2학년, 기초 회로 과목만",
+    "major": "전자공학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "회로이론", "credits": 3, "grade": "B" },
+      { "name": "전자회로", "credits": 3, "grade": "B+" },
+      { "name": "공업수학", "credits": 3, "grade": "C+" },
+      { "name": "일반물리학", "credits": 3, "grade": "B" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-DES-1", "group": "G", "label": "시각디자인 4학년, 편집·타이포 과목 + GTQ 포토샵 + Adobe",
+    "major": "시각디자인학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "타이포그래피", "credits": 3, "grade": "A" },
+      { "name": "편집디자인", "credits": 3, "grade": "A" },
+      { "name": "출판디자인", "credits": 3, "grade": "B+" },
+      { "name": "기초드로잉", "credits": 2, "grade": "A" }
+    ],
+    "certs": ["GTQ포토샵1급"], "skills": ["Photoshop", "Illustrator", "InDesign"], "experiences": ["교내 신문 디자인"],
+    "prefs": { "work": ["design"], "style": "solo", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-DES-2", "group": "G", "label": "시각디자인 3학년, UX/UI 과목 + Figma",
+    "major": "시각디자인학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "UX디자인", "credits": 3, "grade": "A" },
+      { "name": "UI디자인", "credits": 3, "grade": "A" },
+      { "name": "인터랙션디자인", "credits": 3, "grade": "B+" },
+      { "name": "웹디자인", "credits": 3, "grade": "B+" }
+    ],
+    "certs": [], "skills": ["Figma"], "experiences": ["앱 서비스 리디자인 팀 프로젝트"],
+    "prefs": { "work": ["design", "build"], "style": "team", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-DES-3", "group": "G", "label": "시각디자인 4학년, 영상·모션 과목 + 편집 툴",
+    "major": "시각디자인학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "영상디자인", "credits": 3, "grade": "A" },
+      { "name": "모션그래픽스", "credits": 3, "grade": "A" },
+      { "name": "3D그래픽스", "credits": 3, "grade": "B" },
+      { "name": "사진", "credits": 2, "grade": "B+" }
+    ],
+    "certs": [], "skills": ["Premiere Pro", "After Effects"], "experiences": ["유튜브 채널 영상 편집"],
+    "prefs": { "work": ["design"], "style": "solo", "value": "balance" }, "interests": []
+  },
+  {
+    "id": "G-DES-4", "group": "G", "label": "시각디자인 4학년, 브랜드·광고 과목 + 컬러리스트기사",
+    "major": "시각디자인학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "브랜드아이덴티티디자인", "credits": 3, "grade": "A" },
+      { "name": "광고디자인", "credits": 3, "grade": "B+" },
+      { "name": "색채학", "credits": 3, "grade": "A" },
+      { "name": "패키지디자인", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["컬러리스트기사"], "skills": ["Illustrator"], "experiences": [],
+    "prefs": { "work": ["design", "persuade"], "style": "team", "value": "salary" }, "interests": []
+  },
+  {
+    "id": "G-DES-5", "group": "G", "label": "시각디자인 2학년, 일러스트·기초 과목만",
+    "major": "시각디자인학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "일러스트레이션", "credits": 3, "grade": "A" },
+      { "name": "기초디자인", "credits": 3, "grade": "B+" },
+      { "name": "디자인사", "credits": 3, "grade": "B" },
+      { "name": "평면조형", "credits": 2, "grade": "A" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-NUR-1", "group": "G", "label": "간호 4학년, 성인·기본간호 과목 + 병원 실습",
+    "major": "간호학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "성인간호학", "credits": 3, "grade": "A" },
+      { "name": "기본간호학", "credits": 3, "grade": "A" },
+      { "name": "해부학", "credits": 3, "grade": "B+" },
+      { "name": "약리학", "credits": 3, "grade": "B" },
+      { "name": "임상실습", "credits": 3, "grade": "P" }
+    ],
+    "certs": [], "skills": [], "experiences": ["대학병원 임상실습"],
+    "prefs": { "work": ["precise"], "style": "team", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-NUR-2", "group": "G", "label": "간호 3학년, 아동·모성간호 과목 + 보건교육사",
+    "major": "간호학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "아동간호학", "credits": 3, "grade": "A" },
+      { "name": "모성간호학", "credits": 3, "grade": "B+" },
+      { "name": "건강사정", "credits": 3, "grade": "A" },
+      { "name": "생리학", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["보건교육사3급"], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-NUR-3", "group": "G", "label": "간호 4학년, 정신·지역사회간호 과목",
+    "major": "간호학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "정신간호학", "credits": 3, "grade": "A" },
+      { "name": "지역사회간호학", "credits": 3, "grade": "A" },
+      { "name": "간호와상담", "credits": 2, "grade": "B+" },
+      { "name": "보건교육", "credits": 2, "grade": "A" }
+    ],
+    "certs": [], "skills": [], "experiences": ["보건소 실습"],
+    "prefs": { "work": ["persuade"], "style": "team", "value": "balance" }, "interests": []
+  },
+  {
+    "id": "G-NUR-4", "group": "G", "label": "간호 4학년, 간호관리·보건통계 과목 + 컴활2급",
+    "major": "간호학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "간호관리학", "credits": 3, "grade": "A" },
+      { "name": "보건통계", "credits": 3, "grade": "B+" },
+      { "name": "간호연구", "credits": 3, "grade": "A" },
+      { "name": "보건의료법규", "credits": 2, "grade": "B" }
+    ],
+    "certs": ["컴퓨터활용능력2급"], "skills": ["Excel"], "experiences": [],
+    "prefs": { "work": ["analyze", "precise"], "style": "solo", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-NUR-5", "group": "G", "label": "간호 2학년, 기초의학 과목만",
+    "major": "간호학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "인체구조와기능", "credits": 3, "grade": "B" },
+      { "name": "미생물학", "credits": 3, "grade": "B+" },
+      { "name": "간호학개론", "credits": 2, "grade": "A" },
+      { "name": "병리학", "credits": 3, "grade": "C+" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-ENG-1", "group": "G", "label": "영문 4학년, 번역·통역 과목 + 관광통역안내사",
+    "major": "영어영문학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "영한번역", "credits": 3, "grade": "A" },
+      { "name": "한영번역", "credits": 3, "grade": "A" },
+      { "name": "통역연습", "credits": 3, "grade": "B+" },
+      { "name": "영어작문", "credits": 3, "grade": "A" }
+    ],
+    "certs": ["관광통역안내사"], "skills": [], "experiences": ["국제 행사 통역 봉사"],
+    "prefs": { "work": ["persuade"], "style": "solo", "value": "growth" }, "interests": []
+  },
+  {
+    "id": "G-ENG-2", "group": "G", "label": "영문 3학년, 영미문학 과목, 자격·기술 없음",
+    "major": "영어영문학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "영미소설", "credits": 3, "grade": "A" },
+      { "name": "영미시", "credits": 3, "grade": "B+" },
+      { "name": "셰익스피어", "credits": 3, "grade": "B" },
+      { "name": "영미희곡", "credits": 3, "grade": "A" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+  {
+    "id": "G-ENG-3", "group": "G", "label": "영문 4학년, 영어교육 과목 + 과외 경험",
+    "major": "영어영문학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "영어교육론", "credits": 3, "grade": "A" },
+      { "name": "영어교재연구", "credits": 3, "grade": "A" },
+      { "name": "제2언어습득론", "credits": 3, "grade": "B+" },
+      { "name": "영어음성학", "credits": 3, "grade": "B" }
+    ],
+    "certs": [], "skills": [], "experiences": ["중학생 영어 과외"],
+    "prefs": { "work": ["persuade"], "style": "team", "value": "stable" }, "interests": []
+  },
+  {
+    "id": "G-ENG-4", "group": "G", "label": "영문 4학년, 비즈니스영어 과목 + 무역영어1급",
+    "major": "영어영문학과", "doubleMajor": null, "grade": 4,
+    "courses": [
+      { "name": "비즈니스영어", "credits": 3, "grade": "A" },
+      { "name": "영어프레젠테이션", "credits": 3, "grade": "A" },
+      { "name": "국제무역의이해", "credits": 3, "grade": "B+" },
+      { "name": "시사영어", "credits": 3, "grade": "B" }
+    ],
+    "certs": ["무역영어1급"], "skills": ["Excel"], "experiences": ["무역회사 인턴"],
+    "prefs": { "work": ["persuade"], "style": "team", "value": "salary" }, "interests": []
+  },
+  {
+    "id": "G-ENG-5", "group": "G", "label": "영문 2학년, 영어학 과목만",
+    "major": "영어영문학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "영어학개론", "credits": 3, "grade": "B+" },
+      { "name": "영어통사론", "credits": 3, "grade": "B" },
+      { "name": "영어회화", "credits": 2, "grade": "A" },
+      { "name": "영미문화의이해", "credits": 3, "grade": "B+" }
+    ],
+    "certs": [], "skills": [], "experiences": [],
+    "prefs": null, "interests": []
+  },
+
+  { "id": "M-CERT-1", "group": "M", "kind": "cert_added", "base": "G-BIZ-2", "label": "G-BIZ-2 + 전산세무2급", "patch": { "certs": { "add": ["전산세무2급"] } } },
+  { "id": "M-CERT-2", "group": "M", "kind": "cert_added", "base": "G-CS-5", "label": "G-CS-5 + 정보처리기사", "patch": { "certs": { "add": ["정보처리기사"] } } },
+  { "id": "M-CERT-3", "group": "M", "kind": "cert_added", "base": "G-EE-5", "label": "G-EE-5 + 전기기사", "patch": { "certs": { "add": ["전기기사"] } } },
+  { "id": "M-CERT-4", "group": "M", "kind": "cert_added", "base": "G-DES-5", "label": "G-DES-5 + 웹디자인기능사", "patch": { "certs": { "add": ["웹디자인기능사"] } } },
+  { "id": "M-CERT-5", "group": "M", "kind": "cert_added", "base": "G-ENG-2", "label": "G-ENG-2 + 관광통역안내사", "patch": { "certs": { "add": ["관광통역안내사"] } } },
+
+  {
+    "id": "M-SWAP-1", "group": "M", "kind": "courses_swapped", "base": "G-CS-5", "label": "G-CS-5의 웹 3과목 → 보안 3과목",
+    "patch": { "courses": {
+      "remove": ["웹프로그래밍", "데이터베이스", "웹프레임워크"],
+      "add": [
+        { "name": "정보보호개론", "credits": 3, "grade": "B+" },
+        { "name": "네트워크보안", "credits": 3, "grade": "B" },
+        { "name": "암호학", "credits": 3, "grade": "A" }
+      ] } }
+  },
+  {
+    "id": "M-SWAP-2", "group": "M", "kind": "courses_swapped", "base": "G-BIZ-1", "label": "G-BIZ-1의 회계·세무 3과목 → 마케팅 3과목",
+    "patch": { "courses": {
+      "remove": ["중급회계", "원가회계", "세법개론"],
+      "add": [
+        { "name": "마케팅원론", "credits": 3, "grade": "A" },
+        { "name": "소비자행동론", "credits": 3, "grade": "B+" },
+        { "name": "광고론", "credits": 3, "grade": "A" }
+      ] } }
+  },
+  {
+    "id": "M-SWAP-3", "group": "M", "kind": "courses_swapped", "base": "G-EE-1", "label": "G-EE-1의 반도체 3과목 → 통신 3과목",
+    "patch": { "courses": {
+      "remove": ["반도체공학", "반도체소자", "VLSI설계"],
+      "add": [
+        { "name": "통신이론", "credits": 3, "grade": "A" },
+        { "name": "디지털통신", "credits": 3, "grade": "B+" },
+        { "name": "무선통신시스템", "credits": 3, "grade": "B+" }
+      ] } }
+  },
+  {
+    "id": "M-SWAP-4", "group": "M", "kind": "courses_swapped", "base": "G-DES-1", "label": "G-DES-1의 편집·출판 3과목 → 영상 3과목",
+    "patch": { "courses": {
+      "remove": ["타이포그래피", "편집디자인", "출판디자인"],
+      "add": [
+        { "name": "영상디자인", "credits": 3, "grade": "A" },
+        { "name": "모션그래픽스", "credits": 3, "grade": "A" },
+        { "name": "영상편집실습", "credits": 3, "grade": "B+" }
+      ] } }
+  },
+  {
+    "id": "M-SWAP-5", "group": "M", "kind": "courses_swapped", "base": "G-ENG-1", "label": "G-ENG-1의 번역·통역 3과목 → 영어교육 3과목",
+    "patch": { "courses": {
+      "remove": ["영한번역", "한영번역", "통역연습"],
+      "add": [
+        { "name": "영어교육론", "credits": 3, "grade": "A" },
+        { "name": "영어교재연구", "credits": 3, "grade": "A" },
+        { "name": "영어교수법", "credits": 3, "grade": "B+" }
+      ] } }
+  },
+
+  { "id": "M-INT-1", "group": "M", "kind": "interest_set", "base": "G-CS-1", "label": "G-CS-1 + 관심 분야 '연구직 및 공학 기술직'", "patch": { "interests": { "replace": ["연구직 및 공학 기술직"] } } },
+  { "id": "M-INT-2", "group": "M", "kind": "interest_set", "base": "G-BIZ-3", "label": "G-BIZ-3 + 관심 분야 '경영·사무·금융·보험직'", "patch": { "interests": { "replace": ["경영·사무·금융·보험직"] } } },
+  { "id": "M-INT-3", "group": "M", "kind": "interest_set", "base": "G-NUR-1", "label": "G-NUR-1 + 관심 분야 '보건·의료직'", "patch": { "interests": { "replace": ["보건·의료직"] } } },
+  { "id": "M-INT-4", "group": "M", "kind": "interest_set", "base": "G-DES-2", "label": "G-DES-2 + 관심 분야 '예술·디자인·방송·스포츠직'", "patch": { "interests": { "replace": ["예술·디자인·방송·스포츠직"] } } },
+  { "id": "M-INT-5", "group": "M", "kind": "interest_set", "base": "G-ENG-3", "label": "G-ENG-3 + 관심 분야 '교육·법률·사회복지·경찰·소방직 및 군인'", "patch": { "interests": { "replace": ["교육·법률·사회복지·경찰·소방직 및 군인"] } } },
+
+  { "id": "M-IRR-1", "group": "M", "kind": "irrelevant_added", "base": "G-CS-2", "label": "G-CS-2 + 경험 '학과 축제 기획단'", "patch": { "experiences": { "add": ["학과 축제 기획단"] } } },
+  { "id": "M-IRR-2", "group": "M", "kind": "irrelevant_added", "base": "G-BIZ-4", "label": "G-BIZ-4 + 기술 '운전면허'", "patch": { "skills": { "add": ["운전면허"] } } },
+  { "id": "M-IRR-3", "group": "M", "kind": "irrelevant_added", "base": "G-EE-3", "label": "G-EE-3 + 경험 '편의점 아르바이트'", "patch": { "experiences": { "add": ["편의점 아르바이트"] } } },
+  { "id": "M-IRR-4", "group": "M", "kind": "irrelevant_added", "base": "G-NUR-3", "label": "G-NUR-3 + 경험 '교내 밴드 동아리'", "patch": { "experiences": { "add": ["교내 밴드 동아리"] } } },
+  { "id": "M-IRR-5", "group": "M", "kind": "irrelevant_added", "base": "G-ENG-5", "label": "G-ENG-5 + 기술 '요리'", "patch": { "skills": { "add": ["요리"] } } },
+
+  {
+    "id": "E-1", "group": "E", "label": "입력 없음(전공도 없음)",
+    "major": null, "doubleMajor": null, "grade": null,
+    "courses": [], "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-2", "group": "E", "label": "전공만(컴퓨터공학과)",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 1,
+    "courses": [], "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-3", "group": "E", "label": "자유전공 1학년 + 교양 2과목",
+    "major": "자유전공학부", "doubleMajor": null, "grade": 1,
+    "courses": [
+      { "name": "대학글쓰기", "credits": 2, "grade": "A" },
+      { "name": "철학의이해", "credits": 3, "grade": "B+" }
+    ],
+    "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-4", "group": "E", "label": "자격증만(정보처리기사)",
+    "major": null, "doubleMajor": null, "grade": null,
+    "courses": [], "certs": ["정보처리기사"], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-5", "group": "E", "label": "경영 전공, 전 과목 F",
+    "major": "경영학과", "doubleMajor": null, "grade": 2,
+    "courses": [
+      { "name": "회계원리", "credits": 3, "grade": "F" },
+      { "name": "경영학원론", "credits": 3, "grade": "F" },
+      { "name": "마케팅원론", "credits": 3, "grade": "F" }
+    ],
+    "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-6", "group": "E", "label": "복수전공(컴퓨터공학과 + 경영학과), 두 전공 과목",
+    "major": "컴퓨터공학과", "doubleMajor": "경영학과", "grade": 4,
+    "courses": [
+      { "name": "자료구조", "credits": 3, "grade": "A" },
+      { "name": "데이터베이스", "credits": 3, "grade": "B+" },
+      { "name": "웹프로그래밍", "credits": 3, "grade": "A" },
+      { "name": "회계원리", "credits": 3, "grade": "B+" },
+      { "name": "재무관리", "credits": 3, "grade": "B" },
+      { "name": "마케팅원론", "credits": 3, "grade": "A" }
+    ],
+    "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-7", "group": "E", "label": "컴공, 과목명이 비표준(괄호·약어·기호)",
+    "major": "컴퓨터공학과", "doubleMajor": null, "grade": 3,
+    "courses": [
+      { "name": "웹프로그래밍(캡스톤)", "credits": 3, "grade": "A" },
+      { "name": "DB설계및실습", "credits": 3, "grade": "B+" },
+      { "name": "※자료구조및실습", "credits": 3, "grade": "A" },
+      { "name": "* OS", "credits": 3, "grade": "B" }
+    ],
+    "certs": [], "skills": [], "experiences": [], "prefs": null, "interests": []
+  },
+  {
+    "id": "E-8", "group": "E", "label": "체크리스트만 응답(전공·과목·자격 없음)",
+    "major": null, "doubleMajor": null, "grade": null,
+    "courses": [], "certs": [], "skills": [], "experiences": [],
+    "prefs": { "work": ["analyze", "build"], "style": "solo", "value": "salary" }, "interests": []
+  }
+]
