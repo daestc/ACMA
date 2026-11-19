@@ -308,7 +308,7 @@ async function buildWeeklyPlanContext(userId, weekStart, userGoal = null) {
     recentRates,
     reviewItems: reviewTarget?.items || [],
   });
-  const hoursLimit = +(availableHoursTotal * adjustment.hoursFactor).toFixed(1);
+  const hoursLimit = planAdjustment.computeHoursLimit(availableHoursTotal, adjustment.hoursFactor);
 
   // academicPhase.semester가 null이면(방학 등 학기 공백기) 이번 주엔 "현재 수강 중"이라
   // 부를 과목이 없다. AcademicRecord.status는 학기가 끝나고 성적이 다 들어가도 자동으로

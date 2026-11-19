@@ -1,7 +1,7 @@
 // 주간 계획 시간 조정 규칙 단위 사례 (DB·AI 없이 순수 함수만 검사).
 // 실행: node scripts/checkPlanAdjustment.js — 하나라도 틀리면 종료 코드 1.
 
-const { computeAdjustment, applyCategoryFactors } = require('../services/ai/planAdjustment');
+const { computeAdjustment, applyCategoryFactors, computeHoursLimit } = require('../services/ai/planAdjustment');
 const validator = require('../services/ai/validator');
 
 let failed = 0;
@@ -70,6 +70,11 @@ const limited = validator.validateWeeklyPlan(plan, { computed: { availableHoursT
 check('한도 12h: 우선순위 낮은 항목이 빠져 12h', [limited.sanitized.items.length, limited.sanitized.allocatedHours], [2, 12]);
 const unlimited = validator.validateWeeklyPlan(plan, { computed: { availableHoursTotal: 30 } });
 check('hoursLimit가 없으면 가용 시간 전체(옛 계획과 같은 동작)', unlimited.sanitized.items.length, 3);
+
+console.log('\n[7] 여유 시간(computeHoursLimit) — 가용 시간의 80%까지만');
+check('가용 31h, 조정 없음 → 24.8h', computeHoursLimit(31, 1), 24.8);
+check('조정(×0.6)이 여유보다 크면 조정값 → 18.6h', computeHoursLimit(31, 0.6), 18.6);
+check('가용 0h → 0h', computeHoursLimit(0, 1), 0);
 
 console.log(failed ? `\n❌ ${failed}건 실패` : '\n✅ 모두 통과');
 process.exit(failed ? 1 : 0);

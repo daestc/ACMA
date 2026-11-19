@@ -97,4 +97,17 @@ function applyCategoryFactors(items, categoryFactors = []) {
   });
 }
 
-module.exports = { computeAdjustment, applyCategoryFactors, PACE, SHORTAGE_FACTOR, HARD_FACTOR, FLOOR, MAJORITY };
+// 가용 시간의 20%는 비워 둔다 — 진단 항목·직접 추가가 들어갈 자리. 여유 없이 가용 시간을 다 채우면
+// 진단 항목이 한 시간도 들어가지 못했다(설계서 2절 측정). 숫자는 서버가 정한다(프롬프트로 시키지 않는다).
+const PLAN_FILL_RATIO = 0.8;
+
+// 이번 주 총 시간 한도. 지난 기록 조정(hoursFactor)이 여유보다 크면(0.8 미만) 그 값을 쓴다.
+// 여유는 adjustment.reasons에 넣지 않는다 — reasons는 "지난 기록 때문에 바뀐 것"만 담는다.
+function computeHoursLimit(availableHoursTotal, hoursFactor) {
+  return +(availableHoursTotal * Math.min(hoursFactor, PLAN_FILL_RATIO)).toFixed(1);
+}
+
+module.exports = {
+  computeAdjustment, applyCategoryFactors, computeHoursLimit,
+  PACE, SHORTAGE_FACTOR, HARD_FACTOR, FLOOR, MAJORITY, PLAN_FILL_RATIO,
+};

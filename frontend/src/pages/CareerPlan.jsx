@@ -459,7 +459,9 @@ function CareerPlan() {
             {plan.adjustment && (
               <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--bg3)', borderRadius: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>이번 주 계획 조정</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>하루 최대 {plan.computed?.dailyHoursCap || 6}시간 · 총 시간 한도 {plan.adjustment.hoursLimit}h</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>
+                  하루 최대 {plan.computed?.dailyHoursCap || 6}시간 · 총 시간 한도 {plan.adjustment.hoursLimit}h · 여유 {+Math.max(0, (plan.computed?.availableHoursTotal || 0) - (plan.adjustment.hoursLimit || 0)).toFixed(1)}h (진단 항목·직접 추가용)
+                </div>
                 {plan.adjustment.applied
                   ? plan.adjustment.reasons.map((r, i) => <div key={i} style={{ fontSize: 12, lineHeight: 1.6 }}>• {r}</div>)
                   : <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>조정 없음 — 지난 기록과 돌아보기 답변에서 조정할 내용이 없었습니다.</div>}
