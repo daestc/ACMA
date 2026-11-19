@@ -172,6 +172,7 @@ const weeklyPlanSchema = new Schema({
     reason: { type: String, default: null },
     dueDate: { type: Date, default: null }, // 마감 항목의 실제 마감일 (서버가 채움, LLM 아님)
     forGoal: { type: Boolean, default: false }, // userGoal에 직접 기여하는 항목
+    doneWhen: { type: String, default: null, maxlength: 60 }, // 완료 기준(관찰 가능한 결과물·수량). 옛 계획은 null
   }],
 
   computed: {

@@ -6,6 +6,8 @@ function isFiniteNumber(value) {
 
 // LLM이 반환한 주간 계획을 저장 가능한 형태로 검증·보정한다.
 // context는 buildWeeklyPlanContext(userId, weekStart) 결과 (computed.availableHoursTotal 사용).
+const DONE_WHEN_MAX_LENGTH = 60;
+
 function validateWeeklyPlan(data, context) {
   const errors = [];
 
@@ -43,6 +45,9 @@ function validateWeeklyPlan(data, context) {
     // 학생 목표가 없는데 true가 오면 false — 목표 진행률에 엉뚱한 항목이 잡히지 않게.
     sanitizedItem.forGoal = Boolean(sanitizedItem.forGoal) && Boolean(context?.userGoal);
     sanitizedItem.title = String(sanitizedItem.title || '').trim() || `할 일 ${idx + 1}`;
+    // 완료 기준: 60자에서 자르고(말줄임 없이) 빈 값은 null — 화면이 "완료 기준 없음"으로 보여 준다
+    const doneWhen = typeof sanitizedItem.doneWhen === 'string' ? sanitizedItem.doneWhen.trim().slice(0, DONE_WHEN_MAX_LENGTH) : '';
+    sanitizedItem.doneWhen = doneWhen || null;
 
     return sanitizedItem;
   });

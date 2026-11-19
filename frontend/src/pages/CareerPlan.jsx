@@ -489,6 +489,9 @@ function CareerPlan() {
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>{item.estimatedHours}h · 우선순위 {item.priority}</span>
                 </div>
+                {item.doneWhen
+                  ? <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>✓ 완료 기준: {item.doneWhen}</div>
+                  : <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>완료 기준 없음 — 수정에서 입력할 수 있습니다</div>}
                 {item.reason && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, lineHeight: 1.6 }}>{item.reason}</p>}
                 <ItemProgress item={item} progress={progress?.items?.[index]} />
               </div>
