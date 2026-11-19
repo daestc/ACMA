@@ -4,7 +4,11 @@
 // 실행: node scripts/validation/runRecommendValidation.js --list-categories   (대분류 → 중분류(직무 수)만 출력)
 //       node scripts/validation/runRecommendValidation.js                     (전체 실행 → validation/results/<날짜>/)
 //       node scripts/validation/runRecommendValidation.js --only G-CS-1       (한 명만, 화면 출력만)
+//       node scripts/validation/runRecommendValidation.js --check-expectations (기대 결과의 이름만 대조, 잠금 무관)
 //       --out <폴더>  결과 폴더를 바꾼다(기본 validation/results/<KST 날짜>)
+//
+// 이름 대조: 기대 결과의 mdcl·lrcl·cert 이름이 카탈로그에 없으면(오타 등) 종료 코드 3으로 멈춘다. 없는 중분류는
+// 후보에 있을 수 없어서 top10_lacks_mdcl이 오타만으로 항상 통과해 일치율이 조용히 부풀기 때문이다.
 //
 // 기대 결과 잠금: expectations.json에 커밋되지 않은 변경이 있거나 커밋된 적이 없으면 종료 코드 2로 멈춘다
 // (--list-categories 제외). 결과를 본 뒤 기대를 맞추는 일을 막고, 결과에 그 파일의 커밋 해시를 남긴다.
@@ -152,8 +156,9 @@ function judge(exp, res, baseRes) {
       const b = bestRank(baseRes.full, c => mdcl.has(c.jobMdclNm));
       const v = bestRank(res.full, c => mdcl.has(c.jobMdclNm));
       const improves = exp.type === 'mdcl_rank_improves';
-      const pass = b != null && v != null && (improves ? v < b : v > b);
-      return { expected: `${mdclList} 최고 순위 ${improves ? '상승' : '하락'}`, actual: `${mdclList} 최고 순위 ${rankText(b)} → ${rankText(v)}`, pass };
+      // 상승은 cert_jobs_rank_improves처럼 원래 1위였으면 1위 유지도 통과(기대를 쓰는 사람은 base 순위를 볼 수 없다)
+      const pass = b != null && v != null && (improves ? (v < b || (b === 1 && v === 1)) : v > b);
+      return { expected: `${mdclList} 최고 순위 ${improves ? '상승(1위 유지 포함)' : '하락'}`, actual: `${mdclList} 최고 순위 ${rankText(b)} → ${rankText(v)}`, pass };
     }
     case 'all_in_lrcl': {
       const allowed = new Set(exp.lrcl || res.interests);
@@ -171,6 +176,43 @@ function judge(exp, res, baseRes) {
     default:
       return { expected: exp.type, actual: '-', pass: false, memo: `알 수 없는 판정 종류 ${exp.type}` };
   }
+}
+
+const KNOWN_TYPES = new Set([
+  'top10_has_mdcl', 'top3_has_mdcl', 'top10_lacks_mdcl', 'confidence', 'needs_interests',
+  'cert_jobs_rank_improves', 'mdcl_rank_improves', 'mdcl_rank_worsens', 'all_in_lrcl', 'top10_unchanged',
+]);
+const MDCL_TYPES = new Set(['top10_has_mdcl', 'top3_has_mdcl', 'top10_lacks_mdcl', 'mdcl_rank_improves', 'mdcl_rank_worsens']);
+
+// 기대 결과의 이름을 카탈로그와 대조한다(후보 목록은 보지 않는다). 문제 목록 [{ id, type, name, reason }]
+function checkExpectationNames(expectations, personas, jobs) {
+  const mdclSet = new Set(jobs.map(j => j.jobMdclNm).filter(Boolean));
+  const lrclSet = new Set(jobs.map(j => j.jobLrclNm).filter(Boolean));
+  const certNameSet = new Set(jobs.flatMap(j => j.certNames || []));
+  const personaIds = new Set(personas.map(p => p.id));
+  const problems = [];
+  Object.entries(expectations).forEach(([id, value]) => {
+    if (!personaIds.has(id)) problems.push({ id, type: '-', name: id, reason: 'personas.json에 없는 id' });
+    normalizeExpectation(value).checks.forEach(exp => {
+      const type = exp?.type;
+      if (!KNOWN_TYPES.has(type)) { problems.push({ id, type: type ?? '-', name: '-', reason: '알 수 없는 판정 종류' }); return; }
+      if (MDCL_TYPES.has(type)) {
+        if (!Array.isArray(exp.mdcl) || !exp.mdcl.length) problems.push({ id, type, name: '-', reason: 'mdcl이 비어 있음' });
+        (exp.mdcl || []).filter(m => !mdclSet.has(m)).forEach(m => problems.push({ id, type, name: m, reason: '카탈로그에 없는 중분류' }));
+      }
+      if (type === 'all_in_lrcl') (exp.lrcl || []).filter(l => !lrclSet.has(l)).forEach(l => problems.push({ id, type, name: l, reason: '카탈로그에 없는 대분류' }));
+      if (type === 'cert_jobs_rank_improves' && ![...certKeys(exp.cert || '')].some(k => certNameSet.has(k))) {
+        problems.push({ id, type, name: exp.cert ?? '-', reason: '어떤 직무 certNames에도 없는 자격증' });
+      }
+      if (type === 'confidence' && !['low', 'normal'].includes(exp.value)) problems.push({ id, type, name: exp.value ?? '-', reason: 'value는 low 또는 normal' });
+    });
+  });
+  return problems;
+}
+
+function reportNameProblems(problems) {
+  console.error(`기대 결과의 이름 ${problems.length}건이 카탈로그와 맞지 않습니다 (--list-categories의 이름을 그대로 쓰세요):`);
+  problems.forEach(p => console.error(`  ${p.id} · ${p.type} · ${p.name} — ${p.reason}`));
 }
 
 // 기대 형식: [판정, ...] 또는 { skip: "이유" }. 배열 안의 { skip: "이유" }도 그 학생 전체 보류로 본다.
@@ -232,11 +274,28 @@ async function main() {
     return;
   }
 
+  // 이름 대조는 잠금보다 먼저 한다 — 기대를 쓰는 중에도(커밋 전) 이름만 확인할 수 있게
+  const personas = loadPersonas();
+  if (fs.existsSync(EXPECTATIONS_FILE)) {
+    const problems = checkExpectationNames(JSON.parse(fs.readFileSync(EXPECTATIONS_FILE, 'utf8')), personas, jobs);
+    if (problems.length) {
+      reportNameProblems(problems);
+      await mongoose.connection.close();
+      process.exit(3);
+    }
+    if (process.argv.includes('--check-expectations')) {
+      console.log('기대 결과의 이름이 모두 카탈로그와 맞습니다.');
+      await mongoose.connection.close();
+      return;
+    }
+  } else if (process.argv.includes('--check-expectations')) {
+    console.error(`${EXPECTATIONS_REL}이 없습니다.`);
+    await mongoose.connection.close();
+    process.exit(1);
+  }
+
   const lock = checkExpectationsLock();
   const expectations = JSON.parse(fs.readFileSync(EXPECTATIONS_FILE, 'utf8'));
-  const personas = loadPersonas();
-  const unknown = Object.keys(expectations).filter(id => !personas.some(p => p.id === id));
-  if (unknown.length) throw new Error(`personas.json에 없는 id의 기대 결과: ${unknown.join(', ')}`);
 
   // M 판정에서 직무의 certNames가 필요해 원본 직무를 붙여 둔다(점수에는 쓰지 않음)
   const jobByCode = new Map(jobs.map(j => [j.jobCode, j]));
@@ -252,7 +311,8 @@ async function main() {
     const baseRes = p.baseResolved ? attachJobs(scorePersona(p.baseResolved, jobs)) : null;
     const { skip, checks } = normalizeExpectation(expectations[p.id]);
     let status;
-    if (!(p.id in expectations)) {
+    // 키가 없거나 빈 틀([])이면 기대 미작성 — 판정 0개를 통과로 세지 않는다
+    if (!(p.id in expectations) || (!skip && checks.length === 0)) {
       status = 'missing';
       rows.push([p.id, p.group, p.kind || '', '-', '-', '-', '보류', '기대 미작성']);
     } else if (skip) {
@@ -263,8 +323,7 @@ async function main() {
         try { return { exp, ...judge(exp, res, baseRes) }; } catch (e) { return { exp, expected: exp.type, actual: '-', pass: false, memo: e.message }; }
       });
       judged.forEach(j => rows.push([p.id, p.group, p.kind || '', j.exp.type, j.expected, j.actual, j.pass ? '통과' : '실패', j.memo || '']));
-      status = judged.length && judged.every(j => j.pass) ? 'pass' : 'fail';
-      if (!judged.length) rows.push([p.id, p.group, p.kind || '', '-', '-', '-', '실패', '판정이 비어 있음']);
+      status = judged.every(j => j.pass) ? 'pass' : 'fail';
     }
     results.push({ p, res, baseRes, status });
   }
