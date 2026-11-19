@@ -104,7 +104,7 @@ function scorePersona(p, jobs) {
   const top10 = scorer.rankCandidates(signals, prefs, pool, { limit: 10, perMidClass: 3 });
   const full = scorer.rankCandidates(signals, prefs, pool, { limit: pool.length, perMidClass: Infinity });
   const confidence = scorer.calcConfidence(signals, prefs);
-  return { context, courses, prefs, interests, top10, full, confidence, needsInterests: confidence === 'low' && interests.length === 0 };
+  return { context, courses, signals, prefs, interests, top10, full, confidence, needsInterests: confidence === 'low' && interests.length === 0 };
 }
 
 // ── 판정 ────────────────────────────────────────────────
@@ -314,8 +314,13 @@ async function main() {
   await mongoose.connection.close();
 }
 
-main().catch(async error => {
-  console.error('❌ 검증 실행 실패:', error.message);
-  await mongoose.connection.close().catch(() => {});
-  process.exit(1);
-});
+// AI 근거 점검(runRecommendAiCheck.js)이 같은 입력 만들기를 쓴다
+module.exports = { loadPersonas, scorePersona, kstToday };
+
+if (require.main === module) {
+  main().catch(async error => {
+    console.error('❌ 검증 실행 실패:', error.message);
+    await mongoose.connection.close().catch(() => {});
+    process.exit(1);
+  });
+}

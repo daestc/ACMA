@@ -363,6 +363,7 @@ module.exports = {
   // 검증 스크립트(scripts/validation)가 서비스와 같은 조건으로 카탈로그를 읽게 한다
   CATALOG_QUERY,
   SCORING_FIELDS,
+  buildPrefLabels, // AI 근거 점검이 서비스와 같은 체크리스트 문구로 facts를 만들게
   getForm,
   getInterestCategories,
   buildCandidates,
