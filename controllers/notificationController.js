@@ -16,7 +16,7 @@ async function getNotifications(req, res) {
             }
         }
 
-        const allFreshNotices = await fetchHomeNotices();
+        const allFreshNotices = await fetchHomeNotices(loggedInUser?.university);
         let myUrgentNotices = allFreshNotices;
 
         if (loggedInUser) {

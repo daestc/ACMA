@@ -22,7 +22,8 @@ async function loadHomeData(user) {
       .filter(cert => cert.status === 'target' && cert.certificationId && cert.certificationId.jmcd)
       .map(cert => String(cert.certificationId.jmcd).trim());
 
-  const showNotice = await noticeController.fetchHomeNotices();
+  // 학교를 넘겨야 그 학교 학사 일정이 공지 목록에 섞인다(없으면 공통 공지만)
+  const showNotice = await noticeController.fetchHomeNotices(user.university);
 
   const userCustomNotices = showNotice.filter(notice => {
       if (notice.category === 'certification') {
@@ -78,6 +79,8 @@ async function loadHomeData(user) {
     urgentNotice: userCustomNotices.filter(n => n.isUrgent === true),
     myCertNotices,
     ddayCerts: myCertNotices,
+    // 자격증 D-day 카드 빈 문구를 "목표 없음"과 "일정 미공개"로 나누는 데 쓴다
+    hasTargetCerts: myTargetCertJmcds.length > 0,
     examSchedules,
     generalSchedules,
   };

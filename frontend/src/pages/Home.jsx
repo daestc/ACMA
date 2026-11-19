@@ -291,7 +291,7 @@ function Home() {
     )
   }
 
-  const { todoList, topNotices, ddayCerts, examSchedules, generalSchedules } = data
+  const { todoList, topNotices, ddayCerts, hasTargetCerts, examSchedules, generalSchedules } = data
 
   return (
     <>
@@ -330,7 +330,7 @@ function Home() {
           colorClass="blue"
           label="자격증 시험"
           items={ddayCerts || []}
-          emptyText="등록된 목표 자격증이 없습니다."
+          emptyText={hasTargetCerts ? '다음 시험 일정이 아직 공개되지 않았습니다.' : '등록된 목표 자격증이 없습니다.'}
           renderItem={cert => (
             <>
               <div className="dday-title">{cert.title}</div>
